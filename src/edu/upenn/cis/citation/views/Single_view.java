@@ -255,7 +255,7 @@ public class Single_view {
     
   }
   
-  public void build_view_mappings(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, HashSet<String> tables, HashMap<String, Integer> subgoal_id_mappings, HashMap<Tuple, Vector<Integer>> tuple_valid_rows)
+  public void build_view_mappings(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, HashMap<String, Integer> subgoal_id_mappings, HashMap<Tuple, Vector<Integer>> tuple_valid_rows)
   {
     Database canDb = CoreCover.constructCanonicalDB(subgoals, subgoal_name_mappings);
     
@@ -282,18 +282,6 @@ public class Single_view {
       for(int i = 0; i<v_why_col_ids.size(); i++)
       {
         v_why_col_id_q_why_col_id_mappings.put(q_why_col_ids.get(i), i);
-      }
-      
-      HashSet<String> q_mapped_relations = tuple.get_relations();
-      
-      for(Iterator iter2 = q_mapped_relations.iterator(); iter2.hasNext();)
-      {
-        String curr_relation = (String) iter2.next();
-        
-        String origin_relation_name = subgoal_name_mappings.get(curr_relation);
-        
-        tables.add(origin_relation_name);
-        
       }
       
       Vector<int[][]> ids = new Vector<int[][]>();
