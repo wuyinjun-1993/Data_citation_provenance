@@ -346,10 +346,10 @@ public class Gen_citation {
           
           HashMap<String, HashSet<String>> curr_full_citations = new HashMap<String, HashSet<String>>();
           
-          for(int j = 0; j<c_vector.c_vec.size(); j++)
+          for(citation_view view_mapping: c_vector.c_vec)
           {
               
-            Tuple curr_tuple = c_vector.c_vec.get(j).get_view_tuple();
+            Tuple curr_tuple = view_mapping.get_view_tuple();
             
 //              String view_key = c_vector.c_vec.get(j).get_name() + init.separator + c_vector.c_vec.get(j).get_table_name_string();
 //              

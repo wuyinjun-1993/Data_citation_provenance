@@ -1208,7 +1208,7 @@ public class view_operation {
 	
 	public static Vector<Argument> get_full_schema(String subgoal_name, String subgoal_origin_name, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String query = "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '" + subgoal_origin_name +"'";
+		String query = "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '" + subgoal_origin_name +"' order by column_name";
 		
 		pst = c.prepareStatement(query);
 		

@@ -265,9 +265,9 @@ public class Single_view {
     {
       Tuple tuple = (Tuple) iter.next();
       
-      Vector<Integer> row_ids = new Vector<Integer>();
-      
-      tuple_valid_rows.put(tuple, row_ids);
+//      Vector<Integer> row_ids = new Vector<Integer>();
+//      
+//      tuple_valid_rows.put(tuple, row_ids);
       
       Vector<Integer> v_why_col_ids = get_view_why_token_column_ids(tuple);
       

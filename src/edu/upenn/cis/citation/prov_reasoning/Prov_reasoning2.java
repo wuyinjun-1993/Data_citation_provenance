@@ -1716,10 +1716,10 @@ public class Prov_reasoning2 {
       
       String s2 = c_vec1.table_name_str;
       
-      for(int i = 0; i<c_vec2.c_vec.size(); i++)
+      for(citation_view view_mapping: c_vec2.c_vec)
       {
           
-          String str = c_vec2.c_vec.get(i).get_table_name_string();
+          String str = view_mapping.get_table_name_string();
           
           str = str.replaceAll("\\[", "\\\\[");
           

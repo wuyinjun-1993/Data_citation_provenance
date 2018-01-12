@@ -11,6 +11,7 @@ import java.util.Vector;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.citation_view.Head_strs;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
+import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.views.Single_view;
 
 public class Check_valid_view_mappings implements Runnable {
@@ -22,6 +23,8 @@ public class Check_valid_view_mappings implements Runnable {
   public HashSet<Tuple> view_mappings;
   
   public ArrayList<Vector<Head_strs>> curr_tuples;
+  
+  public HashMap<Tuple, Vector<Integer>> tuple_rows = new HashMap<Tuple, Vector<Integer>>();
   
   public Connection c;
   
@@ -66,6 +69,10 @@ public class Check_valid_view_mappings implements Runnable {
       
       Tuple tuple = (Tuple) iter2.next();
       
+      Vector<Integer> row_ids = new Vector<Integer>();
+      
+      tuple_rows.put(tuple, row_ids);
+      
       for(int i = 0; i<curr_tuples.size(); i++)
       {
         view.evaluate_args(curr_tuples.get(i), tuple);
@@ -77,7 +84,7 @@ public class Check_valid_view_mappings implements Runnable {
           }
           else
           {
-            Prov_reasoning2.tuple_valid_rows.get(tuple).add(i);
+            tuple_rows.get(tuple).add(i);
           }
         } catch (SQLException e) {
           // TODO Auto-generated catch block

@@ -20,7 +20,7 @@ import edu.upenn.cis.citation.citation_view.citation_view_vector;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
-import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
+import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.user_query.query_storage;
 import edu.upenn.cis.citation.views.Single_view;
 
@@ -52,9 +52,13 @@ public class provenance_citation {
 //      view_objs.add(view_obj);
 //    }
     
-  boolean multi_thread = Boolean.valueOf(args[0]);
+//  boolean multi_thread = Boolean.valueOf(args[0]);
   
-    Prov_reasoning2.init_from_database(c, pst);
+//    view_operation.delete_view_by_name("v10", c, pst);
+  
+    Prov_reasoning4.init_from_database(c, pst);
+    
+    
     
 //    Vector<Query> query = Load_views_and_citation_queries.get_views(path + "user_queries", c, pst);
     
@@ -69,28 +73,28 @@ public class provenance_citation {
     
     start = System.nanoTime();
     
-    HashSet<citation_view_vector> covering_sets = Prov_reasoning2.reasoning(query, curr_valid_view_mappings, multi_thread, c, pst);
+    HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, c, pst);
     
     end = System.nanoTime();
     
     double time = (end - start)*1.0/1000000000;
     
-    if(multi_thread)
-      System.out.println("reasoning time 2:" + time);
-    else
+//    if(multi_thread)
+//      System.out.println("reasoning time 2:" + time);
+//    else
       System.out.println("reasoning time 1:" + time);
     
-    System.out.println("view_mapping_time:" + Prov_reasoning2.view_mapping_time);
+    System.out.println("view_mapping_time:" + Prov_reasoning4.view_mapping_time);
     
-    System.out.println("covering_set_time:" + Prov_reasoning2.covering_set_time);
+    System.out.println("covering_set_time:" + Prov_reasoning4.covering_set_time);
     
     write2file(path + "covering_sets2", covering_sets);
     
-//    System.out.println(covering_sets);
+    System.out.println(covering_sets);
     
-    System.out.println(Prov_reasoning2.rows);
+    System.out.println(Prov_reasoning4.rows);
     
-    HashSet<String> formatted_citations = Prov_reasoning2.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
+    HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
     write2file(path + "citation2", formatted_citations);
     

@@ -39,5 +39,14 @@ public abstract class citation_view {
 	
 	@Override
 	public abstract boolean equals(Object o);
+	
+	public abstract long[] get_mapped_table_name_index();
+	
+	public abstract long[] get_mapped_head_var_index();
+	
+	public abstract long[] get_tuple_index();
+	
+	@Override
+	public abstract int hashCode();
 
 }

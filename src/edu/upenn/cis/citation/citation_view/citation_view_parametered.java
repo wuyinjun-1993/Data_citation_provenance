@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import edu.upenn.cis.citation.Corecover.*;
@@ -39,6 +40,12 @@ public class citation_view_parametered extends citation_view{
 	
 	//relation_name in the body of query
 	public Vector<String> table_names = new Vector<String>();
+	
+	public long[] table_name_index;
+	
+	public long[] arg_name_index;
+	
+	public long[] tuple_index;
 		
 	public double weight = 0.0;
 	
@@ -312,6 +319,66 @@ public class citation_view_parametered extends citation_view{
 //		gen_table_names(c,pst);
 //		get_queries();
 	}
+	
+	
+	void build_table_name_index(Tuple tuple, HashMap<String, Integer> query_subgoal_id_mappings)
+	{
+	  HashSet<String> target_subgoal_strs = tuple.getTargetSubgoal_strs();
+	  
+	  for(String target_str: target_subgoal_strs)
+	  {
+	    int id = query_subgoal_id_mappings.get(target_str);
+	    
+	    table_name_index[id/Long.SIZE] |= 1 << (id % Long.SIZE);
+	  }
+	  
+	}
+	
+	void build_arg_name_index(Tuple tuple, HashMap<Argument, Integer> query_arg_id_mappings)
+    {      
+      Vector<Argument> head_args = tuple.args;
+      
+      for(Argument arg:head_args)
+      {
+        int id = query_arg_id_mappings.get(arg);
+        
+        arg_name_index[id/Long.SIZE] |= 1 << (id % Long.SIZE);
+      }
+      
+    }
+	
+	public citation_view_parametered(String name, Single_view view, Tuple tuple, HashMap<String, Integer> query_subgoal_id_mappings, HashMap<Argument, Integer> query_arg_id_mappings, HashMap<Tuple, Integer> tuple_ids)
+    {
+        
+        this.name = name;
+        
+        this.lambda_terms = tuple.lambda_terms;
+        
+        this.view = view;
+        
+        this.view_tuple = tuple;
+        
+        set_table_names(tuple);
+        
+        table_name_index = new long[(query_subgoal_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
+        
+        arg_name_index = new long[(query_arg_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
+        
+        tuple_index = new long[(tuple_ids.size() + Long.SIZE - 1)/Long.SIZE];
+     
+        int curr_tuple_id = tuple_ids.get(tuple);
+        
+        tuple_index[curr_tuple_id/Long.SIZE] |= 1 << (curr_tuple_id % Long.SIZE); 
+        
+        build_table_name_index(tuple, query_subgoal_id_mappings);
+        
+        build_arg_name_index(tuple, query_arg_id_mappings);
+        
+//      gen_index();
+                
+//      gen_table_names(c,pst);
+//      get_queries();
+    }
 	 
 	void set_table_names(Tuple tuple)
 	{
@@ -628,6 +695,24 @@ public class citation_view_parametered extends citation_view{
 		
 		return string.hashCode();
 	}
+
+  @Override
+  public long[] get_mapped_table_name_index() {
+    // TODO Auto-generated method stub
+    return table_name_index;
+  }
+
+  @Override
+  public long[] get_mapped_head_var_index() {
+    // TODO Auto-generated method stub
+    return arg_name_index;
+  }
+
+  @Override
+  public long[] get_tuple_index() {
+    // TODO Auto-generated method stub
+    return tuple_index;
+  }
 	
 
 }
