@@ -69,10 +69,10 @@ public class Apro extends AbstractApro {
       this.setNumaCoresPerNode(numaCoresPerNode);
       this.setNumaNumNodes(numaNumNodes);
       this.setNumaStartNode(numaStartNode);
-      Logger.info("[NUMA] Number of nodes: %d, cores per node: %d, start node: %d", this.numaNumNodes, this.numaCoresPerNode, this.numaStartNode);
+//      Logger.info("[NUMA] Number of nodes: %d, cores per node: %d, start node: %d", this.numaNumNodes, this.numaCoresPerNode, this.numaStartNode);
     }
     else {
-      Logger.warn("[NUMA] NUMA is off");
+//      Logger.warn("[NUMA] NUMA is off");
     }
     
     this.provider = provider;
@@ -142,7 +142,7 @@ public class Apro extends AbstractApro {
     }
     
     long initTime = System.currentTimeMillis() - startInit;
-    Logger.info("[Init] %d groups created (%d - %d elements each). Init time %d ms", groupCount, minSize, maxSize, initTime);
+//    Logger.info("[Init] %d groups created (%d - %d elements each). Init time %d ms", groupCount, minSize, maxSize, initTime);
   }
   
   public void setDebug(boolean debug) {
@@ -258,7 +258,7 @@ public class Apro extends AbstractApro {
       workers.add(worker);
     }
     
-    Logger.info("[Apro] Working...");    
+//    Logger.info("[Apro] Working...");    
     for (int i=0; i<iters; i++) {
       if (debug && (i + 1) % (iters / 10) == 0) System.out.print('.');
       
@@ -290,7 +290,7 @@ public class Apro extends AbstractApro {
     
     long endTime = System.currentTimeMillis();
     this.runTime = endTime - startTime;
-    Logger.info("[Result] Groups: %d; Time: %d ms", groupCount, runTime);
+//    Logger.info("[Result] Groups: %d; Time: %d ms", groupCount, runTime);
   }
   
   public Long getRunTime() {

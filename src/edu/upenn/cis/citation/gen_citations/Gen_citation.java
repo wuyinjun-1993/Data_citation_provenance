@@ -31,7 +31,7 @@ public class Gen_citation {
   
   public static String db_name = "IUPHAR/BPS Guide to PHARMACOLOGY";
   
-  public static HashSet<String> gen_citation_entire_query(HashMap<Single_view, HashSet<Tuple>> valid_view_mappings, HashSet<citation_view_vector> covering_sets, HashMap<Tuple, Vector<Integer>> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, HashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
+  public static HashSet<String> gen_citation_entire_query(HashMap<Single_view, HashSet<Tuple>> valid_view_mappings, HashSet<citation_view_vector> covering_sets, HashMap<Tuple, HashSet<Integer>> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, HashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
   {
     
     HashMap<Tuple, HashSet<Head_strs>> view_mapping_lambda_values_mappings = new HashMap<Tuple, HashSet<Head_strs>>();
@@ -50,7 +50,7 @@ public class Gen_citation {
       
       for(Tuple tuple: tuples)
       {
-        Vector<Integer> valid_row_ids = tuple_valid_rows.get(tuple);
+        HashSet<Integer> valid_row_ids = tuple_valid_rows.get(tuple);
         
         HashSet<Head_strs> lambda_values = view.get_lambda_values(tuple, all_why_tokens, valid_row_ids);
         

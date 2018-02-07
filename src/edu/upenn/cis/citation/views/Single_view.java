@@ -44,7 +44,7 @@ public class Single_view {
   
   public HashMap<Tuple, Vector<int[]>> view_mapping_lambda_term_ids_mappings = new HashMap<Tuple, Vector<int[]>>();
   
-  HashMap<String, Integer> subgoal_name_id_mappings = new HashMap<String, Integer>();
+  public HashMap<String, Integer> subgoal_name_id_mappings = new HashMap<String, Integer>();
 
   //subgoals
   public Vector<Subgoal> subgoals = new Vector<Subgoal>();
@@ -71,6 +71,11 @@ public class Single_view {
   public String token_sequence = new String();
   
   public static String [] numeric_data_type = {"smallint","integer", "bigint", "decimal", "numeric","real","double precision","serial", "bigserial"};
+  
+  //each cluster is id of subgoals
+  public Vector<HashSet<Integer>> cluster_subgoal_ids = new Vector<HashSet<Integer>>();
+  
+  public Vector<HashSet<Integer>> cluster_condition_ids = new Vector<HashSet<Integer>>();
   
   //construction function for conjunctive queries
   
@@ -118,6 +123,96 @@ public class Single_view {
 //    }
 //  }
 //  
+  
+  void cluster_relational_subgoals()
+  {
+//    Vector<HashSet<Integer>> cluster_ids = new Vector<HashSet<Integer>>();
+    
+    for(int j = 0; j<conditions.size(); j++)
+    {
+      String subgoal1 = conditions.get(j).subgoal1;
+      
+      String subgoal2 = conditions.get(j).subgoal2;
+      
+      int id1 = subgoal_name_id_mappings.get(subgoal1);
+      
+      int id2 = -1;
+      
+      if(subgoal2 != null && !subgoal2.isEmpty())
+        id2 = subgoal_name_id_mappings.get(subgoal2);
+      
+      
+      int i = 0;
+      
+      int matched_cluster_id1 = -1;
+      
+      int matched_cluster_id2 = -1;
+      
+      for(i = 0; i<cluster_subgoal_ids.size(); i++)
+      {
+        HashSet<Integer> curr_cluster = cluster_subgoal_ids.get(i);
+        
+        
+        
+        for(Integer id:curr_cluster)
+        {
+          if(id == id1)
+          {
+            matched_cluster_id1 = i;
+            
+          }
+          
+          if(id == id2)
+          {
+            matched_cluster_id2 = i;
+            
+          }
+        }
+      }
+      
+      if(matched_cluster_id1 < 0 && matched_cluster_id2 < 0)
+      {
+        HashSet<Integer> new_clusters = new HashSet<Integer>();
+        
+        new_clusters.add(id1);
+        
+        if(id2 >= 0)
+          new_clusters.add(id2);
+        
+        HashSet<Integer> curr_cluster_condition_ids = new HashSet<Integer>();
+        
+        curr_cluster_condition_ids.add(j);
+        
+      }
+      else
+      {
+        if(matched_cluster_id1 < 0 && matched_cluster_id2 >= 0)
+        {
+          cluster_subgoal_ids.get(matched_cluster_id2).add(id1);
+        }
+        else
+        {
+          if(matched_cluster_id2 < 0 && matched_cluster_id1 >= 0)
+          {
+            
+            if(id2 >= 0)
+              cluster_subgoal_ids.get(matched_cluster_id1).add(id2);
+          }
+          else
+          {
+            cluster_subgoal_ids.get(matched_cluster_id1).addAll(cluster_subgoal_ids.get(matched_cluster_id2));
+            
+            cluster_subgoal_ids.removeElementAt(matched_cluster_id2);
+            
+          }
+        }
+      }
+      
+      
+    }
+    
+  }
+  
   public Single_view(Query view, String view_name, Connection c, PreparedStatement pst) throws SQLException
   {
     subgoals = view.body;
@@ -139,6 +234,8 @@ public class Single_view {
     {
       subgoal_name_id_mappings.put(subgoals.get(i).name, i);
     }
+    
+    cluster_relational_subgoals();
     
 //    init_condition_ids(conditions, subgoal_name_id_mappings);
     
@@ -255,9 +352,8 @@ public class Single_view {
     
   }
   
-  public void build_view_mappings(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, HashMap<String, Integer> subgoal_id_mappings, HashMap<Tuple, Vector<Integer>> tuple_valid_rows)
+  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, HashMap<String, Integer> subgoal_id_mappings)
   {
-    Database canDb = CoreCover.constructCanonicalDB(subgoals, subgoal_name_mappings);
     
     view_mappings = CoreCover.computeViewTuples(canDb, this);
     
@@ -290,20 +386,32 @@ public class Single_view {
       {
         Conditions condition = tuple.conditions.get(i);
         
-        String subgoal1 = condition.subgoal1;
+        int subgoal_id1 = -1;
         
-        int subgoal_id1 = subgoal_id_mappings.get(subgoal1);
+        int arg_id1 = -1;
         
-        Integer q_subgoal_id1 = v_why_col_id_q_why_col_id_mappings.get(subgoal_id1);
+        Integer q_subgoal_id1 = -1;
         
-        if(q_subgoal_id1 == null)
+        if(condition.get_mapping1)
         {
-          q_subgoal_id1 = -1;
+          String subgoal1 = condition.subgoal1;
+          
+          subgoal_id1 = subgoal_id_mappings.get(subgoal1);
+          
+          q_subgoal_id1 = v_why_col_id_q_why_col_id_mappings.get(subgoal_id1);
+          
+          if(q_subgoal_id1 == null)
+          {
+            q_subgoal_id1 = -1;
+          }
+                  
+          Argument arg1 = condition.arg1;
+          
+          arg_id1 = subgoals.get(subgoal_id1).args.indexOf(arg1);
         }
-                
-        Argument arg1 = condition.arg1;
         
-        int arg_id1 = subgoals.get(subgoal_id1).args.indexOf(arg1);
+        
+        
         
         Argument arg2 = condition.arg2;
         
@@ -637,7 +745,7 @@ public class Single_view {
   {
     HashSet<String> data_type_set = new HashSet<String>(Arrays.asList(numeric_data_type));
 
-    if(data_type_set.contains(arg1.data_type) && data_type_set.contains(arg2.data_type))
+    if(data_type_set.contains(arg1.data_type) || data_type_set.contains(arg2.data_type))
     {
       double value1 = Double.valueOf(arg1.value);
       
@@ -695,7 +803,7 @@ public class Single_view {
     }
   }
   
-  public boolean check_condition_satisfiability(Conditions condition, HashMap<String, Vector<Conditions>> undertermined_conditions)
+  public boolean check_condition_satisfiability(Conditions condition)//, HashMap<String, ArrayList<Conditions>> undertermined_conditions, boolean first)
   {
     Argument arg1 = condition.arg1;
     
@@ -717,20 +825,22 @@ public class Single_view {
 //      
 //      Conditions new_condition = new Conditions(arg2, condition.subgoal2, condition.op, new_arg, condition.subgoal1);
 //      
-      condition.swap_args();
-      
-      if(undertermined_conditions.get(condition.subgoal1) == null)
-      {
-        Vector<Conditions> conditions = new Vector<Conditions>();
-        
-        conditions.add(condition);
-        
-        undertermined_conditions.put(condition.subgoal1, conditions);
-      }
-      else
-      {
-        undertermined_conditions.get(condition.subgoal1).add(condition);
-      }
+//      condition.swap_args();
+//      
+//      if(undertermined_conditions.get(condition.subgoal1) == null)
+//      {
+//        ArrayList<Conditions> conditions = new ArrayList<Conditions>();
+//        
+//        conditions.add(condition);
+//        
+//        undertermined_conditions.put(condition.subgoal1, conditions);
+//      }
+//      else
+//      {
+//        
+//        if(first)
+//          undertermined_conditions.get(condition.subgoal1).add(condition);
+//      }
       
       return true;
     }
@@ -747,25 +857,43 @@ public class Single_view {
 //      
 //      Conditions new_condition = new Conditions(arg1, condition.subgoal1, condition.op, new_arg, condition.subgoal2);
       
-      if(undertermined_conditions.get(condition.subgoal1) == null)
-      {
-        Vector<Conditions> conditions = new Vector<Conditions>();
-        
-        conditions.add(condition);
-        
-        undertermined_conditions.put(condition.subgoal1, conditions);
-      }
-      else
-      {
-        undertermined_conditions.get(condition.subgoal1).add(condition);
-      }
+//      if(undertermined_conditions.get(condition.subgoal1) == null)
+//      {
+//        ArrayList<Conditions> conditions = new ArrayList<Conditions>();
+//        
+//        conditions.add(condition);
+//        
+//        undertermined_conditions.put(condition.subgoal1, conditions);
+//      }
+//      else
+//      {
+//        if(first)
+//          undertermined_conditions.get(condition.subgoal1).add(condition);
+//      }
       
       return true;
     }
     
     
     if(arg1.value == null && arg2.value == null)
+    {
+      
+//      if(undertermined_conditions.get(condition.subgoal1) == null)
+//      {
+//        ArrayList<Conditions> conditions = new ArrayList<Conditions>();
+//        
+//        conditions.add(condition);
+//        
+//        undertermined_conditions.put(condition.subgoal1, conditions);
+//      }
+//      else
+//      {
+//        if(first)
+//          undertermined_conditions.get(condition.subgoal1).add(condition);
+//      }
+      
       return true;
+    }
     
     return true;
   }
@@ -983,18 +1111,16 @@ public class Single_view {
     return true;
   }
   
-  public boolean check_validity(Tuple tuple, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, Connection c, PreparedStatement pst) throws SQLException
+  public boolean check_validity(Tuple tuple, ArrayList<String[][]> partial_mapping_values, int row_id)//ArrayList<ArrayList<String>> partial_mapping_values, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings, HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings, boolean first, Connection c, PreparedStatement pst) throws SQLException
   {
     
     boolean satisfiable = true; 
-    
-    HashMap<String, Vector<Conditions>> undetermined_conditions = new HashMap<String, Vector<Conditions>>();
     
     for(int i = 0; i<conditions.size(); i++)
     {
       Conditions condition = conditions.get(i);
       
-      if(!check_condition_satisfiability(condition, undetermined_conditions))
+      if(!check_condition_satisfiability(condition))
       {
         satisfiable = false;
         
@@ -1003,18 +1129,121 @@ public class Single_view {
       
     }
     
+    for(int i = 0; i<tuple.cluster_patial_mapping_condition_ids.size(); i++)
+    {
+      HashSet<Integer> cluster_ids = tuple.cluster_patial_mapping_condition_ids.get(i);
+      
+      int j = 0;
+      
+      for(Integer condition_id : cluster_ids)
+      {
+        Conditions condition = conditions.get(condition_id);
+        
+        Argument arg2 = condition.arg2;
+        
+        Argument arg1 = condition.arg1;
+        
+        if(arg2.value != null)
+          partial_mapping_values.get(i)[row_id][j] = arg2.value;
+        
+        if(arg1.value != null)
+          partial_mapping_values.get(i)[row_id][j] = arg1.value;
+        
+        j++;
+        
+      }
+      
+    }
+    
+//    Set<String> undetermined_relations = undermined_table_conditions_mappings.keySet();
+//    
+//    for(String relation_name: undetermined_relations)
+//    {
+//      ArrayList<Conditions> curr_conditions = undermined_table_conditions_mappings.get(relation_name);
+//      
+//      ArrayList<ArrayList<String>> related_values = undetermined_table_arg_value_mappings.get(relation_name);     
+//      
+//      for(int i = 0; i<curr_conditions.size(); i++)
+//      {
+////        String subgoal2 = curr_conditions.get(i).subgoal2;
+//
+//        Argument arg2 = curr_conditions.get(i).arg2;
+//                
+//        if(related_values == null)
+//        {
+//          related_values = new ArrayList<ArrayList<String>>();
+//          
+//          ArrayList<String> curr_values = new ArrayList<String>();
+//          
+//          curr_values.add(arg2.value);
+//          
+//          related_values.add(curr_values);
+//          
+//          undetermined_table_arg_value_mappings.put(relation_name, related_values);
+//          
+//        }
+//        else
+//        {
+//          if(i == 0)
+//          {
+//            ArrayList<String> curr_values = new ArrayList<String>();
+//            
+//            curr_values.add(arg2.value);
+//            
+//            related_values.add(curr_values);
+//            
+////            undetermined_table_arg_value_mappings.put(relation_name, related_values);
+//          }
+//          else
+//          {
+//            related_values.get(related_values.size() - 1).add(arg2.value);
+//          }
+//          
+////          if(related_values.get(subgoal2) == null)
+////          {
+////            ArrayList<ArrayList<String>> values = new ArrayList<ArrayList<String>>();
+////            
+////            ArrayList<String> curr_values = new ArrayList<String>();
+////            
+////            curr_values.add(arg2.value);
+////            
+////            values.add(curr_values);
+////            
+////            related_values.put(subgoal2, values);
+////          }
+////          else
+////          {
+////            ArrayList<ArrayList<String>> curr_values = related_values.get(subgoal2);
+////            
+////            if(curr_values.get(curr_values.size() - 1).size() < arg_size)
+////            {
+////              curr_values.get(curr_values.size() - 1).add(arg2.value);
+////            }
+////            else
+////            {
+////              ArrayList<String> curr_value = new ArrayList<String>();
+////              
+////              curr_values.add(curr_value);
+////            }
+////          }
+//        }
+//      }
+//      
+//      
+//    }
+    
     HashMap<String, Vector<String>> all_values = new HashMap<String, Vector<String>>();
     
     
-    if(!check_undertermined_conditions(rel_attr_value_mappings, all_values , undetermined_conditions, c, pst))
-      return false;
+//    if(!check_undertermined_conditions(rel_attr_value_mappings, all_values , undetermined_conditions, c, pst))
+//      return false;
     
     reset_values(tuple);
     
     return satisfiable;
   }
   
-  public HashSet<Head_strs> get_lambda_values(Tuple tuple, ArrayList<Vector<Head_strs>> why_tokens, Vector<Integer> valid_row_ids)
+  public HashSet<Head_strs> get_lambda_values(Tuple tuple, ArrayList<Vector<Head_strs>> why_tokens, HashSet<Integer> valid_row_ids)
   {
     Vector<int[]> ids = view_mapping_lambda_term_ids_mappings.get(tuple);
     
@@ -1024,9 +1253,9 @@ public class Single_view {
     
     HashSet<Head_strs> lambda_values = new HashSet<Head_strs>();
     
-    for(int i = 0; i<valid_row_ids.size(); i++)
+    for(Integer id: valid_row_ids)
     {
-      Vector<Head_strs> curr_why_tokens = why_tokens.get(valid_row_ids.get(i));
+      Vector<Head_strs> curr_why_tokens = why_tokens.get(id);
       
       Vector<String> curr_l_values = new Vector<String>();
       

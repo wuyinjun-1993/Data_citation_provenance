@@ -23,9 +23,9 @@ public class citation_view_vector {
 	
 	public Vector<String> index_vec;
 	
-	public HashSet<Argument> head_variables = new HashSet<Argument>();
+//	public HashSet<Argument> head_variables = new HashSet<Argument>();
 	
-	public HashSet<String> table_names;
+//	public HashSet<String> table_names;
 		
 	public String index_str;
 	
@@ -41,6 +41,8 @@ public class citation_view_vector {
 	
 	public String unique_id;
 	
+	public String output_str;
+	
 //	public String head_var_string = new String();
 	
 	public citation_view_vector()
@@ -49,7 +51,7 @@ public class citation_view_vector {
 		
 		index_vec = new Vector<String>();
 		
-		table_names = new HashSet<String>();
+//		table_names = new HashSet<String>();
 		
 	}
 	
@@ -162,7 +164,7 @@ public class citation_view_vector {
 	  return true;
 	}
 	
-	static boolean check_index_equality(long [] arr1, long [] arr2)
+	public static boolean check_index_equality(long [] arr1, long [] arr2)
 	{
 	  for(int i = 0; i<arr1.length; i++)
 	  {
@@ -180,7 +182,7 @@ public class citation_view_vector {
 				
 		Vector<String> index_new = new Vector<String>();
 //				
-		HashSet<String> table_names_new = (HashSet<String>) table_names.clone();
+//		HashSet<String> table_names_new = (HashSet<String>) table_names.clone();
 		
 		String index_str_new = new String();
 		
@@ -196,7 +198,7 @@ public class citation_view_vector {
 		
 		if(!check_index_equality(new_table_name_index, table_name_index) || !check_index_equality(new_arg_name_index, arg_name_index))
 		{
-		  table_names_new.addAll(c.get_table_names());
+//		  table_names_new.addAll(c.get_table_names());
 		  
 		  vec_new.add(c);
 		  
@@ -243,7 +245,7 @@ public class citation_view_vector {
 //			table_name_str += vec_new.get(i).get_table_name_string();
 //		}
 		
-		citation_view_vector c_v = new citation_view_vector(vec_new, index_new, table_names_new);
+		citation_view_vector c_v = new citation_view_vector(vec_new, index_new);
 		
 //		c_v.head_variables = new HashSet<Argument>();
 		
@@ -255,17 +257,19 @@ public class citation_view_vector {
 		
 		c_v.unique_id = c_v.get_unique_string_id();
 		
-		c_v.head_variables = new HashSet<Argument> ();
+//		c_v.head_variables = new HashSet<Argument> ();
 		
-		c_v.head_variables.addAll(this.head_variables);
+//		c_v.head_variables.addAll(this.head_variables);
 		
-		c_v.head_variables.addAll(c.get_view_tuple().getArgs());
+//		c_v.head_variables.addAll(c.get_view_tuple().getArgs());
 		
 		c_v.index_str = index_str_new;
 		
 		c_v.view_name_str = view_name_str_new;
 		
 		c_v.table_name_str = table_name_str;
+		
+		c_v.output_str = c_v.cal_toString();
 		
 		return c_v;
 	}
@@ -436,13 +440,13 @@ public class citation_view_vector {
 //		return pos;
 //	}
 	
-	public citation_view_vector(HashSet<citation_view> vec, Vector<String> index_vec, HashSet<String> table_names){
+	public citation_view_vector(HashSet<citation_view> vec, Vector<String> index_vec){
 		
 		this.c_vec = vec;
 		
 		this.index_vec = index_vec;
 		
-		this.table_names = table_names;
+//		this.table_names = table_names;
 //		this.view_strs = tuple_cores;
 		
 	}
@@ -455,9 +459,9 @@ public class citation_view_vector {
 		
 		index_vec = new Vector<String>();
 		
-		table_names = new HashSet<String>();
+//		table_names = new HashSet<String>();
 		
-		table_names.addAll(c.get_table_names());
+//		table_names.addAll(c.get_table_names());
 		
 		index_vec.add(c.get_index());
 		
@@ -469,7 +473,7 @@ public class citation_view_vector {
 		
 		view_name_str = c.get_name();
 		
-		head_variables.addAll(c.get_view_tuple().getArgs());
+//		head_variables.addAll(c.get_view_tuple().getArgs());
 		
 	}
 	
@@ -481,9 +485,9 @@ public class citation_view_vector {
       
       index_vec = new Vector<String>();
       
-      table_names = new HashSet<String>();
+//      table_names = new HashSet<String>();
       
-      table_names.addAll(c.get_table_names());
+//      table_names.addAll(c.get_table_names());
       
       index_vec.add(c.get_index());
       
@@ -495,15 +499,17 @@ public class citation_view_vector {
       
       view_name_str = c.get_name();
       
-      head_variables.addAll(c.get_view_tuple().getArgs());
+//      head_variables.addAll(c.get_view_tuple().getArgs());
       
       table_name_index = c.get_mapped_table_name_index();
       
       arg_name_index = c.get_mapped_head_var_index();
       
-      tuple_index = curr_tuple_index;
+      tuple_index = Arrays.copyOf(curr_tuple_index, curr_tuple_index.length);
       
       unique_id = get_unique_string_id();
+      
+      output_str = cal_toString();
       
   }
 	
@@ -531,15 +537,15 @@ public class citation_view_vector {
 		
 		HashSet<String> tables = new HashSet<String>();
 		
-		tables.addAll(vec.table_names);
+//		tables.addAll(vec.table_names);
 		
-		tables.addAll(c.table_names);
+//		tables.addAll(c.table_names);
 		
 		HashSet<Argument> args = new HashSet<Argument>();
 		
-		args.addAll(vec.head_variables);
+//		args.addAll(vec.head_variables);
 		
-		args.addAll(c.head_variables);
+//		args.addAll(c.head_variables);
 		
 		new_citation_vec.addAll(vec.c_vec);
 		
@@ -664,9 +670,9 @@ public class citation_view_vector {
 //			}
 //		}
 		
-		citation_view_vector merged_citation_view_vectors = new citation_view_vector(new_citation_vec, index_vec, tables);
+		citation_view_vector merged_citation_view_vectors = new citation_view_vector(new_citation_vec, index_vec);
 		
-		merged_citation_view_vectors.head_variables = args;
+//		merged_citation_view_vectors.head_variables = args;
 		
 		merged_citation_view_vectors.index_str = index_str;
 		
@@ -684,6 +690,8 @@ public class citation_view_vector {
 		
 		merged_citation_view_vectors.unique_id = merged_citation_view_vectors.get_unique_string_id();
 		
+		merged_citation_view_vectors.output_str = merged_citation_view_vectors.cal_toString();
+		
 		return merged_citation_view_vectors;
 	}
 	
@@ -692,6 +700,16 @@ public class citation_view_vector {
 		citation_view_vector updated_covering_set = this.clone();
 		
 		citation_view_vector insert_covering_set = c.clone();
+		
+//		if(citation_view_vector.contains(updated_covering_set.table_name_index, insert_covering_set.table_name_index) && citation_view_vector.contains(updated_covering_set.arg_name_index, insert_covering_set.arg_name_index))
+//		{
+//		  return updated_covering_set;
+//		}
+//		
+//		if(citation_view_vector.contains(insert_covering_set.table_name_index, updated_covering_set.table_name_index) && citation_view_vector.contains(insert_covering_set.arg_name_index, updated_covering_set.arg_name_index))
+//        {
+//          return insert_covering_set;
+//        }
 		
 		return merge(updated_covering_set, insert_covering_set);
 	}
@@ -720,33 +738,38 @@ public class citation_view_vector {
 	@Override
 	public String toString()
 	{
-		String str = new String();
-		
-		String []str_arr = new String[c_vec.size()];
-		
-		int i = 0;
-		
-		for(citation_view view_mappping:c_vec)
-		{
-		  
-		  
-		  str_arr[i] = view_mappping.get_name();
-			
-		  i++;
-		}
-		
-		Arrays.sort(str_arr);
-		
-		for(i = 0; i<str_arr.length; i++)
-		{
-		  if(i >= 1)
-            str += "*";
-          str += str_arr[i].toString();
-		}
-		
-		return str;
+		return output_str;
 	}
 
+	
+	String cal_toString()
+	{
+	  String str = new String();
+      
+      String []str_arr = new String[c_vec.size()];
+      
+      int i = 0;
+      
+      for(citation_view view_mappping:c_vec)
+      {
+        
+        
+        str_arr[i] = view_mappping.get_name();// + view_mappping.get_view_tuple().mapSubgoals_str;
+          
+        i++;
+      }
+      
+      Arrays.sort(str_arr);
+      
+      for(i = 0; i<str_arr.length; i++)
+      {
+        if(i >= 1)
+          str += "*";
+        str += str_arr[i].toString();
+      }
+      
+      return str;
+	}
 	
 	public citation_view_vector clone()
 	{
@@ -762,7 +785,7 @@ public class citation_view_vector {
 			c_v.index_vec.add(index_vec.get(i));
 		}
 		
-		c_v.table_names.addAll(table_names);
+//		c_v.table_names.addAll(table_names);
 		
 		c_v.index_str = index_str;
 		
@@ -770,7 +793,7 @@ public class citation_view_vector {
 		
 		c_v.table_name_str = table_name_str;
 		
-		c_v.head_variables = (HashSet<Argument>) head_variables.clone();
+//		c_v.head_variables = (HashSet<Argument>) head_variables.clone();
 		
 		c_v.arg_name_index = Arrays.copyOf(arg_name_index, arg_name_index.length);
 		
@@ -779,6 +802,8 @@ public class citation_view_vector {
 		c_v.tuple_index = Arrays.copyOf(tuple_index, tuple_index.length);
 		
 		c_v.unique_id = unique_id;
+		
+		c_v.output_str = output_str;
 		
 		return c_v;
 		

@@ -329,7 +329,7 @@ public class citation_view_parametered extends citation_view{
 	  {
 	    int id = query_subgoal_id_mappings.get(target_str);
 	    
-	    table_name_index[id/Long.SIZE] |= 1 << (id % Long.SIZE);
+	    table_name_index[id/Long.SIZE] |= (1L << (id % Long.SIZE));
 	  }
 	  
 	}
@@ -342,7 +342,7 @@ public class citation_view_parametered extends citation_view{
       {
         int id = query_arg_id_mappings.get(arg);
         
-        arg_name_index[id/Long.SIZE] |= 1 << (id % Long.SIZE);
+        arg_name_index[id/Long.SIZE] |= (1L << (id % Long.SIZE));
       }
       
     }
@@ -368,7 +368,7 @@ public class citation_view_parametered extends citation_view{
      
         int curr_tuple_id = tuple_ids.get(tuple);
         
-        tuple_index[curr_tuple_id/Long.SIZE] |= 1 << (curr_tuple_id % Long.SIZE); 
+        tuple_index[curr_tuple_id/Long.SIZE] |= (1L << (curr_tuple_id % Long.SIZE)); 
         
         build_table_name_index(tuple, query_subgoal_id_mappings);
         

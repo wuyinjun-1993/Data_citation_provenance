@@ -14,9 +14,13 @@ public class Database {
 
   HashMap<String, String> subgoal_name_mappings = null;
   
-  Database(HashSet tuples, HashMap<String, String> subgoal_name_mappings) {
+  HashMap<String, HashSet<Integer>> query_subgoal_id_mappings = null;
+  
+  Database(HashSet tuples, HashMap<String, String> subgoal_name_mappings, HashMap<String, HashSet<Integer>> query_subgoal_id_mappings) {
     this.tuples = tuples;
     this.subgoal_name_mappings = subgoal_name_mappings;
+    
+    this.query_subgoal_id_mappings = query_subgoal_id_mappings;
   }
   
   /**
@@ -61,44 +65,353 @@ public class Database {
     return sr;
   }
   
+  public Vector<Relation> join(Vector<Relation> sr1, Vector<Relation> sr2, String resName)
+  {
+    Vector<Relation> result = new Vector<Relation>();
+    
+    if(sr1.isEmpty())
+      return sr2;
+    
+    if(sr2.isEmpty())
+      return sr1;
+    
+    for(int i = 0; i<sr1.size(); i++)
+    {
+      Relation s1 = sr1.get(i);
+      
+      for(int j = 0; j<sr2.size(); j++)
+      {
+        Relation s2 = sr2.get(j);
+        
+        Relation s = join(s1, s2, resName);
+        
+        result.add(s);
+        
+      }
+      
+    }
+    
+    return result;
+  }
+  
   public Relation execQuery(Single_view view) {
 
     Relation sr = new Relation("sr");
     
-    int num = 0;
     
-    for (int i = 0; i < view.subgoals.size(); i ++ ) {
-      Subgoal subgoal = view.subgoals.get(i);
+    
+    HashMap<String, HashSet<Integer>> view_subgoal_id_clusters = new HashMap<String, HashSet<Integer>>();
+    
+    for(int i = 0; i<view.subgoals.size(); i++)
+    {
+      String subgoal_name = view.subgoals.get(i).name;
       
-//      System.out.println("subgoal:::" + subgoal);
+      String origin_subgoal_name = view.subgoal_name_mappings.get(subgoal_name);
       
-      // processes the subgoal on the db
-      Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+      if(view_subgoal_id_clusters.get(origin_subgoal_name) == null)
+      {
+        HashSet<Integer> ids = new HashSet<Integer>();
+        
+        ids.add(i);
+        
+        view_subgoal_id_clusters.put(origin_subgoal_name, ids);
+      }
+      else
+      {
+        view_subgoal_id_clusters.get(origin_subgoal_name).add(i);
+      }
       
-      if(subgoalRel.tuples.size() == 0)
-          continue;
-      
-//      System.out.println("tuples:::" + subgoalRel.tuples);
-      
-//      System.out.println("subgoal_relation:::" + subgoalRel);
-//      
-//      System.out.println("subgoal_relation_schema:::" + subgoalRel.getSchema());
-
-      // process the join
-      sr = join(sr, subgoalRel, view.view_name, num);
-
-      Vector usefulArgs = view.getUsefulArgs(i);
-      sr = sr.project(usefulArgs);
-      
-      num ++;
       
     }
+    
+    
+    Set<String> relation_names = query_subgoal_id_mappings.keySet();
+    
+    Vector<Relation> srs = new Vector<Relation>();
+    
+    for(String relation_name: relation_names)
+    {
+      if(view_subgoal_id_clusters.get(relation_name) == null)
+      {
+        continue;
+      }
+      else
+      {
+        HashSet<Integer> view_subgoal_ids = view_subgoal_id_clusters.get(relation_name);
+        
+        HashSet<Integer> query_subgoal_ids = query_subgoal_id_mappings.get(relation_name);
+        
+        Vector<Relation> curr_srs = new Vector<Relation>();
+        
+        if(view_subgoal_ids.size() <= query_subgoal_ids.size())
+        {
+          int num = 0;
+          
+          Relation curr_sr = new Relation("sr");
+          
+          for(Integer id: view_subgoal_ids)
+          {
+            Subgoal subgoal = view.subgoals.get(id);
+            
+            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+            
+            if(subgoalRel.tuples.size() == 0)
+                continue;
+            
+//            System.out.println("tuples:::" + subgoalRel.tuples);
+            
+//            System.out.println("subgoal_relation:::" + subgoalRel);
+//            
+//            System.out.println("subgoal_relation_schema:::" + subgoalRel.getSchema());
+
+            // process the join
+            curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
+
+            Vector usefulArgs = view.getUsefulArgs(id);
+            curr_sr = curr_sr.project(usefulArgs);
+            
+            num ++;
+          }
+          
+          curr_srs.add(curr_sr);
+        }
+        else
+        {
+          HashSet<HashSet<Integer>> query_subgoal_id_sets = UserLib.genSubsets(view_subgoal_ids, query_subgoal_ids.size());
+          
+          for(HashSet<Integer> curr_query_subgoal_id_set: query_subgoal_id_sets)
+          {
+            Relation curr_sr = new Relation("sr");
+            
+            int num = 0;
+            
+            for(Integer subgoal_id : curr_query_subgoal_id_set)
+            {
+              Subgoal subgoal = view.subgoals.get(subgoal_id);
+              
+              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+              
+              if(subgoalRel.tuples.size() == 0)
+                  continue;
+              
+              
+              curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
+              
+              Vector usefulArgs = view.getUsefulArgs(subgoal_id);
+              curr_sr = curr_sr.project(usefulArgs);
+            }
+            
+            curr_srs.add(curr_sr);
+          }
+          
+        }
+        
+        srs = join(srs, curr_srs, view.view_name);
+        
+      }
+    }
+    
+//    int num = 0;
+//    
+//    for (int i = 0; i < view.subgoals.size(); i ++ ) {
+//      Subgoal subgoal = view.subgoals.get(i);
+//      
+////      System.out.println("subgoal:::" + subgoal);
+//      
+//      // processes the subgoal on the db
+//      Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+//      
+//      if(subgoalRel.tuples.size() == 0)
+//          continue;
+//      
+////      System.out.println("tuples:::" + subgoalRel.tuples);
+//      
+////      System.out.println("subgoal_relation:::" + subgoalRel);
+////      
+////      System.out.println("subgoal_relation_schema:::" + subgoalRel.getSchema());
+//
+//      // process the join
+//      sr = join(sr, subgoalRel, view.view_name, num);
+//
+//      Vector usefulArgs = view.getUsefulArgs(i);
+//      sr = sr.project(usefulArgs);
+//      
+//      num ++;
+//      
+//    }
 
 //    System.out.println(sr.getTuples());
     // set the query of the result, and compute the head of each tuple
     sr.setQuery(view);  
     return sr;
   }
+  
+  public HashSet<Tuple> execQuery2(Single_view view) {
+
+    Relation sr = new Relation("sr");
+    
+    
+    
+    HashMap<String, HashSet<Integer>> view_subgoal_id_clusters = new HashMap<String, HashSet<Integer>>();
+    
+    for(int i = 0; i<view.subgoals.size(); i++)
+    {
+      String subgoal_name = view.subgoals.get(i).name;
+      
+      String origin_subgoal_name = view.subgoal_name_mappings.get(subgoal_name);
+      
+      if(view_subgoal_id_clusters.get(origin_subgoal_name) == null)
+      {
+        HashSet<Integer> ids = new HashSet<Integer>();
+        
+        ids.add(i);
+        
+        view_subgoal_id_clusters.put(origin_subgoal_name, ids);
+      }
+      else
+      {
+        view_subgoal_id_clusters.get(origin_subgoal_name).add(i);
+      }
+      
+      
+    }
+    
+    
+    Set<String> relation_names = query_subgoal_id_mappings.keySet();
+    
+    Vector<Relation> srs = new Vector<Relation>();
+    
+    for(String relation_name: relation_names)
+    {
+      if(view_subgoal_id_clusters.get(relation_name) == null)
+      {
+        continue;
+      }
+      else
+      {
+        HashSet<Integer> view_subgoal_ids = view_subgoal_id_clusters.get(relation_name);
+        
+        HashSet<Integer> query_subgoal_ids = query_subgoal_id_mappings.get(relation_name);
+        
+        Vector<Relation> curr_srs = new Vector<Relation>();
+        
+        if(view_subgoal_ids.size() <= query_subgoal_ids.size())
+        {
+          int num = 0;
+          
+          Relation curr_sr = new Relation("sr");
+          
+          for(Integer id: view_subgoal_ids)
+          {
+            Subgoal subgoal = view.subgoals.get(id);
+            
+            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+            
+            if(subgoalRel.tuples.size() == 0)
+                continue;
+            
+//            System.out.println("tuples:::" + subgoalRel.tuples);
+            
+//            System.out.println("subgoal_relation:::" + subgoalRel);
+//            
+//            System.out.println("subgoal_relation_schema:::" + subgoalRel.getSchema());
+
+            // process the join
+            curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
+
+            Vector usefulArgs = view.getUsefulArgs(id);
+            curr_sr = curr_sr.project(usefulArgs);
+            
+            num ++;
+          }
+          
+          curr_srs.add(curr_sr);
+        }
+        else
+        {
+          HashSet<HashSet<Integer>> query_subgoal_id_sets = UserLib.genSubsets(view_subgoal_ids, query_subgoal_ids.size());
+          
+          for(HashSet<Integer> curr_query_subgoal_id_set: query_subgoal_id_sets)
+          {
+            Relation curr_sr = new Relation("sr");
+            
+            int num = 0;
+            
+            for(Integer subgoal_id : curr_query_subgoal_id_set)
+            {
+              Subgoal subgoal = view.subgoals.get(subgoal_id);
+              
+              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+              
+              if(subgoalRel.tuples.size() == 0)
+                  continue;
+              
+              
+              curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
+              
+              Vector usefulArgs = view.getUsefulArgs(subgoal_id);
+              curr_sr = curr_sr.project(usefulArgs);
+              
+              num++;
+            }
+            
+            curr_srs.add(curr_sr);
+          }
+          
+        }
+        
+        srs = join(srs, curr_srs, view.view_name);
+        
+      }
+    }
+    
+//    int num = 0;
+//    
+//    for (int i = 0; i < view.subgoals.size(); i ++ ) {
+//      Subgoal subgoal = view.subgoals.get(i);
+//      
+////      System.out.println("subgoal:::" + subgoal);
+//      
+//      // processes the subgoal on the db
+//      Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+//      
+//      if(subgoalRel.tuples.size() == 0)
+//          continue;
+//      
+////      System.out.println("tuples:::" + subgoalRel.tuples);
+//      
+////      System.out.println("subgoal_relation:::" + subgoalRel);
+////      
+////      System.out.println("subgoal_relation_schema:::" + subgoalRel.getSchema());
+//
+//      // process the join
+//      sr = join(sr, subgoalRel, view.view_name, num);
+//
+//      Vector usefulArgs = view.getUsefulArgs(i);
+//      sr = sr.project(usefulArgs);
+//      
+//      num ++;
+//      
+//    }
+
+//    System.out.println(sr.getTuples());
+    // set the query of the result, and compute the head of each tuple
+//    sr.setQuery(view);  
+//    return sr;
+    HashSet<Tuple> all_view_mappings = new HashSet<Tuple>();
+    
+    for(int i = 0; i<srs.size(); i++)
+    {
+      Relation relation = srs.get(i);
+      
+      all_view_mappings.addAll(relation.getTuples());
+      
+    }
+    
+    return all_view_mappings;
+    
+  }
+  
   
   /**
    * processes one subgoal on a database
@@ -332,7 +645,7 @@ public class Database {
       if (unifiable) {
     HashMap mapSubgoals = new HashMap();
     mapSubgoals.put(subgoal, tuple.getSubgoal()); // subgoal mapped
-    resTuples.add(new Tuple(subgoal.getName(), 
+    resTuples.add(new Tuple(tuple.getName(), 
                 resTupleArgs, phi, phi_str, mapSubgoals));
       }
     }
@@ -396,8 +709,16 @@ public class Database {
   Relation join(Relation rel1, Relation rel2, String resName, int seq) {
 	    
 	    // returns the other relation if one relation's schema is empty
-	    if (seq == 0 && rel1.getAttrNum() == 0) return rel2;
-	    if (seq == 0 && rel2.getAttrNum() == 0) return rel1;
+	    if (seq == 0 && rel1.getAttrNum() == 0){
+	      rel2.name = resName;
+	      
+	      return rel2;
+	    }
+	    if (seq == 0 && rel2.getAttrNum() == 0){
+	      rel1.name = resName;
+	      
+	      return rel1;
+	    }
 
 	    //System.out.println("rel1 = " + rel1 );
 	    //System.out.println("rel2 = " + rel2 );
