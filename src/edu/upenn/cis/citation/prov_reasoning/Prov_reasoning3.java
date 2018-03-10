@@ -52,7 +52,7 @@ import fr.lri.tao.apro.ap.AproBuilder;
 import fr.lri.tao.apro.data.DataProvider;
 import fr.lri.tao.apro.data.MatrixProvider;
 
-public class Prov_reasoning4 {
+public class Prov_reasoning3 {
   
   
 public static Vector<Single_view> view_objs = new Vector<Single_view>();
@@ -462,13 +462,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    }
 //  }
   
-  static Vector<Head_strs> get_tuples(String[] provenance_row, Query query, HashMap<String, Integer> subgoal_attr_nums_mappings) throws SQLException
+  static Vector<Head_strs> get_tuples(ResultSet rs, Query query, HashMap<String, Integer> subgoal_attr_nums_mappings) throws SQLException
   {
     Vector<Head_strs> curr_tuples = new Vector<Head_strs>();
     
     Vector<String> provenance = new Vector<String>();
     
-    int total_col_count = provenance_row.length;
+//    int total_col_count = provenance_row.length;
     
     int col_nums = query.head.args.size();
     
@@ -484,7 +484,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
       for(int j = 0; j<attri_nums; j++)
       {
-        provenance.add(provenance_row[col_nums]);
+        provenance.add(rs.getString(col_nums + 1));
         
         col_nums++;
       }
@@ -809,13 +809,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     return tuple_index;
   }
   
-  static Head_strs get_query_result(String[] provenance_row, int head_arg_size) throws SQLException
+  static Head_strs get_query_result(ResultSet rs, int head_arg_size) throws SQLException
   {
     Vector<String> values = new Vector<String>();
     
     for(int i = 0; i<head_arg_size; i++)
     {
-      String value = provenance_row[i];
+      String value = rs.getString(i + 1);
       
       values.add(value);
     }
@@ -899,7 +899,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    
 //  }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<citation_view_vector>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<citation_view_vector>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
     
     HashSet<String> tables = new HashSet<String>();
@@ -958,46 +958,54 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
 //    printResult(rs);
     
-    for(String[] provenance_row: provenance_instances)
+    while(rs.next())
     {
       
 //      System.out.println("here");
       
-      Head_strs values = get_query_result(provenance_row, user_query.head.args.size());
-      
-      Vector<Head_strs> curr_tuples = get_tuples(provenance_row, user_query, table_attr_nums_mappings);
-      
-//      System.out.println(rows);
-//      
-//      System.out.println(Runtime.getRuntime().totalMemory());
-//      
-//      System.out.println(Runtime.getRuntime().freeMemory());
-//      
-//      System.out.println(curr_tuples);
-      
-      
-      
-      if(tuple_why_prov_mappings.get(values) == null)
-      {
-        ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
+      try{
+        Head_strs values = get_query_result(rs, user_query.head.args.size());
         
-        curr_tokens.add(rows);
+        Vector<Head_strs> curr_tuples = get_tuples(rs, user_query, table_attr_nums_mappings);
         
-        tuple_why_prov_mappings.put(values, curr_tokens);
+        System.out.println(rows);
+//        
+//        System.out.println(Runtime.getRuntime().totalMemory());
+//        
+//        System.out.println(Runtime.getRuntime().freeMemory());
+//        
+//        System.out.println(curr_tuples);
         
-//        System.out.println(values + "::" + curr_tokens);
         
+        
+        if(tuple_why_prov_mappings.get(values) == null)
+        {
+          ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
+          
+          curr_tokens.add(rows);
+          
+          tuple_why_prov_mappings.put(values, curr_tokens);
+          
+//          System.out.println(values + "::" + curr_tokens);
+          
+        }
+        else
+        {
+          tuple_why_prov_mappings.get(values).add(rows);
+          
+//          System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
+        }
+        
+        all_why_tokens.add(curr_tuples);
+        
+        rows ++;
       }
-      else
+      catch(Exception e)
       {
-        tuple_why_prov_mappings.get(values).add(rows);
-        
-//        System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
+        System.out.println(e.getStackTrace());
       }
       
-      all_why_tokens.add(curr_tuples);
       
-      rows ++;
 //      Vector<String> where_tokens = get_curr_where_token_seq(rs, where_token_seqs, subgoal_size, head_var_size);
 //      
 //      Vector<String> why_tokens = get_curr_why_token_seq(rs, why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
@@ -1161,7 +1169,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     Query_provenance.reset();
   }
   
-  public static HashSet<citation_view_vector> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  public static HashSet<citation_view_vector> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
 //    String sql = new String();
 //    
@@ -1186,7 +1194,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     HashMap<Tuple, Integer> tuple_ids = new HashMap<Tuple, Integer>();
     
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, provenance_instances, c, pst);
+    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, rs, c, pst);
     
     end = System.nanoTime();
     

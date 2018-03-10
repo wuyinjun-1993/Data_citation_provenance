@@ -1038,181 +1038,181 @@ public class Prov_reasoning2 {
     return covering_sets.get(0);
   }
   
-  static HashSet<citation_view_vector> reasoning_covering_set_multi_threads_multi_hops_conjunctive_query(ArrayList<HashMap<Single_view, HashSet<Tuple>>> valid_view_mappings_per_head_var, Vector<Argument> args, boolean multi_thread) throws InterruptedException
-  {
-    
-//    System.out.println("multi_thread");
-    
-    int loop_time = (int) Math.ceil(Math.log(valid_view_mappings_per_head_var.size())/Math.log(gap));
-    
-    ArrayList<HashSet<citation_view_vector>> covering_sets = new ArrayList<HashSet<citation_view_vector>>();
-    
-    for(int i = 1; i<=loop_time; i++)
-    {
-      int j = 0;
-      
-      if(i == 1)
-      {
-        
-        ArrayList<Calculate_covering_sets_first_round> cal_threads = new ArrayList<Calculate_covering_sets_first_round>();
-        
-        for(j = 0; j<valid_view_mappings_per_head_var.size() + gap*i; j = j+gap*i)
-        {
-//          HashSet<citation_view_vector> view_com = new HashSet<citation_view_vector>();
+//  static HashSet<citation_view_vector> reasoning_covering_set_multi_threads_multi_hops_conjunctive_query(ArrayList<HashMap<Single_view, HashSet<Tuple>>> valid_view_mappings_per_head_var, Vector<Argument> args, boolean multi_thread) throws InterruptedException
+//  {
+//    
+////    System.out.println("multi_thread");
+//    
+//    int loop_time = (int) Math.ceil(Math.log(valid_view_mappings_per_head_var.size())/Math.log(gap));
+//    
+//    ArrayList<HashSet<citation_view_vector>> covering_sets = new ArrayList<HashSet<citation_view_vector>>();
+//    
+//    for(int i = 1; i<=loop_time; i++)
+//    {
+//      int j = 0;
+//      
+//      if(i == 1)
+//      {
+//        
+//        ArrayList<Calculate_covering_sets_first_round> cal_threads = new ArrayList<Calculate_covering_sets_first_round>();
+//        
+//        for(j = 0; j<valid_view_mappings_per_head_var.size() + gap*i; j = j+gap*i)
+//        {
+////          HashSet<citation_view_vector> view_com = new HashSet<citation_view_vector>();
+////          
+////          for(int k = j; k<j+gap*i && k < valid_view_mappings_per_head_var.size(); k++)
+////          {
+////            HashMap<Single_view, HashSet<Tuple>> valid_view_mappings = valid_view_mappings_per_head_var.get(k);
+////            
+////            Set<Single_view> views = valid_view_mappings.keySet();
+////            
+////            HashSet<Tuple> all_tuples = new HashSet<Tuple>();
+////            
+////            for(Iterator iter = views.iterator(); iter.hasNext();)
+////            {
+////              Single_view view = (Single_view) iter.next();
+////              
+////              HashSet<Tuple> tuples = valid_view_mappings.get(view);
+////              
+////              all_tuples.addAll(tuples);
+////              
+////              
+////            }
+////            
+////            view_com = join_views_curr_relation(all_tuples, view_com, args);
+////            
+////          }
+////          if(!view_com.isEmpty())
+////            covering_sets.add(view_com);
 //          
-//          for(int k = j; k<j+gap*i && k < valid_view_mappings_per_head_var.size(); k++)
-//          {
-//            HashMap<Single_view, HashSet<Tuple>> valid_view_mappings = valid_view_mappings_per_head_var.get(k);
-//            
-//            Set<Single_view> views = valid_view_mappings.keySet();
-//            
-//            HashSet<Tuple> all_tuples = new HashSet<Tuple>();
-//            
-//            for(Iterator iter = views.iterator(); iter.hasNext();)
-//            {
-//              Single_view view = (Single_view) iter.next();
+//          Calculate_covering_sets_first_round cal_thread = new Calculate_covering_sets_first_round(valid_view_mappings_per_head_var, args, j, j+gap*i);
+//          
+//          cal_thread.start();
 //              
-//              HashSet<Tuple> tuples = valid_view_mappings.get(view);
-//              
-//              all_tuples.addAll(tuples);
-//              
-//              
-//            }
-//            
-//            view_com = join_views_curr_relation(all_tuples, view_com, args);
-//            
-//          }
+//          cal_threads.add(cal_thread);
+//        }
+//        
+//        for(int p = 0; p<cal_threads.size(); p++)
+//        {
+//          cal_threads.get(p).join();
+//        }
+//        
+//        for(int p = 0; p<cal_threads.size(); p++)
+//        {
+//          
+//          HashSet<citation_view_vector> view_com = cal_threads.get(p).get_reasoning_result();
+//          
 //          if(!view_com.isEmpty())
 //            covering_sets.add(view_com);
-          
-          Calculate_covering_sets_first_round cal_thread = new Calculate_covering_sets_first_round(valid_view_mappings_per_head_var, args, j, j+gap*i);
-          
-          cal_thread.start();
-              
-          cal_threads.add(cal_thread);
-        }
-        
-        for(int p = 0; p<cal_threads.size(); p++)
-        {
-          cal_threads.get(p).join();
-        }
-        
-        for(int p = 0; p<cal_threads.size(); p++)
-        {
-          
-          HashSet<citation_view_vector> view_com = cal_threads.get(p).get_reasoning_result();
-          
-          if(!view_com.isEmpty())
-            covering_sets.add(view_com);
-        }
-        
-        
-      }
-      else
-      {
-        int merge_times = (int) Math.ceil(valid_view_mappings_per_head_var.size()/(gap*i));
-        
-        ArrayList<Calculate_covering_sets> cal_threads = new ArrayList<Calculate_covering_sets>(); 
-        
-        
-        for(int k = 0; k<covering_sets.size(); k=k+gap)
-        {
-          if(k + gap - 1 < covering_sets.size())
-          {
-            Calculate_covering_sets cal_thread = new Calculate_covering_sets(covering_sets, k, k + gap);
-            
-            cal_thread.start();
-            
-            cal_threads.add(cal_thread);
-//            HashSet<citation_view_vector> updated_covering_set = join_operation();
-//            
-//            covering_sets.set(k/2, updated_covering_set);
-          }
-          else
-          {
-            
-            Calculate_covering_sets cal_thread = new Calculate_covering_sets(covering_sets, k, covering_sets.size());
-            
-            cal_thread.start();
-            
-            cal_threads.add(cal_thread);
-            
-//            covering_sets.set(k/gap, covering_sets.get(k));
-          }
-        }
-        
-        for(int p = 0; p<cal_threads.size(); p++)
-        {
-          cal_threads.get(p).join();
-        }
-        
-        for(int k = 0; k<covering_sets.size(); k = k + gap)
-        {
-          
+//        }
+//        
+//        
+//      }
+//      else
+//      {
+//        int merge_times = (int) Math.ceil(valid_view_mappings_per_head_var.size()/(gap*i));
+//        
+//        ArrayList<Calculate_covering_sets> cal_threads = new ArrayList<Calculate_covering_sets>(); 
+//        
+//        
+//        for(int k = 0; k<covering_sets.size(); k=k+gap)
+//        {
 //          if(k + gap - 1 < covering_sets.size())
-          {
-            HashSet<citation_view_vector> updated_covering_set = cal_threads.get(k/gap).get_reasoning_result();
-            
-            covering_sets.set(k/gap, updated_covering_set);
-          }
-          
-        }
-        
-        
-        int redundant_start = (covering_sets.size() + 1)/gap;
-        
-        int redundant_end = covering_sets.size();
-        
-        for(int k = redundant_start; k<redundant_end; k++)
-        {
-          covering_sets.remove(covering_sets.size() - 1);
-        }
-      }
-    }
-    
-    if(loop_time == 0)
-    {
-      HashMap<Single_view, HashSet<Tuple>> view_mappings = valid_view_mappings_per_head_var.get(0);
-      
-      Set<Single_view> views = view_mappings.keySet();
-      
-      for(Iterator iter = views.iterator(); iter.hasNext();)
-      {
-        Single_view view = (Single_view) iter.next();
-        
-        HashSet<Tuple> tuples = view_mappings.get(view);
-        
-        HashSet<citation_view_vector> curr_covering_sets = new HashSet<citation_view_vector>();
-        
-        for(Tuple tuple: tuples)
-        {          
-          if(tuple.lambda_terms.size() > 0)
-          {
-              
-              citation_view_parametered c = new citation_view_parametered(tuple.name, tuple.query, tuple);
-              
-              citation_view_vector curr_views = new citation_view_vector(c);
-              
-              curr_covering_sets.add(curr_views);
-          }   
-          else
-          {
-              
-              citation_view_unparametered c = new citation_view_unparametered(tuple.name, tuple);
-              
-              citation_view_vector curr_views = new citation_view_vector(c);
-              
-              curr_covering_sets.add(curr_views);
-          }
-        }
-        
-        return curr_covering_sets;
-      }
-    }
-    
-    return covering_sets.get(0);
-  }
-  
+//          {
+//            Calculate_covering_sets cal_thread = new Calculate_covering_sets(covering_sets, k, k + gap);
+//            
+//            cal_thread.start();
+//            
+//            cal_threads.add(cal_thread);
+////            HashSet<citation_view_vector> updated_covering_set = join_operation();
+////            
+////            covering_sets.set(k/2, updated_covering_set);
+//          }
+//          else
+//          {
+//            
+//            Calculate_covering_sets cal_thread = new Calculate_covering_sets(covering_sets, k, covering_sets.size());
+//            
+//            cal_thread.start();
+//            
+//            cal_threads.add(cal_thread);
+//            
+////            covering_sets.set(k/gap, covering_sets.get(k));
+//          }
+//        }
+//        
+//        for(int p = 0; p<cal_threads.size(); p++)
+//        {
+//          cal_threads.get(p).join();
+//        }
+//        
+//        for(int k = 0; k<covering_sets.size(); k = k + gap)
+//        {
+//          
+////          if(k + gap - 1 < covering_sets.size())
+//          {
+//            HashSet<citation_view_vector> updated_covering_set = cal_threads.get(k/gap).get_reasoning_result();
+//            
+//            covering_sets.set(k/gap, updated_covering_set);
+//          }
+//          
+//        }
+//        
+//        
+//        int redundant_start = (covering_sets.size() + 1)/gap;
+//        
+//        int redundant_end = covering_sets.size();
+//        
+//        for(int k = redundant_start; k<redundant_end; k++)
+//        {
+//          covering_sets.remove(covering_sets.size() - 1);
+//        }
+//      }
+//    }
+//    
+//    if(loop_time == 0)
+//    {
+//      HashMap<Single_view, HashSet<Tuple>> view_mappings = valid_view_mappings_per_head_var.get(0);
+//      
+//      Set<Single_view> views = view_mappings.keySet();
+//      
+//      for(Iterator iter = views.iterator(); iter.hasNext();)
+//      {
+//        Single_view view = (Single_view) iter.next();
+//        
+//        HashSet<Tuple> tuples = view_mappings.get(view);
+//        
+//        HashSet<citation_view_vector> curr_covering_sets = new HashSet<citation_view_vector>();
+//        
+//        for(Tuple tuple: tuples)
+//        {          
+//          if(tuple.lambda_terms.size() > 0)
+//          {
+//              
+//              citation_view_parametered c = new citation_view_parametered(tuple.name, tuple.query, tuple);
+//              
+//              citation_view_vector curr_views = new citation_view_vector(c);
+//              
+//              curr_covering_sets.add(curr_views);
+//          }   
+//          else
+//          {
+//              
+//              citation_view_unparametered c = new citation_view_unparametered(tuple.name, tuple);
+//              
+//              citation_view_vector curr_views = new citation_view_vector(c);
+//              
+//              curr_covering_sets.add(curr_views);
+//          }
+//        }
+//        
+//        return curr_covering_sets;
+//      }
+//    }
+//    
+//    return covering_sets.get(0);
+//  }
+//  
   static HashSet<citation_view_vector> reasoning_covering_set_multi_hops_conjunctive_query(ArrayList<HashMap<Single_view, HashSet<Tuple>>> valid_view_mappings_per_head_var, Vector<Argument> args, boolean multi_thread) throws InterruptedException
   {
     

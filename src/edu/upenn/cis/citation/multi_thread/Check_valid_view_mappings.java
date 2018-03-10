@@ -82,6 +82,8 @@ public class Check_valid_view_mappings implements Runnable {
       
       Tuple tuple = (Tuple) iter2.next();
       
+//      System.out.println(tuple.name + "|" + tuple.mapSubgoals_str);
+      
       //each table -> related table -> arg_list
       
       HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new HashMap<String, ArrayList<Conditions>>();
@@ -102,7 +104,9 @@ public class Check_valid_view_mappings implements Runnable {
       
       for(int i = 0; i<tuple.cluster_patial_mapping_condition_ids.size(); i++)
       {
-        String[][] curr_partial_mapping_values = new String[values_from_why_tokens.size()][tuple.cluster_patial_mapping_condition_ids.get(i).size()];
+        HashSet<String> partial_mapping_subgoals = get_unique_partial_mapping_subgoals(view, tuple, i);
+        
+        String[][] curr_partial_mapping_values = new String[values_from_why_tokens.size()][partial_mapping_subgoals.size()];
         
         partial_mapping_values.add(curr_partial_mapping_values);
       }
@@ -138,14 +142,57 @@ public class Check_valid_view_mappings implements Runnable {
     
   }
   
-  
+  static HashSet<String> get_unique_partial_mapping_subgoals(Single_view view, Tuple tuple, int i)
+  {
+    HashSet<String> partial_join_mapped_attribute_names = new HashSet<String>();
+    
+    for(Integer condition_id : tuple.cluster_patial_mapping_condition_ids.get(i))
+    {
+      Conditions condition = view.conditions.get(condition_id);
+      
+      Argument arg2 = condition.arg2;
+      
+      Argument arg1 = condition.arg1;
+      
+      if(condition.get_mapping2)
+      {
+        if(!partial_join_mapped_attribute_names.contains(arg2.name))
+        {
+          partial_join_mapped_attribute_names.add(arg2.name);
+          
+        }
+      }
+      
+      if(condition.get_mapping1)
+      {
+        if(!partial_join_mapped_attribute_names.contains(arg1.name))
+        {
+          partial_join_mapped_attribute_names.add(arg1.name);
+
+        }
+        
+      }
+      
+      
+    }
+    
+    return partial_join_mapped_attribute_names;
+  }
   
   static void get_valid_row_ids(Tuple tuple, ArrayList<String[][]> partial_mapping_values, HashSet<Integer> row_ids, Vector<Conditions> conditions, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
   {
+    
+//    System.out.println(tuple);
+
     String sql_base = "select t.row_id from (VALUES ";
+    
+
     
     for(int i = 0; i<tuple.cluster_subgoal_ids.size(); i++)
     {
+      if(row_ids.isEmpty())
+        return;
+      
       if(tuple.cluster_patial_mapping_condition_ids.get(i).size() <= 0)
         continue;
       
@@ -189,6 +236,8 @@ public class Check_valid_view_mappings implements Runnable {
       
 //      HashSet<String> subgoal_names = new HashSet<String>();
       
+      HashSet<String> partial_join_mapped_attribute_names = new HashSet<String>();
+      
       for(Integer id: tuple.cluster_patial_mapping_condition_ids.get(i))
       {
         Conditions condition = conditions.get(id);
@@ -207,7 +256,14 @@ public class Check_valid_view_mappings implements Runnable {
         
         if(tuple.mapSubgoals_str.get(subgoal_name2) == null)
         {
-          sql += "," + arg1.name.replaceAll("\\" + init.separator, "_");
+          String partial_join_mapped_attribute_name = arg1.name.replaceAll("\\" + init.separator, "_");
+          
+          if(!partial_join_mapped_attribute_names.contains(partial_join_mapped_attribute_name))
+          {
+            sql += "," + partial_join_mapped_attribute_name;
+            
+            partial_join_mapped_attribute_names.add(partial_join_mapped_attribute_name);
+          }
           
           if(join_condition_count >= 1)
             join_condition += " and ";
@@ -217,7 +273,16 @@ public class Check_valid_view_mappings implements Runnable {
         }
         else
         {
-          sql += "," + arg2.name.replaceAll("\\" + init.separator, "_");
+          String partial_join_mapped_attribute_name = arg2.name.replaceAll("\\" + init.separator, "_");
+          
+          if(!partial_join_mapped_attribute_names.contains(partial_join_mapped_attribute_name))
+          {
+            sql += "," + partial_join_mapped_attribute_name;
+            
+            partial_join_mapped_attribute_names.add(partial_join_mapped_attribute_name);
+          }
+          
+//          sql += "," + partial_join_mapped_attribute_name;
           
           if(join_condition_count >= 1)
             join_condition += " and ";
@@ -277,7 +342,12 @@ public class Check_valid_view_mappings implements Runnable {
         sql += " where " + join_condition;
       }
       
-//      System.out.println(sql);
+//      if(tuple.toString().equals("v4|family0=family,introduction2=introduction"))
+//      {
+        System.out.println(sql);
+//        
+//      }
+      
       
       pst = c.prepareStatement(sql);
       
@@ -292,7 +362,10 @@ public class Check_valid_view_mappings implements Runnable {
         row_ids.add(rs.getInt(1));
       }
       
-      
+//      if(tuple.toString().equals("v4|family0=family,introduction2=introduction"))
+//      {
+//        System.out.println(row_ids);
+//      }
     }
     
 //    System.out.println(row_ids.size());

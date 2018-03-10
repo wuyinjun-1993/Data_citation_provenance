@@ -17,6 +17,8 @@ public class init {
   
   public static String db_url = "jdbc:postgresql://localhost:5432/provenance";
   
+  public static String db_prov_url = "jdbc:gprom:postgresql://localhost:5432/provenance";
+  
   public static String db_url2 = "jdbc:postgresql://localhost:5432/test2";
 
   
@@ -42,16 +44,18 @@ public class init {
   c = DriverManager
       .getConnection(db_url, usr_name , passwd);
     
-//  reset(c, pst);
+  reset(c, pst);
   
-    Vector<String> relation_names = get_all_base_relations(c, pst);
-    
-    for(int i = 0; i<relation_names.size(); i++)
-    {
-      insert_provenance_columns(relation_names.get(i), c, pst);
-      
-      insert_provenance_tokens(relation_names.get(i), c, pst);
-    }
+//    Vector<String> relation_names = get_all_base_relations(c, pst);
+//    
+//    for(int i = 0; i<relation_names.size(); i++)
+//    {
+//      insert_provenance_columns(relation_names.get(i), c, pst);
+//      
+//      insert_provenance_tokens(relation_names.get(i), c, pst);
+//    }
+  
+  c.close();
   }
   
   

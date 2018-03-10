@@ -49,6 +49,8 @@ public class citation_view_parametered extends citation_view{
 		
 	public double weight = 0.0;
 	
+	public String unique_id_string = new String();
+	
 	void gen_lambda_terms(Connection c, PreparedStatement pst) throws ClassNotFoundException, SQLException
 	{
 		
@@ -374,6 +376,8 @@ public class citation_view_parametered extends citation_view{
         
         build_arg_name_index(tuple, query_arg_id_mappings);
         
+        
+        unique_id_string = get_unique_string_id();
 //      gen_index();
                 
 //      gen_table_names(c,pst);
@@ -649,6 +653,14 @@ public class citation_view_parametered extends citation_view{
 		
 		c_v.view_tuple = this.view_tuple;
 		
+		c_v.tuple_index = tuple_index;
+		
+		c_v.table_name_index = table_name_index;
+		
+		c_v.arg_name_index = arg_name_index;
+		
+		c_v.unique_id_string = unique_id_string;
+		
 		return c_v;
 	}
 
@@ -691,11 +703,37 @@ public class citation_view_parametered extends citation_view{
 	@Override
 	public int hashCode()
 	{
-		String string = this.get_name() + init.separator + this.get_table_name_string();
+//		String string = this.get_name() + init.separator + this.get_table_name_string();
 		
-		return string.hashCode();
+		return unique_id_string.hashCode();//string.hashCode();
 	}
 
+	   public String get_unique_string_id()
+	    {
+	        String string = new String();
+	        
+//	      for(int i = 0; i<c_vec.size(); i++)
+//	      {
+//	          if(i >= 1)
+//	              string += init.separator;
+//	          
+//	          string += c_vec.get(i).get_name() + c_vec.get(i).get_table_name_string(); 
+//	      }
+	        
+	        
+	        
+	        for(int i = 0; i<tuple_index.length; i++)
+	        {
+	          
+	          if(i >= 1)
+	            string += ",";
+	          
+	          string += String.valueOf(tuple_index[i]);
+	        }
+	        
+	        return string;
+	    }
+	
   @Override
   public long[] get_mapped_table_name_index() {
     // TODO Auto-generated method stub

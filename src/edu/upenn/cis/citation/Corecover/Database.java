@@ -153,7 +153,7 @@ public class Database {
           {
             Subgoal subgoal = view.subgoals.get(id);
             
-            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings, view.view_name);
             
             if(subgoalRel.tuples.size() == 0)
                 continue;
@@ -189,7 +189,7 @@ public class Database {
             {
               Subgoal subgoal = view.subgoals.get(subgoal_id);
               
-              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings, view.view_name);
               
               if(subgoalRel.tuples.size() == 0)
                   continue;
@@ -305,7 +305,7 @@ public class Database {
           {
             Subgoal subgoal = view.subgoals.get(id);
             
-            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+            Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings, view.view_name);
             
             if(subgoalRel.tuples.size() == 0)
                 continue;
@@ -341,7 +341,7 @@ public class Database {
             {
               Subgoal subgoal = view.subgoals.get(subgoal_id);
               
-              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings);
+              Relation subgoalRel = processSubgoal(subgoal, view.subgoal_name_mappings, view.view_name);
               
               if(subgoalRel.tuples.size() == 0)
                   continue;
@@ -574,7 +574,7 @@ public class Database {
 	    return new Relation(resName, resSchema, resTuples);
 	  }
   
-  Relation processSubgoal(Subgoal subgoal, HashMap<String, String> view_subgoal_mappings) {
+  Relation processSubgoal(Subgoal subgoal, HashMap<String, String> view_subgoal_mappings, String resname) {
     String resName = subgoal.getName() + "_tmp";  
 
     // computes the schema
@@ -645,7 +645,7 @@ public class Database {
       if (unifiable) {
     HashMap mapSubgoals = new HashMap();
     mapSubgoals.put(subgoal, tuple.getSubgoal()); // subgoal mapped
-    resTuples.add(new Tuple(tuple.getName(), 
+    resTuples.add(new Tuple(resname, 
                 resTupleArgs, phi, phi_str, mapSubgoals));
       }
     }

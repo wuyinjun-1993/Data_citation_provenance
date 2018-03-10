@@ -128,7 +128,7 @@ public class CoreCover {
 
     for (Iterator iter = query.getBody().iterator(); iter.hasNext();) {
       Subgoal subgoal = (Subgoal) iter.next();
-      Tuple tuple = new Tuple(subgoal);
+      Tuple tuple = new Tuple(subgoal, query.subgoal_name_mapping);
       tuples.add(tuple);  // we treat each subgoal as a "tuple"
     }
     
@@ -142,7 +142,7 @@ public class CoreCover {
 
     for (int i = 0; i<subgoals.size(); i++) {
       Subgoal subgoal = subgoals.get(i);
-      Tuple tuple = new Tuple(subgoal);
+      Tuple tuple = new Tuple(subgoal, subgoal_name_mapping);
       tuples.add(tuple);  // we treat each subgoal as a "tuple"
     }
 
@@ -242,6 +242,8 @@ public class CoreCover {
           }
 //
           set_tuple_conditions(tuple, view.conditions, view);
+          
+          tuple.query = view;
           
           viewTuples.add(tuple);
       }
@@ -588,6 +590,17 @@ public class CoreCover {
           }
           else
           {
+            
+            if(get_mapping1 | get_mapping2 == true)
+            {
+              tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id1).add(j);
+            }
+            else
+            {
+              tuple.cluster_non_mapping_condition_ids.get(matched_cluster_id1).add(j);
+            }
+            
+            
             tuple.cluster_subgoal_ids.get(matched_cluster_id1).addAll(tuple.cluster_subgoal_ids.get(matched_cluster_id2));
                         
             tuple.cluster_subgoal_ids.removeElementAt(matched_cluster_id2);
@@ -599,6 +612,8 @@ public class CoreCover {
             tuple.cluster_non_mapping_condition_ids.get(matched_cluster_id1).addAll(tuple.cluster_non_mapping_condition_ids.get(matched_cluster_id2));
             
             tuple.cluster_non_mapping_condition_ids.removeElementAt(matched_cluster_id2);
+            
+            
             
           }
         }

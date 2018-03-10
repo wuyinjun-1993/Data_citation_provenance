@@ -1135,6 +1135,8 @@ public class Single_view {
       
       int j = 0;
       
+      HashSet<String> partial_join_mapped_attribute_names = new HashSet<String>();
+      
       for(Integer condition_id : cluster_ids)
       {
         Conditions condition = conditions.get(condition_id);
@@ -1144,12 +1146,32 @@ public class Single_view {
         Argument arg1 = condition.arg1;
         
         if(arg2.value != null)
-          partial_mapping_values.get(i)[row_id][j] = arg2.value;
+        {
+          if(!partial_join_mapped_attribute_names.contains(arg2.name))
+          {
+            partial_join_mapped_attribute_names.add(arg2.name);
+            
+            partial_mapping_values.get(i)[row_id][j] = arg2.value;
+            
+            j++;
+
+          }
+        }
         
         if(arg1.value != null)
-          partial_mapping_values.get(i)[row_id][j] = arg1.value;
+        {
+          if(!partial_join_mapped_attribute_names.contains(arg1.name))
+          {
+            partial_join_mapped_attribute_names.add(arg1.name);
+            
+            partial_mapping_values.get(i)[row_id][j] = arg1.value;
+            
+            j++;
+
+          }
+          
+        }
         
-        j++;
         
       }
       

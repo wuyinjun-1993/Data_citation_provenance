@@ -547,6 +547,17 @@ public class citation_view_vector {
 		
 //		args.addAll(c.head_variables);
 		
+		if(contains(vec.arg_name_index, c.arg_name_index) && contains(vec.table_name_index, c.table_name_index))
+		{
+		  return vec;
+		}
+		
+		
+		if(contains(c.arg_name_index, vec.arg_name_index) && contains(c.table_name_index, vec.table_name_index))
+        {
+          return c;
+        }
+		
 		new_citation_vec.addAll(vec.c_vec);
 		
 		new_citation_vec.addAll(c.c_vec);
@@ -754,7 +765,7 @@ public class citation_view_vector {
       {
         
         
-        str_arr[i] = view_mappping.get_name();// + view_mappping.get_view_tuple().mapSubgoals_str;
+        str_arr[i] = view_mappping.get_view_tuple().toString();
           
         i++;
       }

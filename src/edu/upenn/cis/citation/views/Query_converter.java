@@ -68,7 +68,7 @@ public class Query_converter {
     if(condition != null && !condition.isEmpty())
         sql += " where " + condition;
     
-    return sql;
+    return "PROVENANCE OF(" + sql + ")";
   }
   
   public static String data2sql_with_why_token_columns_test(Query query)
@@ -104,7 +104,7 @@ public class Query_converter {
     sql += condition_str;
     
     
-    return sql;
+    return "PROVENANCE OF(" + sql + ")";
   }
   
   static String get_sel_item(Query q)
@@ -143,18 +143,18 @@ public class Query_converter {
           
 //          str += arg.relation_name + "." + attr_name;
           
-          str += arg.relation_name + "." + attr_name;
+          str += "\"" + arg.relation_name + "." + attr_name + "\"";
           
       }
       
-      for(int i = 0; i<q.body.size(); i++)
-      {
-        str += ",";
-        
-        Subgoal subgoal = (Subgoal) q.body.get(i);
-        
-        str += subgoal.name + ".\"c" + init.separator + MD5.get_MD5_encoding(q.subgoal_name_mapping.get(subgoal.name)) + init.provenance_column_suffix + "\""; 
-      }
+//      for(int i = 0; i<q.body.size(); i++)
+//      {
+//        str += ",";
+//        
+//        Subgoal subgoal = (Subgoal) q.body.get(i);
+//        
+//        str += subgoal.name + ".\"c" + init.separator + MD5.get_MD5_encoding(q.subgoal_name_mapping.get(subgoal.name)) + init.provenance_column_suffix + "\""; 
+//      }
       
 //      for(int i = 0; i<q.lambda_term.size(); i++)
 //      {
@@ -219,7 +219,7 @@ public class Query_converter {
           
           Subgoal subgoal = (Subgoal) q.body.get(i);
           
-          str += q.subgoal_name_mapping.get(subgoal.name) + " " + subgoal.name;
+          str += "\"" + q.subgoal_name_mapping.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
           
 //        str += "," + q.subgoal_name_mapping.get(subgoal.name) + populate_db.suffix + " " + subgoal.name + populate_db.suffix; 
       }
@@ -286,7 +286,7 @@ public class Query_converter {
         
         String arg2 = condition.arg2.name.replace("|", ".");
              
-          str += arg2;
+          str += "\"" + arg2 + "\"";
       }
       
       return str;
