@@ -53,7 +53,7 @@ public class Database {
       sr = join(sr, subgoalRel, query.getName(), num);
 
       Vector usefulArgs = query.getUsefulArgs(i);
-      sr = sr.project(usefulArgs);
+      sr = sr.project(usefulArgs, query.head.agg_args, query.head.agg_function);
       
       num ++;
       
@@ -168,7 +168,7 @@ public class Database {
             curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
 
             Vector usefulArgs = view.getUsefulArgs(id);
-            curr_sr = curr_sr.project(usefulArgs);
+            curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
             
             num ++;
           }
@@ -198,7 +198,7 @@ public class Database {
               curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
               
               Vector usefulArgs = view.getUsefulArgs(subgoal_id);
-              curr_sr = curr_sr.project(usefulArgs);
+              curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
             }
             
             curr_srs.add(curr_sr);
@@ -320,7 +320,7 @@ public class Database {
             curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
 
             Vector usefulArgs = view.getUsefulArgs(id);
-            curr_sr = curr_sr.project(usefulArgs);
+            curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
             
             num ++;
           }
@@ -350,7 +350,7 @@ public class Database {
               curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
               
               Vector usefulArgs = view.getUsefulArgs(subgoal_id);
-              curr_sr = curr_sr.project(usefulArgs);
+              curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
               
               num++;
             }
@@ -416,82 +416,82 @@ public class Database {
   /**
    * processes one subgoal on a database
    */
-  Relation processSubgoal(Subgoal subgoal) {
-    String resName = subgoal.getName() + "_tmp";  
-
-    // computes the schema
-    Vector resSchema     = new Vector();
-    Vector subgoalSchema = subgoal.getArgs();
-    for (int i = 0; i < subgoalSchema.size(); i ++) {
-      Argument arg = (Argument) subgoalSchema.elementAt(i);
-      if (arg.isConst()) {
-	continue;    // ignores constants
-      }
-      if (resSchema.contains(arg)) {
-	continue; // removes duplicates
-      }
-      resSchema.add(arg);
-    }
-
-    // finds tuples that can be unified with this subgoal
-    HashSet resTuples = new HashSet();
-    for (Iterator iter = tuples.iterator(); iter.hasNext();) {
-      Tuple tuple = (Tuple) iter.next();
-
-      if (!subgoal.getName().equals(subgoal_name_mappings.get(tuple.getName()))) 
-	continue; // should have the same name
-
-      Vector tupleArgs   = tuple.getArgs();
-      Vector subgoalArgs = subgoal.getArgs();
-      if (tupleArgs.size() != subgoalArgs.size()) 
-	UserLib.myerror("Database.processSubgoal(), wrong args!");
-
-      // tries to unify this subgoal with the tuple
-      Vector  resTupleArgs = new Vector();
-      boolean unifiable = true;
-      Mapping phi       = new Mapping();
-      Mapping phi_str = new Mapping();
-      for (int i = 0; i < subgoalArgs.size(); i ++) {
-	Argument tupleArg   = (Argument) tupleArgs.elementAt(i);
-	Argument subgoalArg = (Argument) subgoalArgs.elementAt(i);
-
-	// cannot map a constant to a different constant 
-	if (subgoalArg.isConst()) {
-	  if (!subgoalArg.equals(tupleArg)) {
-	    unifiable = false;
-	    break;
-	  } 
-	  else continue; // ignores constants in the final tuple
-	}
-
-	// the subgoalArg is a variable
-	
-	Argument image = phi.apply(subgoalArg);
-	if (image == null) { // not mapped.  adds the pair
-	  phi.put(subgoalArg, tupleArg);
-	  
-	  phi_str.put(subgoalArg.name, tupleArg.name);
-	  
-	  resTupleArgs.add(tupleArg);  // adds the first occurance to the tuple
-	  continue;
-	}
-
-	if (image.equals(tupleArg)) continue;
-	
-	unifiable = false;  // mapped to a different value
-	break;
-      }
-
-      if (unifiable) {
-	HashMap mapSubgoals = new HashMap();
-	mapSubgoals.put(subgoal, tuple.getSubgoal()); // subgoal mapped
-	resTuples.add(new Tuple(subgoal.getName(), 
-				resTupleArgs, phi, phi_str, mapSubgoals));
-      }
-    }
-    
-    return new Relation(resName, resSchema, resTuples);
-  }
+//  Relation processSubgoal(Subgoal subgoal) {
+//    String resName = subgoal.getName() + "_tmp";  
+//
+//    // computes the schema
+//    Vector resSchema     = new Vector();
+//    Vector subgoalSchema = subgoal.getArgs();
+//    for (int i = 0; i < subgoalSchema.size(); i ++) {
+//      Argument arg = (Argument) subgoalSchema.elementAt(i);
+//      if (arg.isConst()) {
+//	continue;    // ignores constants
+//      }
+//      if (resSchema.contains(arg)) {
+//	continue; // removes duplicates
+//      }
+//      resSchema.add(arg);
+//    }
+//
+//    // finds tuples that can be unified with this subgoal
+//    HashSet resTuples = new HashSet();
+//    for (Iterator iter = tuples.iterator(); iter.hasNext();) {
+//      Tuple tuple = (Tuple) iter.next();
+//
+//      if (!subgoal.getName().equals(subgoal_name_mappings.get(tuple.getName()))) 
+//	continue; // should have the same name
+//
+//      Vector tupleArgs   = tuple.getArgs();
+//      Vector subgoalArgs = subgoal.getArgs();
+//      if (tupleArgs.size() != subgoalArgs.size()) 
+//	UserLib.myerror("Database.processSubgoal(), wrong args!");
+//
+//      // tries to unify this subgoal with the tuple
+//      Vector  resTupleArgs = new Vector();
+//      boolean unifiable = true;
+//      Mapping phi       = new Mapping();
+//      Mapping phi_str = new Mapping();
+//      for (int i = 0; i < subgoalArgs.size(); i ++) {
+//	Argument tupleArg   = (Argument) tupleArgs.elementAt(i);
+//	Argument subgoalArg = (Argument) subgoalArgs.elementAt(i);
+//
+//	// cannot map a constant to a different constant 
+//	if (subgoalArg.isConst()) {
+//	  if (!subgoalArg.equals(tupleArg)) {
+//	    unifiable = false;
+//	    break;
+//	  } 
+//	  else continue; // ignores constants in the final tuple
+//	}
+//
+//	// the subgoalArg is a variable
+//	
+//	Argument image = phi.apply(subgoalArg);
+//	if (image == null) { // not mapped.  adds the pair
+//	  phi.put(subgoalArg, tupleArg);
+//	  
+//	  phi_str.put(subgoalArg.name, tupleArg.name);
+//	  
+//	  resTupleArgs.add(tupleArg);  // adds the first occurance to the tuple
+//	  continue;
+//	}
+//
+//	if (image.equals(tupleArg)) continue;
+//	
+//	unifiable = false;  // mapped to a different value
+//	break;
+//      }
+//
+//      if (unifiable) {
+//	HashMap mapSubgoals = new HashMap();
+//	mapSubgoals.put(subgoal, tuple.getSubgoal()); // subgoal mapped
+//	resTuples.add(new Tuple(subgoal.getName(), 
+//				resTupleArgs, phi, phi_str, mapSubgoals));
+//      }
+//    }
+//    
+//    return new Relation(resName, resSchema, resTuples);
+//  }
 
 
   
@@ -611,6 +611,7 @@ public class Database {
       boolean unifiable = true;
       Mapping phi       = new Mapping();
       Mapping phi_str = new Mapping();
+      Mapping reverse_phi = new Mapping();
       for (int i = 0; i < subgoalArgs.size(); i ++) {
     Argument tupleArg   = (Argument) tupleArgs.elementAt(i);
     Argument subgoalArg = (Argument) subgoalArgs.elementAt(i);
@@ -629,7 +630,7 @@ public class Database {
     Argument image = (Argument) phi.apply(subgoalArg);
     if (image == null) { // not mapped.  adds the pair
       phi.put(subgoalArg, tupleArg);
-      
+      reverse_phi.put(tupleArg, subgoalArg);
       phi_str.put(subgoalArg.name, tupleArg.name);
       
       resTupleArgs.add(tupleArg);  // adds the first occurance to the tuple
@@ -646,7 +647,7 @@ public class Database {
     HashMap mapSubgoals = new HashMap();
     mapSubgoals.put(subgoal, tuple.getSubgoal()); // subgoal mapped
     resTuples.add(new Tuple(resname, 
-                resTupleArgs, phi, phi_str, mapSubgoals));
+                resTupleArgs, phi, phi_str, reverse_phi, mapSubgoals));
       }
     }
     
@@ -838,13 +839,19 @@ public class Database {
     map_str.putAll(map2_str);
     Mapping phi_str = new Mapping(map_str);
     
+    HashMap map1_r_str = (HashMap) tuple1.get_Reverse_Mapping().getMap();
+    HashMap map2_r_str = (HashMap) tuple2.get_Reverse_Mapping().getMap();
+    HashMap map_r_str  = (HashMap) map1_r_str.clone();
+    map_r_str.putAll(map2_r_str);
+    Mapping phi_r_str = new Mapping(map_r_str);
+    
     // union the two mapSubgoals's
     HashMap mapSubgoals1 = tuple1.getMapSubgoals();
     HashMap mapSubgoals2 = tuple2.getMapSubgoals();
     HashMap mapSubgoals  = (HashMap) mapSubgoals1.clone();
     mapSubgoals.putAll(mapSubgoals2);
 
-    return new Tuple(resName, resTupleArgs, phi, phi_str, mapSubgoals);
+    return new Tuple(resName, resTupleArgs, phi, phi_str, phi_r_str, mapSubgoals);
   }
 
   public String toString() {

@@ -848,7 +848,7 @@ public class Query_operation {
 	
 	static Vector<Conditions> get_query_conditions(int id, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String q_conditions = "select conditions from query2conditions where query_id = '" + id + "'";
+		String q_conditions = "select conditions, agg_function1, agg_function2 from query2conditions where query_id = '" + id + "'";
 		
 		pst = c.prepareStatement(q_conditions);
 		
@@ -860,6 +860,10 @@ public class Query_operation {
 		{
 			
 			String condition_str = r.getString(1);
+			
+			String agg_function1 = r.getString(2);
+			
+			String agg_function2 = r.getString(3);
 			
 			String []strs = null;
 			
@@ -938,7 +942,7 @@ public class Query_operation {
 			{
 				arg2 = str2.trim();
 				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2);
+				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2, agg_function1, agg_function2);
 			}
 			else
 			{
@@ -948,7 +952,7 @@ public class Query_operation {
 				
 				relation_name2 = str2.substring(0, str2.indexOf(init.separator)).trim();
 				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2);
+				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2, agg_function1, agg_function2);
 
 			}
 			

@@ -14,6 +14,10 @@ public class Conditions {
 	
 	
 	public String subgoal1;
+	
+	public String agg_function1 = null;
+	
+	public String agg_function2 = null;
 		
 	public Argument arg1;
 	
@@ -30,6 +34,8 @@ public class Conditions {
 	public boolean get_mapping1 = true;
 	
 	public boolean get_mapping2 = true;
+	
+	public String unique_string = new String();
 	
 	public int id1 = -1;
 	
@@ -48,16 +54,68 @@ public class Conditions {
 		System.out.println(str1.compareTo(str2));
 	}
 	
+	static String cal_reverse_condition_string(Conditions condition)
+	{
+	  String string = new String();
+	  
+	  if(condition.agg_function1 != null)
+      {
+        string += condition.agg_function1 + "(" + condition.arg1 + ")";
+      }
+      else
+      {
+        string += condition.arg1;
+      }
+      
+      string += condition.op.counter_direction();
+      
+      if(condition.agg_function2 != null)
+      {
+        string += condition.agg_function2 + "(" + condition.arg2 + ")";
+      }
+      else
+      {
+        string += condition.arg2;
+      }
+      
+      return string;
+	  
+	}
+	
 	@Override
 	public String toString()
 	{
 		
-		String str = arg1.name;
-		
-		if(arg2.isConst())
-			return str + op + arg2;
-		else
-			return str + op + arg2;
+	  String string = new String();
+	  
+	  if(agg_function1 != null)
+	  {
+	    string += agg_function1 + "(" + arg1 + ")";
+	  }
+	  else
+	  {
+	    string += arg1;
+	  }
+	  
+	  string += op;
+	  
+	  if(agg_function2 != null)
+      {
+        string += agg_function2 + "(" + arg2 + ")";
+      }
+      else
+      {
+        string += arg2;
+      }
+	  
+	  return string;
+	  
+//		String str = arg1.name;
+//		
+//		if(arg2.isConst())
+//			return str + op + arg2;
+//		else
+//			return str + op + arg2;
 	}
 	
 	public String toStringinsql()
@@ -73,7 +131,25 @@ public class Conditions {
 			return subgoal1 + init.separator + arg1.name + op + subgoal2 + init.separator + arg2;
 	}
 	
-	public Conditions(Argument arg1, String subgoal1, Operation op, Argument arg2, String subgoal2)
+	public String cal_unique_string()
+	{
+	  String rev_condition_string = cal_reverse_condition_string(this);
+      
+      if(rev_condition_string.compareTo(this.toString()) >= 0)
+      {
+        String string = rev_condition_string + "|" + this.toString();
+        
+        return string;
+      }
+      else
+      {
+        String string = this.toString() + "|" + rev_condition_string;
+        
+        return string;
+      }
+	}
+	
+	public Conditions(Argument arg1, String subgoal1, Operation op, Argument arg2, String subgoal2, String agg_function1, String agg_function2)
 	{
 		this.arg1 = arg1;
 		
@@ -84,70 +160,76 @@ public class Conditions {
 		this.subgoal1 = subgoal1;
 		
 		this.subgoal2 = subgoal2;
+		
+		this.agg_function1 = agg_function1;
+		
+		this.agg_function2 = agg_function2;
+		
+		this.unique_string = cal_unique_string();
 	}
 	
-	public static Conditions parse(String constraint, Vector<Subgoal> subgoals, HashMap<String, String> origin_names)
-	{
-		int i = 0;
-		
-		for(i = 0; i< ops.length; i++)
-		{
-			if(constraint.contains(ops[i]))
-				break;
-		}
-		
-		String [] items = constraint.split(ops[i]);
-		
-		Argument arg1 = new Argument(items[0].trim(), origin_names.get(items[0].trim()));
-		
-		Argument arg2 = new Argument(items[1].trim(), origin_names.get(items[1].trim()));
-		
-		String sg1 = new String();
-		
-		String sg2 = new String();
-		
-		for(int j = 0; j<subgoals.size(); j++)
-		{
-			if(subgoals.get(j).args.contains(arg1))
-			{
-				sg1 = subgoals.get(j).name;
-				break;
-			}
-		}
-		
-		if(arg2.type != 1)
-		for(int j = 0; j<subgoals.size(); j++)
-		{	
-			if(subgoals.get(j).args.contains(arg2))
-			{
-				sg2 = subgoals.get(j).name;
-				break;
-			}
-			
-		}
-		
-		
-		Operation op;
-		
-		switch(i)
-		{
-		case 0: op = new op_not_equal(); break;
-		case 1: op = new op_greater_equal(); break;
-		case 2: op = new op_less_equal(); break;
-		case 3: op = new op_greater(); break;
-		case 4: op = new op_less(); break;
-		case 5: op = new op_equal(); break;
-		default: op = null; break;
-		}
-		
-		return new Conditions(arg1, sg1, op, arg2, sg2);
-		
-	}
-	
+//	public static Conditions parse(String constraint, Vector<Subgoal> subgoals, HashMap<String, String> origin_names)
+//	{
+//		int i = 0;
+//		
+//		for(i = 0; i< ops.length; i++)
+//		{
+//			if(constraint.contains(ops[i]))
+//				break;
+//		}
+//		
+//		String [] items = constraint.split(ops[i]);
+//		
+//		Argument arg1 = new Argument(items[0].trim(), origin_names.get(items[0].trim()));
+//		
+//		Argument arg2 = new Argument(items[1].trim(), origin_names.get(items[1].trim()));
+//		
+//		String sg1 = new String();
+//		
+//		String sg2 = new String();
+//		
+//		for(int j = 0; j<subgoals.size(); j++)
+//		{
+//			if(subgoals.get(j).args.contains(arg1))
+//			{
+//				sg1 = subgoals.get(j).name;
+//				break;
+//			}
+//		}
+//		
+//		if(arg2.type != 1)
+//		for(int j = 0; j<subgoals.size(); j++)
+//		{	
+//			if(subgoals.get(j).args.contains(arg2))
+//			{
+//				sg2 = subgoals.get(j).name;
+//				break;
+//			}
+//			
+//		}
+//		
+//		
+//		Operation op;
+//		
+//		switch(i)
+//		{
+//		case 0: op = new op_not_equal(); break;
+//		case 1: op = new op_greater_equal(); break;
+//		case 2: op = new op_less_equal(); break;
+//		case 3: op = new op_greater(); break;
+//		case 4: op = new op_less(); break;
+//		case 5: op = new op_equal(); break;
+//		default: op = null; break;
+//		}
+//		
+//		return new Conditions(arg1, sg1, op, arg2, sg2);
+//		
+//	}
+//	
 	public static Conditions negation(Conditions conditions)
 	{
 		
-		Conditions condition = new Conditions(conditions.arg1, conditions.subgoal1, conditions.op.negation(), conditions.arg2, conditions.subgoal2);
+		Conditions condition = new Conditions(conditions.arg1, conditions.subgoal1, conditions.op.negation(), conditions.arg2, conditions.subgoal2, conditions.agg_function1, conditions.agg_function2);
 				
 		return conditions;
 	}
@@ -239,68 +321,68 @@ public class Conditions {
 	{
 		Operation op = c.op.negation();
 		
-		return new Conditions(c.arg2, c.subgoal2, op, c.arg1, c.subgoal1);
+		return new Conditions(c.arg2, c.subgoal2, op, c.arg1, c.subgoal1, c.agg_function2, c.agg_function1);
 	}
 
 	
-	public static Conditions parse(String condition_str)
-	{
-		int i = 0;
-		
-		for(i = 0; i< ops.length; i++)
-		{
-			if(condition_str.contains(ops[i]))
-				break;
-		}
-		
-		
-		Operation op;
-		
-		switch(i)
-		{
-		case 0: op = new op_not_equal(); break;
-		case 1: op = new op_greater_equal(); break;
-		case 2: op = new op_less_equal(); break;
-		case 3: op = new op_greater(); break;
-		case 4: op = new op_less(); break;
-		case 5: op = new op_equal(); break;
-		default: op = null; break;
-		}
-		
-		String [] args = condition_str.split(op.toString());
-		
-		String arg1_str = args[0].trim();
-		
-		String []strs = arg1_str.split("_");
-		
-		String t1 = strs[0] + "_" + strs[1];
-		
-		String arg1 = arg1_str;//.substring(t1.length() + 1, arg1_str.length());
-		
-		if(!args[1].contains("'"))
-		{
-			String arg2_str = args[1].trim();
-			
-			strs = arg2_str.split("_");
-			
-			String t2 = strs[0] + "_" + strs[1];
-			
-			String arg2 = arg2_str;//.substring(t2.length() + 1, arg2_str.length());
-			
-			return new Conditions(new Argument(arg1, arg1), t1, op, new Argument(arg2, arg2), t2);
-
-		}
-		
-		else
-		{
-			return new Conditions(new Argument(arg1, arg1), t1, op, new Argument(args[1], arg1), new String());
-		}
-		
-		
-		
-		
-	}
-	
+//	public static Conditions parse(String condition_str)
+//	{
+//		int i = 0;
+//		
+//		for(i = 0; i< ops.length; i++)
+//		{
+//			if(condition_str.contains(ops[i]))
+//				break;
+//		}
+//		
+//		
+//		Operation op;
+//		
+//		switch(i)
+//		{
+//		case 0: op = new op_not_equal(); break;
+//		case 1: op = new op_greater_equal(); break;
+//		case 2: op = new op_less_equal(); break;
+//		case 3: op = new op_greater(); break;
+//		case 4: op = new op_less(); break;
+//		case 5: op = new op_equal(); break;
+//		default: op = null; break;
+//		}
+//		
+//		String [] args = condition_str.split(op.toString());
+//		
+//		String arg1_str = args[0].trim();
+//		
+//		String []strs = arg1_str.split("_");
+//		
+//		String t1 = strs[0] + "_" + strs[1];
+//		
+//		String arg1 = arg1_str;//.substring(t1.length() + 1, arg1_str.length());
+//		
+//		if(!args[1].contains("'"))
+//		{
+//			String arg2_str = args[1].trim();
+//			
+//			strs = arg2_str.split("_");
+//			
+//			String t2 = strs[0] + "_" + strs[1];
+//			
+//			String arg2 = arg2_str;//.substring(t2.length() + 1, arg2_str.length());
+//			
+//			return new Conditions(new Argument(arg1, arg1), t1, op, new Argument(arg2, arg2), t2);
+//
+//		}
+//		
+//		else
+//		{
+//			return new Conditions(new Argument(arg1, arg1), t1, op, new Argument(args[1], arg1), new String());
+//		}
+//		
+//		
+//		
+//		
+//	}
+//	
 	
 	@Override
 	public boolean equals(Object obj)
@@ -308,18 +390,22 @@ public class Conditions {
 		
 		Conditions condition = (Conditions) obj;
 		
-		if(this.arg1.name.equals(condition.arg1.name) && this.arg1.relation_name.equals(condition.arg1.relation_name) 
-				&& this.arg2.name.equals(condition.arg2.name) && this.arg2.relation_name.equals(condition.arg2.relation_name) 
-				&& this.subgoal1.equals(condition.subgoal1) && this.subgoal2.equals(condition.subgoal2) && this.op.get_op_name().equals(condition.op.get_op_name()))
-			return true;
+//		if(this.arg1.name.equals(condition.arg1.name) && this.arg1.relation_name.equals(condition.arg1.relation_name) 
+//				&& this.arg2.name.equals(condition.arg2.name) && this.arg2.relation_name.equals(condition.arg2.relation_name) 
+//				&& this.subgoal1.equals(condition.subgoal1) && this.subgoal2.equals(condition.subgoal2) && this.op.get_op_name().equals(condition.op.get_op_name()))
+//			return true;
 		
-		return false;
+		return this.hashCode() == condition.hashCode();
 	}
 	
 	@Override
 	public int hashCode()
 	{
-		return this.arg1.hashCode() * 10000 + this.subgoal1.hashCode()*1000 + this.op.hashCode()*100 + this.arg2.hashCode()*10 + this.subgoal2.hashCode();
+//		return this.arg1.hashCode() * 10000 + this.subgoal1.hashCode()*1000 + this.op.hashCode()*100 + this.arg2.hashCode()*10 + this.subgoal2.hashCode();
+	  
+	  return unique_string.hashCode();
+	  
+	  
 	}
 	
 	
@@ -506,6 +592,12 @@ public class Conditions {
 	  get_mapping1 = get_mapping2;
 	  
 	  get_mapping2 = get_mapping_temp;
+	  
+	  String agg_function_temp = agg_function1;
+	  
+	  agg_function1 = agg_function2;
+	  
+	  agg_function2 = agg_function_temp;
 	  
 	}
 	

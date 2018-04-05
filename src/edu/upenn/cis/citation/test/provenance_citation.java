@@ -2,9 +2,11 @@ package edu.upenn.cis.citation.test;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -17,14 +19,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONException;
 import edu.upenn.cis.citation.Corecover.Query;
+import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
+import edu.upenn.cis.citation.citation_view.Head_strs;
 import edu.upenn.cis.citation.citation_view.citation_view_vector;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
-import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning3;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.query.Query_provenance;
 import edu.upenn.cis.citation.user_query.query_storage;
@@ -36,10 +40,39 @@ public class provenance_citation {
   
   static String path = "reasoning_results/";
   
+  public static Vector<Head_strs> tuple_why_prov_mappings = new Vector<Head_strs>();
+  
+  public static ArrayList<Vector<Head_strs>> all_why_tokens = new ArrayList<Vector<Head_strs>>();
+
+  
   public static void main(String [] args) throws SQLException, ClassNotFoundException, IOException, InterruptedException, JSONException
   {
-    use_reasoning4(args);
+    Query query = load_query();
     
+//    use_reasoning3(args, query);
+    use_reasoning3(args, query);
+    
+  }
+  
+  
+  static Query load_query() throws SQLException, ClassNotFoundException
+  {
+    
+    Connection c = null;
+    
+    Class.forName("org.postgresql.Driver");
+    c = DriverManager
+        .getConnection(init.db_url, init.usr_name , init.passwd);
+    
+    PreparedStatement pst = null;
+    
+//    Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
+    Query query = query_storage.get_query_by_id(1, c, pst);
+    
+    c.close();
+    
+    return query;
+
   }
   
   static void use_reasoning4(String [] args) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException
@@ -51,7 +84,11 @@ public class provenance_citation {
   c = DriverManager
       .getConnection(init.db_url, init.usr_name , init.passwd);
   
-    Query query = query_storage.get_query_by_id(1, c, pst);
+//  view_operation.delete_view_by_name("v2", c, pst);
+  
+//    Query query = query_storage.get_query_by_id(1, c, pst);
+  
+  Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
     
     boolean iscluster = Boolean.valueOf(args[0]);
     
@@ -62,8 +99,12 @@ public class provenance_citation {
     Prov_reasoning4.factor = factor;
     
     Prov_reasoning4.sort_cluster = sortcluster;
+    
+    Prov_reasoning4.init();
   
-    Prov_reasoning4.init_from_database(c, pst);
+//    Prov_reasoning4.init_from_database(c, pst);
+    
+    Prov_reasoning4.init_from_files("views", c, pst);
     
     double start = 0;
     
@@ -73,7 +114,7 @@ public class provenance_citation {
     
     Vector<String[]> provenance_instances = Query_provenance.get_provenance_instance();
     
-    HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
+    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
     
     HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, provenance_instances, c, pst);
 
@@ -117,8 +158,108 @@ public class provenance_citation {
     c.close();
   }
   
+  static Head_strs get_query_result(ResultSet rs, int head_arg_size) throws SQLException
+  {
+    Vector<String> values = new Vector<String>();
+    
+    for(int i = 0; i<head_arg_size; i++)
+    {
+      String value = rs.getString(i + 1);
+      
+      values.add(value);
+    }
+    
+    Head_strs curr_query_result = new Head_strs(values);
+    
+    return curr_query_result;
+  }
   
-  static void use_reasoning3(String [] args) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException
+  static Vector<Head_strs> get_tuples(ResultSet rs, Query query) throws SQLException
+  {
+    Vector<Head_strs> curr_tuples = new Vector<Head_strs>();
+    
+    Vector<String> provenance = new Vector<String>();
+    
+//    int total_col_count = provenance_row.length;
+    
+    int col_nums = query.head.size();
+    
+    for(int i = 0; i<query.body.size(); i++)
+    {
+      provenance.clear();
+      
+      Subgoal subgoal = (Subgoal) query.body.get(i);
+      
+      for(int j = 0; j<subgoal.args.size(); j++)
+      {
+        provenance.add(rs.getString(col_nums + 1));
+        
+        col_nums++;
+      }
+      
+      Head_strs curr_tuple = new Head_strs(provenance);
+      
+      curr_tuples.add(curr_tuple);
+    }
+    
+//    System.out.println(total_col_count + "::" + col_nums);
+    
+    return curr_tuples;
+    
+  }
+  
+  private static void printResult(ResultSet rs, Query query) throws SQLException, FileNotFoundException, UnsupportedEncodingException {
+    
+    int rows = 0;
+    
+    while(rs.next())
+    {
+      
+      Head_strs values = get_query_result(rs, query.head.size());
+      
+      Vector<Head_strs> curr_tuples = get_tuples(rs, query);
+      
+      System.out.println(rows);
+//      
+//      System.out.println(Runtime.getRuntime().totalMemory());
+//      
+//      System.out.println(Runtime.getRuntime().freeMemory());
+//      
+//      System.out.println(curr_tuples);
+      
+      
+      
+//      if(tuple_why_prov_mappings.get(values) == null)
+//      {
+//        ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
+//        
+//        curr_tokens.add(rows);
+//        
+//        tuple_why_prov_mappings.add(values);
+//        
+////        System.out.println(values + "::" + curr_tokens);
+//        
+//      }
+//      else
+      {
+        tuple_why_prov_mappings.add(values);
+        
+//        System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
+      }
+      
+      all_why_tokens.add(curr_tuples);
+      
+      rows ++;
+      
+      
+    }
+    
+    
+    
+    
+  }
+  
+  static void use_reasoning3(String [] args, Query query) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException
   {
     PreparedStatement pst = null;
     
@@ -130,13 +271,15 @@ public class provenance_citation {
     
     Query_provenance.connect(init.db_prov_url, init.usr_name, init.passwd);
     
-    Query query = query_storage.get_query_by_id(1, Query_provenance.con, pst);
+//    Prov_reasoning4.test_case = false;
     
-    ResultSet rs = Query_provenance.get_provenance4query(query);
+//    Query query = query_storage.get_query_by_id(1, Query_provenance.con, pst);
     
-    Query_provenance.reset();
+    ResultSet rs = Query_provenance.get_provenance4query(query, Prov_reasoning4.test_case);
     
-    System.gc();
+//    printResult(rs, query);
+    
+    
     
     Connection c = null;
     
@@ -144,11 +287,13 @@ public class provenance_citation {
   c = DriverManager
       .getConnection(init.db_url, init.usr_name , init.passwd);
   
-    Prov_reasoning3.factor = factor;
+    Prov_reasoning4.factor = factor;
     
-    Prov_reasoning3.sort_cluster = sortcluster;
+    Prov_reasoning4.sort_cluster = sortcluster;
+    
+    Prov_reasoning4.init();
   
-    Prov_reasoning3.init_from_database(c, pst);
+    Prov_reasoning4.init_from_database(c, pst);
     
     double start = 0;
     
@@ -156,9 +301,11 @@ public class provenance_citation {
     
     start = System.nanoTime();
     
-    HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
+    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
     
-    HashSet<citation_view_vector> covering_sets = Prov_reasoning3.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
+//    HashSet<citation_view_vector> covering_sets = new HashSet<citation_view_vector>();
+    
+    HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
 
     end = System.nanoTime();
     
@@ -168,34 +315,36 @@ public class provenance_citation {
     {
       System.out.println("reasoning time 3:" + time);
       
-      System.out.println("view_mapping_time 3:" + Prov_reasoning3.view_mapping_time);
+      System.out.println("view_mapping_time 3:" + Prov_reasoning4.view_mapping_time);
       
-      System.out.println("covering_set_time 3:" + Prov_reasoning3.covering_set_time);
+      System.out.println("covering_set_time 3:" + Prov_reasoning4.covering_set_time);
 
     }
     else
     {
       System.out.println("reasoning time 4:" + time);
       
-      System.out.println("view_mapping_time 4:" + Prov_reasoning3.view_mapping_time);
+      System.out.println("view_mapping_time 4:" + Prov_reasoning4.view_mapping_time);
       
-      System.out.println("covering_set_time 4:" + Prov_reasoning3.covering_set_time);
+      System.out.println("covering_set_time 4:" + Prov_reasoning4.covering_set_time);
 
     }
-    Set<Tuple> view_mappings = Prov_reasoning3.tuple_valid_rows.keySet();
+    Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
     
-    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning3.tuple_valid_rows);
+    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
 
     if(iscluster)
       write2file(path + "covering_sets3", covering_sets);
     else
       write2file(path + "covering_sets4", covering_sets);
     
-    HashSet<String> formatted_citations = Prov_reasoning3.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
+    HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
     write2file(path + "citation2", formatted_citations);
     
-    write2file(path + "covering_sets_per_group2", Prov_reasoning3.group_covering_sets);
+    write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    
+    Query_provenance.reset();
     
     c.close();
   }
@@ -223,7 +372,7 @@ public class provenance_citation {
     {
       System.out.println("group" + num);
       
-      HashMap<Tuple, Integer> tuple_indexes = Prov_reasoning4.group_view_mappings.get(string);
+      ConcurrentHashMap<Tuple, Integer> tuple_indexes = Prov_reasoning4.group_view_mappings.get(string);
       
       Set<Tuple> tuples = tuple_indexes.keySet();
       
@@ -277,7 +426,7 @@ public class provenance_citation {
     
   }
   
-  static void write2file_view_mappings(String file_name, HashMap<Tuple, HashSet<Integer>> view_mapping_count) throws IOException
+  static void write2file_view_mappings(String file_name, ConcurrentHashMap<Tuple, HashSet<Integer>> view_mapping_count) throws IOException
   {
       File fout = new File(file_name);
       FileOutputStream fos = new FileOutputStream(fout);
@@ -307,7 +456,7 @@ public class provenance_citation {
       bw.close();
   }
   
-  public static void write2file(String file_name, HashMap<String, HashSet<citation_view_vector>> views) throws IOException
+  public static void write2file(String file_name, ConcurrentHashMap<String, HashSet<citation_view_vector>> views) throws IOException
   {
     File fout = new File(file_name);
     FileOutputStream fos = new FileOutputStream(fout);
@@ -357,6 +506,7 @@ public class provenance_citation {
    
       BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
    
+      if(views != null && !views.isEmpty())
       for (Object view: views) {
           bw.write(view.toString());
           bw.newLine();

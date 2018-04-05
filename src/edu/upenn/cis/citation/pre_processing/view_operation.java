@@ -257,13 +257,19 @@ public class view_operation {
         
         Vector<Subgoal> subgoals = get_view_subgoals_full(id, subgoal_name_mapping, name_arg_mappings, c, pst);
         
-        Vector<Argument> head_var = get_head_vars(id, name_arg_mappings, c, pst);
+        Vector<Argument> head_var = new Vector<Argument>();
+        
+        Vector<String> agg_functions = new Vector<String>();
+        
+        Vector<Argument> agg_head_var = new Vector<Argument>();
+        
+        boolean has_agg = get_head_vars(id, head_var, agg_head_var, agg_functions, name_arg_mappings, c, pst);
         
         Vector<Conditions> conditions = get_view_conditions(id, name_arg_mappings, c, pst);
         
         Vector<Lambda_term> lambda_terms = get_view_lambda_terms(id, name_arg_mappings, c, pst);
         
-        Subgoal head = new Subgoal("v" + id, head_var);
+        Subgoal head = new Subgoal("v" + id, head_var, agg_head_var, agg_functions, has_agg);
         
         Query view = new Query("v" + id, head, subgoals,lambda_terms, conditions, subgoal_name_mapping);
         
@@ -591,7 +597,7 @@ public class view_operation {
 	
 	static Vector<Conditions> get_view_conditions(int name, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String q_conditions = "select conditions from view2conditions where view = '" + name + "'";
+		String q_conditions = "select conditions, agg_function1, agg_function2 from view2conditions where view = '" + name + "'";
 		
 		pst = c.prepareStatement(q_conditions);
 		
@@ -604,7 +610,11 @@ public class view_operation {
 			
 			String condition_str = r.getString(1);
 			
-			Conditions condition = parse_conditions(condition_str, name_arg_mappings, init.separator);
+			String agg_function1 = r.getString(2);
+			
+			String agg_function2 = r.getString(3);
+			
+			Conditions condition = parse_conditions(condition_str, name_arg_mappings, init.separator, agg_function1, agg_function2);
 			
 						
 			
@@ -635,7 +645,7 @@ public class view_operation {
 	
 	   static Vector<Conditions> get_view_conditions(int name, Connection c, PreparedStatement pst) throws SQLException
 	    {
-	        String q_conditions = "select conditions from view2conditions where view = '" + name + "'";
+	        String q_conditions = "select conditions, agg_function1, agg_function2 from view2conditions where view = '" + name + "'";
 	        
 	        pst = c.prepareStatement(q_conditions);
 	        
@@ -648,7 +658,11 @@ public class view_operation {
 	            
 	            String condition_str = r.getString(1);
 	            
-	            Conditions condition = parse_conditions(condition_str, init.separator);
+	            String agg_function1 = r.getString(2);
+	            
+	            String agg_function2 = r.getString(3);
+	            
+	            Conditions condition = parse_conditions(condition_str, init.separator, agg_function1, agg_function2);
 	            
 	                        
 	            
@@ -677,7 +691,7 @@ public class view_operation {
 	        
 	    }
 	
-	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser)
+	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser, String agg_function1, String agg_function2)
 	{
 		if(condition_str.contains("'"))
 		{
@@ -759,7 +773,7 @@ public class view_operation {
 			
 			Arg2.value = str2.substring(1, value_len - 1);
 						
-			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2);
+			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
 			
 			
 		}
@@ -844,14 +858,272 @@ public class view_operation {
 				
 			Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
 			
-			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2);
+			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
 
 			
 		}
 
 	}
 	
-	public static Conditions parse_conditions(String condition_str, String parser)
+	
+	static String[] get_agg_function_string(String arg_with_agg_function)
+	{
+	  arg_with_agg_function = arg_with_agg_function.trim();
+	  
+	  String [] arg_with_agg_function_strings = null;
+	  
+	  if(arg_with_agg_function.contains("("))
+	  {
+	    arg_with_agg_function_strings = new String[2];
+	    
+	    arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("("));
+	    
+	    arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")"));
+	    
+	  }
+	  
+	  return arg_with_agg_function_strings;
+	}
+	
+	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser)
+    {
+        if(condition_str.contains("'"))
+        {
+            String str2 = condition_str.substring(condition_str.indexOf("'"), condition_str.length());
+            
+            String str1 = condition_str.substring(0, condition_str.indexOf("'"));
+            
+            String [] strs = null;
+            
+            Operation op = null;
+            
+            if(str1.contains(op_less_equal.op))
+            {
+                strs = str1.split(op_less_equal.op);
+                
+                op = new op_less_equal();
+            }
+            else
+            {
+                if(str1.contains(op_greater_equal.op))
+                {
+                    strs = str1.split(op_greater_equal.op);
+                    
+                    op = new op_greater_equal();
+                }
+                else
+                {
+                    if(str1.contains(op_not_equal.op))
+                    {
+                        strs = str1.split(op_not_equal.op);
+                        
+                        op = new op_not_equal();
+                    }
+                    else
+                    {
+                        if(str1.contains(op_less.op))
+                        {
+                            strs = str1.split(op_less.op);
+                            
+                            op = new op_less();
+                        }
+                        else
+                        {
+                            if(str1.contains(op_greater.op))
+                            {
+                                strs = str1.split(op_greater.op);
+                                
+                                op = new op_greater();
+                            }
+                            else
+                            {
+                                if(str1.contains(op_equal.op))
+                                {
+                                    strs = str1.split(op_equal.op);
+                                    
+                                    op = new op_equal();
+                                }
+                            }
+                        }
+                    }
+                }
+                
+            }
+            
+            String[] arg_with_agg_function_strings1 = get_agg_function_string(strs[0]);
+            
+            String relation_name1 = null;
+            
+            String agg_function1 = null;
+            
+            String arg1 = null;
+            
+            String agg_function2 = null;
+            
+            if(arg_with_agg_function_strings1 != null)
+            {
+              relation_name1 = arg_with_agg_function_strings1[1].substring(0, arg_with_agg_function_strings1[1].indexOf(parser)).trim();
+              
+              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
+              
+              arg1 = arg_with_agg_function_strings1[1].substring(arg_with_agg_function_strings1[1].indexOf(parser) + 1, arg_with_agg_function_strings1[1].length()).trim();
+            }
+            else
+            {
+              relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
+              
+              arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
+            }
+            
+            
+            
+            String relation_name2 = new String();
+            
+            
+
+            String arg2 = new String ();
+            
+            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+            
+            Argument Arg2 = new Argument(str2);
+            
+            int value_len = str2.length();
+            
+            Arg2.value = str2.substring(1, value_len - 1);
+                        
+            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+            
+            
+        }
+        else
+        {
+            String []strs = null;
+            
+            Operation op = null;
+            
+            
+            if(condition_str.contains(op_less_equal.op))
+            {
+                strs = condition_str.split(op_less_equal.op);
+                
+                op = new op_less_equal();
+            }
+            else
+            {
+                if(condition_str.contains(op_greater_equal.op))
+                {
+                    strs = condition_str.split(op_greater_equal.op);
+                    
+                    op = new op_greater_equal();
+                }
+                else
+                {
+                    if(condition_str.contains(op_not_equal.op))
+                    {
+                        strs = condition_str.split(op_not_equal.op);
+                        
+                        op = new op_not_equal();
+                    }
+                    else
+                    {
+                        if(condition_str.contains(op_less.op))
+                        {
+                            strs = condition_str.split(op_less.op);
+                            
+                            op = new op_less();
+                        }
+                        else
+                        {
+                            if(condition_str.contains(op_greater.op))
+                            {
+                                strs = condition_str.split(op_greater.op);
+                                
+                                op = new op_greater();
+                            }
+                            else
+                            {
+                                if(condition_str.contains(op_equal.op))
+                                {
+                                    strs = condition_str.split(op_equal.op);
+                                    
+                                    op = new op_equal();
+                                }
+                            }
+                        }
+                    }
+                }
+                
+            }
+            
+            
+            
+            String agg_function1 = null;
+            
+            String agg_function2 = null;
+            
+            
+            
+            
+            String[] arg_with_agg_function_strings1 = get_agg_function_string(strs[0]);
+            
+            String str1 = null;
+            
+            if(arg_with_agg_function_strings1 != null)
+            {
+              str1 = arg_with_agg_function_strings1[1];
+              
+              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
+              
+            }
+            else
+            {
+              str1 = strs[0];
+            }
+            
+            
+            
+            String[] arg_with_agg_function_strings2 = get_agg_function_string(strs[1]);
+            
+            String str2 = null;
+            
+            if(arg_with_agg_function_strings2 != null)
+            {
+              str2 = arg_with_agg_function_strings2[1];
+              
+              agg_function2 = arg_with_agg_function_strings2[0].toLowerCase();
+              
+            }
+            else
+            {
+              str2 = strs[1];
+            }
+            
+            String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
+            
+            String relation_name2 = new String();
+            
+            String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
+
+            String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
+                
+//              subgoal2 = strs2[0] + "_" + strs2[1];
+            
+            relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
+                
+                
+            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+                
+            Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
+            
+            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+
+            
+        }
+
+    }
+
+	
+	public static Conditions parse_conditions(String condition_str, String parser, String agg_function1, String agg_function2)
     {
         if(condition_str.contains("'"))
         {
@@ -927,7 +1199,7 @@ public class view_operation {
             
             Argument Arg1 = new Argument(arg1, relation_name1);
                         
-            return new Conditions(Arg1, relation_name1, op, new Argument(str2), relation_name2);
+            return new Conditions(Arg1, relation_name1, op, new Argument(str2), relation_name2, agg_function1, agg_function2);
             
             
         }
@@ -1012,7 +1284,7 @@ public class view_operation {
             
             Argument Arg2 = new Argument(arg2, relation_name2);
             
-            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2);
+            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
 
             
         }
@@ -1075,9 +1347,9 @@ public class view_operation {
             
     }
 	
-	static Vector<Argument> get_head_vars(int id, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
+	static boolean get_head_vars(int id, Vector<Argument> head_var, Vector<Argument> agg_head_var, Vector<String> agg_functions, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String query = "select head_variables from view_table where view = '" + id + "'";
+		String query = "select head_var, agg_function from view2head_var where view = '" + id + "'";
 		
 		pst = c.prepareStatement(query);
 		
@@ -1085,35 +1357,33 @@ public class view_operation {
 		
 //		String id = new String();
 		
-		Vector<Argument> head_var = new Vector<Argument>();
+		boolean has_agg = false;
 		
-		String head_var_str = new String();
-		
-		if(rs.next())
+		while(rs.next())
 		{			
-			head_var_str = rs.getString(1).trim();
+			String head_var_str = rs.getString(1).trim();
+			
+			String agg_function = rs.getString(2).trim();
+			
+			Argument arg = name_arg_mappings.get(head_var_str);
+            
+			if(agg_function != null)
+			{
+			  agg_functions.add(agg_function);
+			  
+			  agg_head_var.add(arg);
+			  
+			  has_agg = true;
+			}
+			else
+			{
+			  head_var.add(arg);
+			}
+			
+			
 		}
 		
-		String [] head_var_strs = head_var_str.split(",");
-		
-		for(int i = 0; i<head_var_strs.length; i++)
-		{
-			
-//			String []values = split_relation_attr_name(head_var_strs[i]);
-			
-			String arg_name = head_var_strs[i].trim();
-			
-			Argument arg = name_arg_mappings.get(arg_name);
-			
-//			Argument arg = new Argument(, values[0]);
-			
-			head_var.add(arg);
-		}
-		
-		
-		return head_var;
-//		return id;
-			
+		return has_agg;
 	}
 	
 	static int get_id_head_vars(String name, Vector<Argument> head_var, Connection c, PreparedStatement pst) throws SQLException
@@ -1210,6 +1480,8 @@ public class view_operation {
 	public static Vector<Argument> get_full_schema(String subgoal_name, String subgoal_origin_name, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
 		String query = "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '" + subgoal_origin_name +"' order by ordinal_position";
+		
+//		System.out.println(query);
 		
 		pst = c.prepareStatement(query);
 		

@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
-
+import java.util.concurrent.ConcurrentHashMap;
 import edu.upenn.cis.citation.Corecover.*;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.init.init;
@@ -323,7 +323,7 @@ public class citation_view_parametered extends citation_view{
 	}
 	
 	
-	void build_table_name_index(Tuple tuple, HashMap<String, Integer> query_subgoal_id_mappings)
+	void build_table_name_index(Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings)
 	{
 	  HashSet<String> target_subgoal_strs = tuple.getTargetSubgoal_strs();
 	  
@@ -336,7 +336,7 @@ public class citation_view_parametered extends citation_view{
 	  
 	}
 	
-	void build_arg_name_index(Tuple tuple, HashMap<Argument, Integer> query_arg_id_mappings)
+	void build_arg_name_index(Tuple tuple, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings)
     {      
       Vector<Argument> head_args = tuple.args;
       
@@ -349,7 +349,7 @@ public class citation_view_parametered extends citation_view{
       
     }
 	
-	public citation_view_parametered(String name, Single_view view, Tuple tuple, HashMap<String, Integer> query_subgoal_id_mappings, HashMap<Argument, Integer> query_arg_id_mappings, HashMap<Tuple, Integer> tuple_ids)
+	public citation_view_parametered(String name, Single_view view, Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids)
     {
         
         this.name = name;

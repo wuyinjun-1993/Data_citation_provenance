@@ -342,7 +342,7 @@ public class CoreCover {
               if(get_mapping1)
                   get_mapping2 = true;
               
-              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2);
+              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
           }
           else
           {
@@ -355,7 +355,7 @@ public class CoreCover {
               
               curr_arg2 = (get_mapping2 == true) ? curr_arg2: view_conditions.get(i).arg2.name;
               
-              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2);
+              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
           }
                   
           condition.get_mapping1 = get_mapping1;
@@ -410,7 +410,7 @@ public class CoreCover {
 //			  if(get_mapping1)
 				  get_mapping2 = true;
 			  
-			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2);
+			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
 		  }
 		  else
 		  {
@@ -423,7 +423,7 @@ public class CoreCover {
 			  
 			  curr_arg2 = (get_mapping2 == true) ? curr_arg2: view_conditions.get(i).arg2.name;
 			  
-			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2);
+			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
 		  }
 		  		  
 		  condition.get_mapping1 = get_mapping1;
@@ -457,6 +457,8 @@ public class CoreCover {
 		    
 		    continue;
 		  }
+		  
+		  tuple.phi.put(view_conditions.get(i), condition);
 		  
 		  conditions.add(condition);
 		  

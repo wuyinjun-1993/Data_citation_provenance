@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.CoreCover;
 import edu.upenn.cis.citation.Corecover.Database;
@@ -43,6 +44,10 @@ public class Single_view {
   public HashMap<Tuple, Vector<int[][]>> view_mapping_condition_ids_mappings = new HashMap<Tuple, Vector<int[][]>>();
   
   public HashMap<Tuple, Vector<int[]>> view_mapping_lambda_term_ids_mappings = new HashMap<Tuple, Vector<int[]>>();
+  
+  public HashMap<Tuple, Vector<int[]>> view_mapping_q_grouping_attr_ids_mappings = new HashMap<Tuple, Vector<int[]>>();
+  
+  public HashMap<Tuple, Vector<int[]>> view_mapping_view_grouping_attr_ids_mappings = new HashMap<Tuple, Vector<int[]>>();
   
   public HashMap<String, Integer> subgoal_name_id_mappings = new HashMap<String, Integer>();
 
@@ -76,6 +81,8 @@ public class Single_view {
   public Vector<HashSet<Integer>> cluster_subgoal_ids = new Vector<HashSet<Integer>>();
   
   public Vector<HashSet<Integer>> cluster_condition_ids = new Vector<HashSet<Integer>>();
+  
+  public boolean has_having_clause = false;
   
   //construction function for conjunctive queries
   
@@ -219,11 +226,24 @@ public class Single_view {
     
     conditions = view.conditions;
     
+    for(int i = 0; i<conditions.size(); i++)
+    {
+      Conditions condition = conditions.get(i);
+      
+      if(condition.agg_function1 != null || condition.agg_function2 != null)
+      {
+        has_having_clause = true;
+      }
+      
+    }
+    
     head = view.head;
         
     this.lambda_terms = view.lambda_term;
     
-    this.subgoal_name_mappings = view.subgoal_name_mapping;
+    this.subgoal_name_mappings = new HashMap<>();
+    
+    this.subgoal_name_mappings.putAll(view.subgoal_name_mapping);
     
     this.view_name = view_name;
     
@@ -352,7 +372,44 @@ public class Single_view {
     
   }
   
-  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, HashMap<String, Integer> subgoal_id_mappings)
+  static void build_grouping_attr_id_mappings(Vector<Argument> grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
+  {
+    Vector<int[]> ids = new Vector<int[]>();
+    
+    for(int i = 0; i<grouping_attrs.size(); i++)
+    {
+      Argument arg = grouping_attrs.get(i);
+      
+      String rel_name = arg.name.substring(0, arg.name.indexOf(init.separator));
+      
+      int subgoal_id = subgoal_id_mappings.get(rel_name);
+      
+      int arg_id = subgoals.get(subgoal_id).args.indexOf(arg);
+      
+      int[] curr_ids = new int[2];
+      
+      curr_ids[0] = subgoal_id;
+      
+      curr_ids[1] = arg_id;
+      
+      ids.add(curr_ids);
+    }
+    view_mapping_grouping_attr_ids_mappings.put(tuple, ids);
+  }
+  
+  static Vector<Argument> get_query_attrs_reverse_mapped_attrs(Vector<Argument> args, Tuple tuple)
+  {
+    Vector<Argument> reverse_mapped_args = new Vector<Argument>();
+    
+    for(int i = 0; i < args.size(); i++)
+    {
+      reverse_mapped_args.add(tuple.reverse_phi.apply(args.get(i)));
+    }
+    
+    return reverse_mapped_args;
+  }
+  
+  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, ConcurrentHashMap<String, Integer> subgoal_id_mappings)
   {
     
     view_mappings = CoreCover.computeViewTuples(canDb, this);
@@ -360,6 +417,9 @@ public class Single_view {
     for(Iterator iter = view_mappings.iterator(); iter.hasNext();)
     {
       Tuple tuple = (Tuple) iter.next();
+      
+      build_grouping_attr_id_mappings(tuple.args, view_mapping_view_grouping_attr_ids_mappings, tuple, subgoal_id_mappings, subgoals);
+      
       
 //      Vector<Integer> row_ids = new Vector<Integer>();
 //      
@@ -695,6 +755,22 @@ public class Single_view {
     }
   }
   
+  public Vector<Head_strs> get_values_from_why_tokens(Tuple tuple, Vector<Head_strs> values)
+  {
+    Vector<Integer> q_why_column_ids = view_mapping_q_why_prov_token_col_ids_mapping.get(tuple);
+    
+    Vector<Head_strs> provenances = new Vector<Head_strs>();
+    
+    
+    for(Integer q_why_col_id : q_why_column_ids)
+    {
+      provenances.add(values.get(q_why_col_id));
+    }
+    
+    return provenances;
+    
+  }
+  
   public void evaluate_args(Vector<Head_strs> values, Tuple tuple)
   {
     Vector<Integer> q_why_column_ids = view_mapping_q_why_prov_token_col_ids_mapping.get(tuple);
@@ -740,6 +816,49 @@ public class Single_view {
     
 
   }
+
+  
+  public Head_strs evaluate_args_with_provenance(Vector<Head_strs> values, Tuple tuple)
+  {
+    Vector<Integer> q_why_column_ids = view_mapping_q_why_prov_token_col_ids_mapping.get(tuple);
+    
+    Vector<Integer> v_why_column_ids = view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
+    
+    Vector<String> view_provenance_values = new Vector<String>();
+    
+    for(int i = 0; i<q_why_column_ids.size(); i++)
+    {
+      Subgoal subgoal = subgoals.get(v_why_column_ids.get(i));
+      
+      for(int j = 0; j<subgoal.args.size(); j++)
+      {
+        view_provenance_values.add(values.get(q_why_column_ids.get(i)).head_vals.get(j));
+      }
+      
+    }
+    return new Head_strs(view_provenance_values);
+    
+  }
+  
+  public Head_strs evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple)
+  {
+    Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
+    
+    Vector<String> grouping_attr_values = new Vector<String>(view_grouping_attr_ids.size());
+    
+    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+    {
+      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+      
+      grouping_attr_values.set(i, values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
+    }
+    
+    Head_strs group_attr_values = new Head_strs(grouping_attr_values);
+    
+    return group_attr_values;
+    
+//    curr_view_grouping_attr_values.add(grouping_attr_values);
+  }
   
   boolean check_condition_satisfiability_fully_evaluated(Argument arg1, Argument arg2, Operation op)
   {
@@ -756,12 +875,22 @@ public class Single_view {
         return true;
       }
       
-      if(value1 > value2 && (op.get_op_name().equals(">=") || op.get_op_name().equals(">")))
+      if(value1 > value2 && (op.get_op_name().equals(">")))
       {
         return true;
       }
       
-      if(value1 < value2 && (op.get_op_name().equals("<=") || op.get_op_name().equals("<")))
+      if(value1 >= value2 && (op.get_op_name().equals(">=")))
+      {
+        return true;
+      }
+      
+      if(value1 < value2 && (op.get_op_name().equals("<")))
+      {
+        return true;
+      }
+      
+      if(value1 <= value2 && (op.get_op_name().equals("<=")))
       {
         return true;
       }
@@ -784,12 +913,22 @@ public class Single_view {
         return true;
       }
       
-      if(value1.compareTo(value2) > 0 && (op.get_op_name().equals(">=") || op.get_op_name().equals(">")))
+      if(value1.compareTo(value2) > 0 && (op.get_op_name().equals(">")))
       {
         return true;
       }
       
-      if(value1.compareTo(value2) < 0 && (op.get_op_name().equals("<=") || op.get_op_name().equals("<")))
+      if(value1.compareTo(value2) < 0 && (op.get_op_name().equals("<")))
+      {
+        return true;
+      }
+      
+      if(value1.compareTo(value2) <= 0 && (op.get_op_name().equals("<=")))
+      {
+        return true;
+      }
+      
+      if(value1.compareTo(value2) >= 0 && (op.get_op_name().equals(">=")))
       {
         return true;
       }
@@ -811,6 +950,7 @@ public class Single_view {
     
     if((arg1.value != null && arg2.value != null))
     {
+      if(condition.agg_function1 == null && condition.agg_function2 == null)
         return check_condition_satisfiability_fully_evaluated(condition.arg1, condition.arg2, condition.op);    
     }
     
@@ -1111,24 +1251,8 @@ public class Single_view {
     return true;
   }
   
-  public boolean check_validity(Tuple tuple, ArrayList<String[][]> partial_mapping_values, int row_id)//ArrayList<ArrayList<String>> partial_mapping_values, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings, HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings, boolean first, Connection c, PreparedStatement pst) throws SQLException
+  public void get_partial_mapping_values(Tuple tuple, ArrayList<String[][]> partial_mapping_values, int row_id)
   {
-    
-    boolean satisfiable = true; 
-    
-    for(int i = 0; i<conditions.size(); i++)
-    {
-      Conditions condition = conditions.get(i);
-      
-      if(!check_condition_satisfiability(condition))
-      {
-        satisfiable = false;
-        
-        break;
-      }
-      
-    }
-    
     for(int i = 0; i<tuple.cluster_patial_mapping_condition_ids.size(); i++)
     {
       HashSet<Integer> cluster_ids = tuple.cluster_patial_mapping_condition_ids.get(i);
@@ -1176,6 +1300,27 @@ public class Single_view {
       }
       
     }
+  }
+  
+  public boolean check_validity(Tuple tuple)//ArrayList<ArrayList<String>> partial_mapping_values, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings, HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings, boolean first, Connection c, PreparedStatement pst) throws SQLException
+  {
+    
+    boolean satisfiable = true; 
+    
+    for(int i = 0; i<conditions.size(); i++)
+    {
+      Conditions condition = conditions.get(i);
+      
+      if(!check_condition_satisfiability(condition))
+      {
+        satisfiable = false;
+        
+        break;
+      }
+      
+    }
+    
+
     
 //    Set<String> undetermined_relations = undermined_table_conditions_mappings.keySet();
 //    
@@ -1254,13 +1399,12 @@ public class Single_view {
 //      
 //    }
     
-    HashMap<String, Vector<String>> all_values = new HashMap<String, Vector<String>>();
+//    HashMap<String, Vector<String>> all_values = new HashMap<String, Vector<String>>();
     
     
 //    if(!check_undertermined_conditions(rel_attr_value_mappings, all_values , undetermined_conditions, c, pst))
 //      return false;
     
-    reset_values(tuple);
     
     return satisfiable;
   }

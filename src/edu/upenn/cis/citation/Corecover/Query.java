@@ -515,13 +515,24 @@ public class Query {
     StringBuffer result = new StringBuffer(name);
     result.append("(");
     Vector<Argument> head_args = head.args;
-    for (int i = 0; i < head.size(); i ++) {
+    for (int i = 0; i < head.args.size(); i ++) {
     	
     	
       result.append(head.getArgs().elementAt(i).toString());
       if ( i < head.size() - 1)
 	result.append(",");
     }
+    
+    if(head.agg_args != null)
+    {
+      for(int i = 0; i<head.agg_args.size(); i++)
+      {
+        result.append(",");
+        result.append(head.agg_function.get(i) + "(" + head.agg_args.get(i) + ")");      
+        
+      }
+    }
+    
     result.append(") :- ");
 
     // body

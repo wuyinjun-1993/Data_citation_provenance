@@ -93,7 +93,7 @@ public class Load_views_and_citation_queries {
 		
 		Vector<Subgoal> relational_subgoals = split_bodies(body, relation_mapping, name_arg_mappings, c ,pst);
 		
-		Subgoal head_subgoal = new Subgoal(view_name, split_head(heads, name_arg_mappings));
+		Subgoal head_subgoal = split_head(view_name, heads, name_arg_mappings);
         		
 		Vector<Conditions> predicate_subgoal = split_predicates(predicates, name_arg_mappings);
 		
@@ -186,16 +186,58 @@ public class Load_views_and_citation_queries {
 		return subgoals;
 	}
 	
-	static Vector<Argument> split_head(String head, HashMap<String, Argument> name_arg_mappings)
+	static String[] get_agg_function_string(String arg_with_agg_function)
+    {
+      arg_with_agg_function = arg_with_agg_function.trim();
+      
+      String [] arg_with_agg_function_strings = null;
+      
+      if(arg_with_agg_function.contains("("))
+      {
+        arg_with_agg_function_strings = new String[2];
+        
+        arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("("));
+        
+        arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")"));
+        
+      }
+      
+      return arg_with_agg_function_strings;
+    }
+	
+	static Subgoal split_head(String name, String head, HashMap<String, Argument> name_arg_mappings)
 	{		
 		String [] head_arg_strs = head.split(",");
 		
 		Vector<Argument> head_args = new Vector<Argument>();
 		
+		Vector<Argument> head_agg_args = null;
+		
+		Vector<String> head_agg_functions = null; 
+		
+		boolean has_agg = false;
+		
 		for(int i = 0; i<head_arg_strs.length; i++)
 		{
+		  
+		  String[] arg_with_agg_function_strings = get_agg_function_string(head_arg_strs[i]);
 			
-			String [] relation_arg = head_arg_strs[i].trim().split("\\" + ".");
+		  String head_var = null;
+		  
+		  String agg_function = null;
+		  
+		  if(arg_with_agg_function_strings != null)
+		  {
+		    head_var = arg_with_agg_function_strings[1];
+		    
+		    agg_function = arg_with_agg_function_strings[0].toLowerCase();
+		  }
+		  else
+		  {
+		    head_var = head_arg_strs[i];
+		  }
+		  
+			String [] relation_arg = head_var.trim().split("\\" + ".");
 			
 			String relation = relation_arg[0].trim();
 			
@@ -203,10 +245,31 @@ public class Load_views_and_citation_queries {
 			
 			Argument Arg = name_arg_mappings.get(relation + init.separator + arg);
 			
-			head_args.add(Arg);
+			if(arg_with_agg_function_strings == null)
+			{
+	           head_args.add(Arg);
+			}
+			else
+			{
+			  if(head_agg_args == null)
+			  {
+			    head_agg_args = new Vector<Argument>();
+			    
+			    head_agg_functions = new Vector<String>();
+			  }
+			  
+			  head_agg_args.add(Arg);
+			  
+			  head_agg_functions.add(agg_function);
+			}
+			
+			
 		}
 		
-		return head_args;
+		if(head_agg_args != null)
+		  has_agg = true;
+		
+		return new Subgoal(name, head_args, head_agg_args, head_agg_functions, has_agg);
 	}
 	
 	

@@ -171,7 +171,7 @@ public class Gen_citation {
   
   static void gen_citation_per_view_mapping(Single_view view, Tuple tuple, String block_name, Query query, HashSet<Head_strs> lambda_values, HashMap<String, HashSet<String>> citations, Connection c, PreparedStatement pst) throws SQLException
   {
-    String query_base = Query_converter.datalog2sql(query);
+    String query_base = Query_converter.datalog2sql(query, false);
    
     if(query.lambda_term.size() > 0)
     {

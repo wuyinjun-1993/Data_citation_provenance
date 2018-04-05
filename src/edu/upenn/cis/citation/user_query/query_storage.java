@@ -161,9 +161,13 @@ public class query_storage {
         
         Vector<Argument> head_var = new Vector<Argument>();
         
+        Vector<Argument> agg_head_var = new Vector<Argument>();
+        
 //        String id = get_id_head_vars(name, head_var, c, pst);
 
-        head_var = get_head_vars(id, c, pst);
+        Vector<String> agg_functions = new Vector<String>();
+        
+        boolean has_agg = get_head_vars(id, head_var, agg_head_var, agg_functions, c, pst);
         
         HashMap<String, String> subgoal_name_mapping = new HashMap<String, String> ();
         
@@ -180,27 +184,23 @@ public class query_storage {
         
         lambda_terms.add(new Lambda_term(predicate));
         
-        Subgoal head = new Subgoal("q" + id, head_var);
+        Subgoal head = new Subgoal("q" + id, head_var, agg_head_var, agg_functions, has_agg);
         
         Query view = new Query("q" + id, head, subgoals,lambda_terms, conditions, subgoal_name_mapping);
                         
         return view;
 	}
 	
-	public static Query get_user_query_by_id(int id) throws SQLException, ClassNotFoundException
+	public static Query get_user_query_by_id(int id, Connection c, PreparedStatement pst) throws SQLException, ClassNotFoundException
 	{
-		Class.forName("org.postgresql.Driver");
-        Connection c = DriverManager
-           .getConnection(init.db_url,
-               init.usr_name,init.passwd);
-        
-        PreparedStatement pst = null;
-        
         Vector<Argument> head_var = new Vector<Argument>();
         
+        Vector<Argument> agg_head_var = new Vector<Argument>();
 //        String id = get_id_head_vars(name, head_var, c, pst);
 
-        head_var = get_head_vars(id, c, pst);
+        Vector<String> agg_functions = new Vector<String>();
+        
+        boolean has_agg = get_head_vars(id, head_var, agg_head_var, agg_functions, c, pst);
         
         HashMap<String, String> subgoal_name_mapping = new HashMap<String, String> ();
         
@@ -214,13 +214,10 @@ public class query_storage {
         
         Vector<Lambda_term> lambda_terms = new Vector<Lambda_term>();
         
-        Subgoal head = new Subgoal("q" + id, head_var);
+        Subgoal head = new Subgoal("q" + id, head_var, agg_head_var, agg_functions, has_agg);
         
         Query view = new Query("q" + id, head, subgoals,lambda_terms, conditions, subgoal_name_mapping);
         
-        
-        c.close();
-                
         return view;
 	}
 	
@@ -321,7 +318,7 @@ public class query_storage {
 	
 	static Vector<Conditions> get_query_conditions(int id, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String q_conditions = "select conditions from user_query2conditions where query_id = '" + id + "'";
+		String q_conditions = "select conditions, agg_function1, agg_function2 from user_query2conditions where query_id = '" + id + "'";
 		
 		pst = c.prepareStatement(q_conditions);
 		
@@ -333,6 +330,10 @@ public class query_storage {
 		{
 			
 			String condition_str = r.getString(1);
+			
+			String agg_function1 = r.getString(2);
+			
+			String agg_function2 = r.getString(3);
 			
 			String []strs = null;
 			
@@ -413,7 +414,7 @@ public class query_storage {
 			{
 				arg2 = str2.trim();
 				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2);
+				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2, agg_function1, agg_function2);
 			}
 			else
 			{
@@ -423,7 +424,7 @@ public class query_storage {
 				
 				relation_name2 = str2.substring(0, str2.indexOf(init.separator)).trim();
 				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2);
+				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2, agg_function1, agg_function2);
 
 			}
 			
@@ -434,36 +435,45 @@ public class query_storage {
 	}
 	
 	
-	static Vector<Argument> get_head_vars(int id, Connection c, PreparedStatement pst) throws SQLException
+	static boolean get_head_vars(int id, Vector<Argument> head_args, Vector<Argument> agg_head_var, Vector<String> agg_functions, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String query = "select head_variable from user_query_table where query_id = '" + id + "'";
+		String query = "select head_var, agg_function from user_query2head_var where query_id = '" + id + "'";
 		
 		pst = c.prepareStatement(query);
 		
 		ResultSet rs = pst.executeQuery();
 		
-		String head_var_str = new String();
+		boolean has_agg = false;
 		
-		if(rs.next())
+		while(rs.next())
 		{			
-			head_var_str = rs.getString(1).trim();
+			String head_var_str = rs.getString(1).trim();
+			
+			String agg_function = rs.getString(2);
+			
+			String []values = split_relation_attr_name(head_var_str);
+            
+            Argument arg = new Argument(head_var_str.trim(), values[0]);
+            
+            
+			
+			if(agg_function != null)
+			{
+			  agg_head_var.add(arg);
+			  
+			  agg_functions.add(agg_function.trim());
+			  
+			  has_agg = true;
+			}
+			else
+			{
+			  head_args.add(arg);
+			}
+			
+	        
 		}
-		
-		String [] head_var_strs = head_var_str.split(",");
-		
-		Vector<Argument> head_var = new Vector<Argument>();
-		
-		for(int i = 0; i<head_var_strs.length; i++)
-		{
-			
-			String []values = split_relation_attr_name(head_var_strs[i]);
-			
-			Argument arg = new Argument(head_var_strs[i].trim(), values[0]);
-			
-			head_var.add(arg);
-		}
-		
-		return head_var;
+
+		return has_agg;
 	}
 	
 	static String[] split_relation_attr_name(String head_var_str)

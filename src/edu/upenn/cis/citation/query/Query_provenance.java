@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,6 +19,7 @@ import org.gprom.jdbc.driver.GProMConnection;
 import org.gprom.jdbc.utility.PropertyConfigurator;
 import com.sun.jna.Native;
 import edu.upenn.cis.citation.Corecover.Query;
+import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.user_query.query_storage;
@@ -52,8 +54,8 @@ public class Query_provenance {
     
     Properties info = new Properties();
     
-    info.setProperty("user", "wuyinjun");
-    info.setProperty("password", "12345678");
+    info.setProperty("user", usr_name);
+    info.setProperty("password", passwd);
 //    log.error("made it this far");
     
     try{
@@ -66,21 +68,25 @@ public class Query_provenance {
     
   }
   
-  public static ResultSet get_provenance4query(Query query) throws SQLException, FileNotFoundException, UnsupportedEncodingException
+  public static ResultSet get_provenance4query(Query query, boolean test_case) throws SQLException, FileNotFoundException, UnsupportedEncodingException
   {
     
     String sql = null;
     
-    if(!Prov_reasoning4.test_case)
+    if(!test_case)
       sql = Query_converter.data2sql_with_why_token_columns(query);
     else
       sql = Query_converter.data2sql_with_why_token_columns_test(query);
+    
+    System.out.println(sql);
     
     Statement st = con.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
     
     ResultSet rs = null;
     
     rs = st.executeQuery(sql);
+    
+    System.out.println(sql);
     
     return rs;
     
@@ -134,14 +140,27 @@ public class Query_provenance {
   
   public static void main(String [] args) throws ClassNotFoundException, SQLException, FileNotFoundException, UnsupportedEncodingException
   {
+    boolean test_case = Boolean.valueOf(args[0]);
     
-    connect(init.db_prov_url, init.usr_name, init.passwd);
+    Class.forName("org.postgresql.Driver");
+    Connection c = DriverManager
+        .getConnection(init.db_url, init.usr_name , init.passwd);
     
     PreparedStatement pst = null;
     
-    Query query = query_storage.get_query_by_id(1, con, pst);
+    Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
+
+    System.out.println(query.toString());
     
-    ResultSet rs = get_provenance4query(query);
+    c.close();
+    
+    
+    connect(init.db_prov_url, init.usr_name, init.passwd);
+    
+//    Query query = query_storage.get_query_by_id(1, con, pst);
+    
+    
+    ResultSet rs = get_provenance4query(query, test_case);
     
     printResult(rs);
     

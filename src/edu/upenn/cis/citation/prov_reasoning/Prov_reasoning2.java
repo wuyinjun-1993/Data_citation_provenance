@@ -32,7 +32,7 @@ import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets;
 import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets_first_round;
-import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
 import edu.upenn.cis.citation.pre_processing.view_operation;
 import edu.upenn.cis.citation.views.Query_converter;
 import edu.upenn.cis.citation.views.Single_view;
@@ -575,7 +575,7 @@ public class Prov_reasoning2 {
     Set<Single_view> views = all_possible_view_mappings.keySet();
     
     
-    Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+    Vector<Check_valid_view_mappings_non_agg> check_threads = new Vector<Check_valid_view_mappings_non_agg>();
     
 //    for(Iterator iter = views.iterator(); iter.hasNext();)
 //    {
@@ -636,7 +636,7 @@ public class Prov_reasoning2 {
     Set<Single_view> views = all_possible_view_mappings.keySet();
     
     
-    Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+    Vector<Check_valid_view_mappings_non_agg> check_threads = new Vector<Check_valid_view_mappings_non_agg>();
     
     for(Iterator iter = views.iterator(); iter.hasNext();)
     {
@@ -644,7 +644,7 @@ public class Prov_reasoning2 {
       
       HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
       
-      Check_valid_view_mappings check_thread = new Check_valid_view_mappings(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
+      Check_valid_view_mappings_non_agg check_thread = new Check_valid_view_mappings_non_agg(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
       
       check_thread.start();
       
