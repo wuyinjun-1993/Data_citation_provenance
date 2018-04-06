@@ -49,6 +49,8 @@ public class Single_view {
   
   public HashMap<Tuple, Vector<int[]>> view_mapping_view_grouping_attr_ids_mappings = new HashMap<Tuple, Vector<int[]>>();
   
+  public HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings = new HashMap<Tuple, int[]>();
+  
   public HashMap<String, Integer> subgoal_name_id_mappings = new HashMap<String, Integer>();
 
   //subgoals
@@ -372,13 +374,13 @@ public class Single_view {
     
   }
   
-  static void build_grouping_attr_id_mappings(Vector<Argument> grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
+  static void build_grouping_attr_id_mappings(Vector<Argument> view_grouping_attrs, Vector<Argument> query_grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
   {
     Vector<int[]> ids = new Vector<int[]>();
     
-    for(int i = 0; i<grouping_attrs.size(); i++)
+    for(int i = 0; i<view_grouping_attrs.size(); i++)
     {
-      Argument arg = grouping_attrs.get(i);
+      Argument arg = view_grouping_attrs.get(i);
       
       String rel_name = arg.name.substring(0, arg.name.indexOf(init.separator));
       
@@ -395,6 +397,17 @@ public class Single_view {
       ids.add(curr_ids);
     }
     view_mapping_grouping_attr_ids_mappings.put(tuple, ids);
+    
+    int[] query_attr_view_head_ids = new int[query_grouping_attrs.size()];
+    
+    for(int i = 0; i < query_grouping_attrs.size(); i++)
+    {
+      Argument arg = query_grouping_attrs.get(i);
+      
+      query_attr_view_head_ids[i] = view_grouping_attrs.indexOf(tuple.reverse_phi.apply(arg));
+    }
+    
+    view_mapping_query_head_var_attr_in_view_head_ids_mappings.put(tuple, query_attr_view_head_ids);
   }
   
   static Vector<Argument> get_query_attrs_reverse_mapped_attrs(Vector<Argument> args, Tuple tuple)
@@ -409,7 +422,7 @@ public class Single_view {
     return reverse_mapped_args;
   }
   
-  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, ConcurrentHashMap<String, Integer> subgoal_id_mappings)
+  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Argument> q_head_vars)
   {
     
     view_mappings = CoreCover.computeViewTuples(canDb, this);
@@ -418,7 +431,7 @@ public class Single_view {
     {
       Tuple tuple = (Tuple) iter.next();
       
-      build_grouping_attr_id_mappings(tuple.args, view_mapping_view_grouping_attr_ids_mappings, tuple, subgoal_id_mappings, subgoals);
+      build_grouping_attr_id_mappings(tuple.args, q_head_vars, view_mapping_view_grouping_attr_ids_mappings, view_mapping_query_head_var_attr_in_view_head_ids_mappings, tuple, subgoal_id_mappings, subgoals);
       
       
 //      Vector<Integer> row_ids = new Vector<Integer>();
@@ -844,13 +857,15 @@ public class Single_view {
   {
     Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
     
-    Vector<String> grouping_attr_values = new Vector<String>(view_grouping_attr_ids.size());
+    Vector<String> grouping_attr_values = new Vector<String>();
+    
+    System.out.println(values);
     
     for(int i = 0; i<view_grouping_attr_ids.size(); i++)
     {
       int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
       
-      grouping_attr_values.set(i, values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
+      grouping_attr_values.add(values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
     }
     
     Head_strs group_attr_values = new Head_strs(grouping_attr_values);
@@ -1257,6 +1272,8 @@ public class Single_view {
     {
       HashSet<Integer> cluster_ids = tuple.cluster_patial_mapping_condition_ids.get(i);
       
+      System.out.println(cluster_ids);
+      
       int j = 0;
       
       HashSet<String> partial_join_mapped_attribute_names = new HashSet<String>();
@@ -1264,6 +1281,8 @@ public class Single_view {
       for(Integer condition_id : cluster_ids)
       {
         Conditions condition = conditions.get(condition_id);
+        
+        System.out.println(condition);
         
         Argument arg2 = condition.arg2;
         

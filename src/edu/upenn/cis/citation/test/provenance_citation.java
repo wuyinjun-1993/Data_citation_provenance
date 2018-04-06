@@ -49,8 +49,8 @@ public class provenance_citation {
   {
     Query query = load_query();
     
+    use_reasoning4(args);
 //    use_reasoning3(args, query);
-    use_reasoning3(args, query);
     
   }
   
@@ -66,8 +66,8 @@ public class provenance_citation {
     
     PreparedStatement pst = null;
     
-//    Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
-    Query query = query_storage.get_query_by_id(1, c, pst);
+    Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
+//    Query query = query_storage.get_query_by_id(1, c, pst);
     
     c.close();
     
@@ -271,7 +271,7 @@ public class provenance_citation {
     
     Query_provenance.connect(init.db_prov_url, init.usr_name, init.passwd);
     
-//    Prov_reasoning4.test_case = false;
+    Prov_reasoning4.test_case = false;
     
 //    Query query = query_storage.get_query_by_id(1, Query_provenance.con, pst);
     
@@ -293,7 +293,7 @@ public class provenance_citation {
     
     Prov_reasoning4.init();
   
-    Prov_reasoning4.init_from_database(c, pst);
+    Prov_reasoning4.init_from_files("views", c, pst);//(c, pst);
     
     double start = 0;
     
@@ -426,7 +426,7 @@ public class provenance_citation {
     
   }
   
-  static void write2file_view_mappings(String file_name, ConcurrentHashMap<Tuple, HashSet<Integer>> view_mapping_count) throws IOException
+  static void write2file_view_mappings(String file_name, ConcurrentHashMap<Tuple, HashSet> view_mapping_count) throws IOException
   {
       File fout = new File(file_name);
       FileOutputStream fos = new FileOutputStream(fout);

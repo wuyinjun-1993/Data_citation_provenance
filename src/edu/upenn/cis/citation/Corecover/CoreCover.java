@@ -541,7 +541,7 @@ public class CoreCover {
         
         curr_cluster_condition_ids.add(j);
         
-        if(get_mapping1 | get_mapping2 == true)
+        if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
         {
           tuple.cluster_patial_mapping_condition_ids.add(curr_cluster_condition_ids);
           
@@ -563,7 +563,7 @@ public class CoreCover {
         {
           if(!get_mapping1)
             tuple.cluster_subgoal_ids.get(matched_cluster_id2).add(id1);
-          if(get_mapping1 | get_mapping2 == true)
+          if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
           {
             tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id2).add(j);
           }
@@ -580,7 +580,7 @@ public class CoreCover {
             if(id2 >= 0 && !get_mapping2)
               tuple.cluster_subgoal_ids.get(matched_cluster_id1).add(id2);
             
-            if(get_mapping1 | get_mapping2 == true)
+            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
             {
               tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id1).add(j);
             }
@@ -593,7 +593,7 @@ public class CoreCover {
           else
           {
             
-            if(get_mapping1 | get_mapping2 == true)
+            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
             {
               tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id1).add(j);
             }

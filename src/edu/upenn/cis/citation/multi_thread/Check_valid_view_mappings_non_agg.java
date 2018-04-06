@@ -197,7 +197,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
     
 //    System.out.println(tuple);
 
-    String sql_base = "select t.row_id from (VALUES ";
+    String sql_base = "select " + temp_table_name + ".row_id from (VALUES ";
     
 
     
@@ -243,7 +243,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
         first_id = false;
       }
       
-      sql += ") as t(row_id ";
+      sql += ") as " + temp_table_name + "(row_id ";
       
       int join_condition_count = 0;
       
@@ -281,7 +281,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
           if(join_condition_count >= 1)
             join_condition += " and ";
           
-          join_condition += "t." + arg1.name.replaceAll("\\" + init.separator, "_") + condition.op.toString() + arg2.name.replaceFirst("\\" + init.separator, ".");
+          join_condition += temp_table_name + "." + arg1.name.replaceAll("\\" + init.separator, "_") + condition.op.toString() + arg2.name.replaceFirst("\\" + init.separator, ".");
 
         }
         else
@@ -300,7 +300,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
           if(join_condition_count >= 1)
             join_condition += " and ";
           
-          join_condition += "t." + arg2.name.replaceAll("\\" + init.separator, "_") + condition.op.toString() + arg1.name.replaceFirst("\\" + init.separator, ".");
+          join_condition += temp_table_name + "." + arg2.name.replaceAll("\\" + init.separator, "_") + condition.op.toString() + arg1.name.replaceFirst("\\" + init.separator, ".");
 
         }
         

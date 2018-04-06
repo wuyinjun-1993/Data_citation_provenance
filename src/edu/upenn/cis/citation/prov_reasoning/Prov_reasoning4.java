@@ -86,7 +86,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> relation_attribute_value_mappings = new ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>>();
 
-  public static ConcurrentHashMap<Tuple, HashSet<Integer>> tuple_valid_rows = new ConcurrentHashMap<Tuple, HashSet<Integer>>();
+  public static ConcurrentHashMap<Tuple, HashSet> tuple_valid_rows = new ConcurrentHashMap<Tuple, HashSet>();
   
   public static boolean agg_intersection = true;
   
@@ -100,7 +100,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 
   static ConcurrentHashMap<Argument, Integer> query_arg_id_mappings = new ConcurrentHashMap<Argument, Integer>();
   
-  static ConcurrentHashMap<String, HashSet<Integer>> group_ids = new ConcurrentHashMap<String, HashSet<Integer>>();
+  static ConcurrentHashMap<String, HashSet> group_ids = new ConcurrentHashMap<String, HashSet>();
   
   public static ConcurrentHashMap<String, ConcurrentHashMap<Tuple, Integer>> group_view_mappings = new ConcurrentHashMap<String, ConcurrentHashMap<Tuple, Integer>>();
 
@@ -855,6 +855,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     int id = 0;
     
+    if(user_query.head.has_agg)
+      rows = tuple_why_prov_mappings.size();
+    
     for(Iterator iter = views.iterator(); iter.hasNext();)
     {
       Single_view view = (Single_view) iter.next();
@@ -923,68 +926,117 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     System.out.println(tuple_valid_rows);
     
-    get_valid_view_mappings_per_group();
+    get_valid_view_mappings_per_group(user_query.head.has_agg);
     
     return tuple_ids;
   }
   
-  static void get_valid_view_mappings_per_group()
+  static void get_valid_view_mappings_per_group(boolean query_has_agg)
   {
     Set<Tuple> view_mappings = tuple_valid_rows.keySet();
     
-    ArrayList<HashSet<Integer>> rid_sets = new ArrayList<HashSet<Integer>>();
+    ArrayList<HashSet> rid_sets = new ArrayList<HashSet>();
     
     ArrayList<Tuple> all_view_mappings = new ArrayList<Tuple>();
     
     for(Tuple view_mapping: view_mappings)
     {
-      HashSet<Integer> curr_rids = tuple_valid_rows.get(view_mapping);
+      HashSet curr_rids = tuple_valid_rows.get(view_mapping);
       
       rid_sets.add(curr_rids);
       
       all_view_mappings.add(view_mapping);
       
     }
-        
-    for(int i = 0; i<rows; i++)
+    
+    if(query_has_agg)
     {
-
-      String signiture = new String();
+      Set<Head_strs> all_head_values = tuple_why_prov_mappings.keySet();
       
-      ArrayList<Integer> tuple_ids = new ArrayList<Integer>();
-      
-      for(int j = 0; j< rid_sets.size(); j++)
+      for(Head_strs head_value: all_head_values)
       {
-        if(rid_sets.get(j).contains(i))
+        String signiture = new String();
+        
+        ArrayList<Integer> tuple_ids = new ArrayList<Integer>();
+        
+        for(int j = 0; j< rid_sets.size(); j++)
         {
-          signiture += "," + j;
+          if(rid_sets.get(j).contains(head_value))
+          {
+            signiture += "," + head_value;
+            
+            tuple_ids.add(j);
+          }
+        }
+        
+        if(group_ids.get(signiture) == null)
+        {
+          HashSet<Head_strs> ids = new HashSet<Head_strs>();
           
-          tuple_ids.add(j);
+          ids.add(head_value);
+          
+          group_ids.put(signiture, ids);
+          
+          ConcurrentHashMap<Tuple, Integer> curr_view_mappings = new ConcurrentHashMap<Tuple, Integer>();
+          
+          for(int j = 0; j<tuple_ids.size(); j++)
+          {
+            curr_view_mappings.put(all_view_mappings.get(tuple_ids.get(j)), j);
+          }
+          
+          group_view_mappings.put(signiture, curr_view_mappings);
         }
-      }
-      
-      if(group_ids.get(signiture) == null)
-      {
-        HashSet<Integer> ids = new HashSet<Integer>();
-        
-        ids.add(i);
-        
-        group_ids.put(signiture, ids);
-        
-        ConcurrentHashMap<Tuple, Integer> curr_view_mappings = new ConcurrentHashMap<Tuple, Integer>();
-        
-        for(int j = 0; j<tuple_ids.size(); j++)
+        else
         {
-          curr_view_mappings.put(all_view_mappings.get(tuple_ids.get(j)), j);
+          group_ids.get(signiture).add(head_value);
         }
-        
-        group_view_mappings.put(signiture, curr_view_mappings);
-      }
-      else
-      {
-        group_ids.get(signiture).add(i);
+      
       }
     }
+    else
+    {
+      for(int i = 0; i<rows; i++)
+      {
+
+        String signiture = new String();
+        
+        ArrayList<Integer> tuple_ids = new ArrayList<Integer>();
+        
+        for(int j = 0; j< rid_sets.size(); j++)
+        {
+          if(rid_sets.get(j).contains(i))
+          {
+            signiture += "," + j;
+            
+            tuple_ids.add(j);
+          }
+        }
+        
+        if(group_ids.get(signiture) == null)
+        {
+          HashSet<Integer> ids = new HashSet<Integer>();
+          
+          ids.add(i);
+          
+          group_ids.put(signiture, ids);
+          
+          ConcurrentHashMap<Tuple, Integer> curr_view_mappings = new ConcurrentHashMap<Tuple, Integer>();
+          
+          for(int j = 0; j<tuple_ids.size(); j++)
+          {
+            curr_view_mappings.put(all_view_mappings.get(tuple_ids.get(j)), j);
+          }
+          
+          group_view_mappings.put(signiture, curr_view_mappings);
+        }
+        else
+        {
+          group_ids.get(signiture).add(i);
+        }
+      }
+    }
+        
+    
     
     
     
@@ -1294,7 +1346,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         Vector<Head_strs> curr_tuples = get_tuples(rs, user_query, table_attr_nums_mappings);
         
-        System.out.println(rows);
+        System.out.println(values + "::" + rows);
 //        
 //        System.out.println(Runtime.getRuntime().totalMemory());
 //        
@@ -3011,7 +3063,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
 //      System.out.println(view.subgoal_name_id_mappings);
       
-      view.build_view_mappings(q.body, canDb, subgoal_id_mappings);
+      view.build_view_mappings(q.body, canDb, subgoal_id_mappings, q.head.args);
       
       if(!view.view_mappings.isEmpty())
         view_mappings.put(view, view.view_mappings);

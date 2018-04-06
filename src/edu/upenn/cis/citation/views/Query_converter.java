@@ -8,6 +8,7 @@ import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Lambda_term;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
+import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.citation_view.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
@@ -70,6 +71,9 @@ public class Query_converter {
     
     if(query.head.has_agg)
     {
+      if(query.head.args.size() > 0)
+        sql += ",";
+      
       sql += get_agg_item_in_select_clause(query);
     }
     
@@ -79,9 +83,9 @@ public class Query_converter {
         sql += " where " + condition;
     
     
-    if(query.head.has_agg)
+    if(query.head.has_agg && query.head.args.size() > 0)
     {
-      sql += " group by (" + sel_item + ")";
+      sql += " group by " + sel_item;
       
       String having_clause = get_having_clauses(query, true);
       
@@ -180,7 +184,7 @@ public class Query_converter {
     
     if(query.head.has_agg)
     {
-      sql += " group by (" + sel_item + ")";
+      sql += " group by " + sel_item;
       
       String having_clause = get_having_clauses(query, true);
       
@@ -392,7 +396,7 @@ public class Query_converter {
     return sql;
   }
   
-  static String get_grouping_attr_condition(Single_view view, Set<Head_strs> grouping_values)
+  static String get_grouping_attr_condition(Tuple tuple, Single_view view, Set<Head_strs> grouping_values)
   {
     String string = new String();
     
@@ -404,13 +408,22 @@ public class Query_converter {
         string += " or ";
     
       string += "(";
+      
+      int num = 0;
+      
       for(int i = 0; i<view.head.args.size(); i++)
       {
-        if(i >= 1)
-          string += " and ";
+        
         Argument head_arg = (Argument) view.head.args.get(i);
         
-        string += head_arg.name.replace(init.separator, ".") + "='" + h.head_vals.get(i) + "'";
+        if(tuple.phi.apply(head_arg) != null)
+        {
+          if(num >= 1)
+            string += " and ";
+          
+          string += head_arg.name.replace(init.separator, ".") + "='" + h.head_vals.get(num++) + "'";
+        }
+        
       }
       string += ")";
       
@@ -419,7 +432,7 @@ public class Query_converter {
     return string;
   }
   
-  public static String data2sql_check_having_clause(Single_view view, Set<Head_strs> grouping_values)
+  public static String data2sql_check_having_clause(Tuple tuple, Single_view view, Set<Head_strs> grouping_values)
   {
     String sql = new String();
     
@@ -431,21 +444,44 @@ public class Query_converter {
     
     String having_clause = get_having_clauses(view, false);
     
-    String grouping_attr_condition_string = get_grouping_attr_condition(view, grouping_values);
+    String grouping_attr_condition_string = get_grouping_attr_condition(tuple, view, grouping_values);
     
-    sql = "select " + sel_item + ", count(*)";
+    sql = "select " + sel_item;
     
     if(view.head.has_agg)
     {
+      if(view.head.args.size() > 0)
+        sql += ",";
+      
+      sql += "count(*),"; 
       sql += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
     }
     
-    sql += " from " + citation_table + " where (" + grouping_attr_condition_string + ")";
+    sql += " from " + citation_table;
     
-    if(condition != null && !condition.isEmpty())
+    if(view.head.args.size() > 0)
     {
-      sql += " and " + condition;
+      sql += " where (" + grouping_attr_condition_string + ")";
+      
+      if(condition != null && !condition.isEmpty())
+      {
+        sql += " and " + condition;
+      }
+
     }
+    else
+    {
+      if(condition != null && !condition.isEmpty())
+      {
+        sql += " where " + condition;
+      }
+    }
+    
+    
+    
+    
+    if(view.head.has_agg && view.head.args.size() > 0)
+      sql += " group by (" + sel_item + ")";
     
     if(!having_clause.isEmpty())
     {
@@ -476,15 +512,15 @@ public class Query_converter {
         
         for(int j = 0; j<view_why_prov_ids.size(); j++)
         {
-          if(arg_count >= 1)
-            string += " and ";
-          
           int subgoal_id = view_why_prov_ids.get(j);
           
           Subgoal subgoal = view.subgoals.get(subgoal_id);
           
           for(int k = 0; k<subgoal.args.size(); k++)
           {
+            if(arg_count >= 1)
+              string += " and ";
+            
             Argument arg = (Argument) subgoal.args.get(k);
             
             String arg_name = arg.name.replace(init.separator, ".");
@@ -551,10 +587,15 @@ public class Query_converter {
     
     String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
     
-    sql = "select " + sel_item + ", count(*)";
+    sql = "select " + sel_item;
     
     if(view.head.has_agg)
     {
+      if(view.head.args.size() > 0)
+        sql += ",";
+      
+      sql += "count(*),";
+      
       sql += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
     }
     
@@ -563,6 +604,12 @@ public class Query_converter {
     if(condition != null && !condition.isEmpty())
     {
       sql += " and " + condition;
+    }
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+        sql += " group by " + sel_item;
     }
     
     if(!having_clause.isEmpty())
@@ -716,13 +763,16 @@ public class Query_converter {
     
     for(int i = 0; i < q.head.agg_args.size(); i++)
     {
+      if(i >= 1)
+        string += ",";
+      
       Argument arg = (Argument) q.head.agg_args.get(i);
       
       String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
       String agg_function = (String) q.head.agg_function.get(i);
       
-      string += "," + agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
+      string += agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
     }
     
     return string;
@@ -736,6 +786,9 @@ public class Query_converter {
     
     for(int i = 0; i < agg_attributes.size(); i++)
     {
+      if(i >= 1)
+        string += ",";
+      
       Argument arg = (Argument) agg_attributes.get(i);
       
       String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
@@ -743,9 +796,9 @@ public class Query_converter {
       String agg_function = (String) agg_functions.get(i);
       
       if(isProv_query)
-        string += "," + agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
+        string += agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
       else
-        string += "," + agg_function + "(" + arg.relation_name + "." + attr_name + ")";
+        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
     }
     
     return string;
