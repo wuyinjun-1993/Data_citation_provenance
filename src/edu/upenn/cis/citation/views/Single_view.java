@@ -10,9 +10,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.swing.text.View;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.CoreCover;
 import edu.upenn.cis.citation.Corecover.Database;
@@ -86,6 +88,10 @@ public class Single_view {
   
   public boolean has_having_clause = false;
   
+  public HashMap<String, Query> citation_queries = new HashMap<String, Query>();
+  
+  public String local_with_clause = null;
+  
   //construction function for conjunctive queries
   
 //  void init_condition_ids(Vector<Conditions> conditions, HashMap<String, Integer> subgoal_names)
@@ -132,6 +138,14 @@ public class Single_view {
 //    }
 //  }
 //  
+  
+  public void load_citation_queries(HashMap<String, String> view_citation_query_mappings, HashMap<String, Query> name_citation_query_mappings)
+  {
+    for(Entry<String, String> view_citation_query_mapping: view_citation_query_mappings.entrySet())
+    {
+      citation_queries.put(view_citation_query_mapping.getKey(), name_citation_query_mappings.get(view_citation_query_mapping.getValue()));
+    }
+  }
   
   void cluster_relational_subgoals()
   {
@@ -258,6 +272,8 @@ public class Single_view {
     }
     
     cluster_relational_subgoals();
+    
+    local_with_clause = gen_local_with_clause(this);
     
 //    init_condition_ids(conditions, subgoal_name_id_mappings);
     
@@ -431,7 +447,7 @@ public class Single_view {
     {
       Tuple tuple = (Tuple) iter.next();
       
-      build_grouping_attr_id_mappings(tuple.args, q_head_vars, view_mapping_view_grouping_attr_ids_mappings, view_mapping_query_head_var_attr_in_view_head_ids_mappings, tuple, subgoal_id_mappings, subgoals);
+      build_grouping_attr_id_mappings(head.args, q_head_vars, view_mapping_view_grouping_attr_ids_mappings, view_mapping_query_head_var_attr_in_view_head_ids_mappings, tuple, subgoal_id_mappings, subgoals);
       
       
 //      Vector<Integer> row_ids = new Vector<Integer>();
@@ -830,6 +846,21 @@ public class Single_view {
 
   }
 
+  String clean_boolean_type(Argument arg, String string)
+  {
+    if(arg.data_type.equals("boolean"))
+    {
+      if(string.equals("t"))
+      {
+        return "true";
+      }
+      if(string.equals("f"))
+      {
+        return "false";
+      }
+    }
+    return string;
+  }
   
   public Head_strs evaluate_args_with_provenance(Vector<Head_strs> values, Tuple tuple)
   {
@@ -845,7 +876,8 @@ public class Single_view {
       
       for(int j = 0; j<subgoal.args.size(); j++)
       {
-        view_provenance_values.add(values.get(q_why_column_ids.get(i)).head_vals.get(j));
+        view_provenance_values.add(clean_boolean_type((Argument) subgoal.args.get(j), values.get(q_why_column_ids.get(i)).head_vals.get(j)));
+//        view_provenance_values.add(values.get(q_why_column_ids.get(i)).head_vals.get(j));
       }
       
     }
@@ -853,24 +885,92 @@ public class Single_view {
     
   }
   
-  public Head_strs evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple)
+  static String gen_local_with_clause(Single_view view)
+  {
+    return Query_converter.gen_with_clause(view.subgoals, view.subgoal_name_mappings);
+  }
+  
+  public String evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple, Query query)
   {
     Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
+//    Vector<String> grouping_attr_values = new Vector<String>();
     
-    Vector<String> grouping_attr_values = new Vector<String>();
+//    System.out.println(values);
     
-    System.out.println(values);
-    
+    String grouping_value_condition_string = "(";
     for(int i = 0; i<view_grouping_attr_ids.size(); i++)
     {
       int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+      if(i >= 1)
+        grouping_value_condition_string += ",";
       
-      grouping_attr_values.add(values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
+      Subgoal subgoal = (Subgoal) query.body.get(subgoal_arg_ids[0]);
+      Argument arg = (Argument) subgoal.args.get(subgoal_arg_ids[1]);
+//      System.out.println(i + "::" + subgoal_arg_ids[0] + "::" + subgoal_arg_ids[1] + "::"+ values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'");
+      String curr_value = values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]);
+      if(arg.data_type.equals("boolean"))
+      {
+        if(curr_value.equals("t"))
+        {
+          curr_value = "true";
+        }
+        if(curr_value.equals("f"))
+        {
+          curr_value = "false";
+        }
+      }
+      grouping_value_condition_string += "'" + curr_value.replaceAll("'", "''") + "'";
     }
+    grouping_value_condition_string += ")";
     
-    Head_strs group_attr_values = new Head_strs(grouping_attr_values);
+    return grouping_value_condition_string;
+//    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+//    {
+//      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+//      
+//      grouping_attr_values.add(values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
+//    }
+//    
+//    Head_strs group_attr_values = new Head_strs(grouping_attr_values);
+//    
+//    return group_attr_values;
     
-    return group_attr_values;
+    
+//    curr_view_grouping_attr_values.add(grouping_attr_values);
+  }
+  
+  public String evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple, String grouping_value_condition_string)
+  {
+    Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
+//    Vector<String> grouping_attr_values = new Vector<String>();
+    
+//    System.out.println(values);
+    
+    grouping_value_condition_string += "(";
+    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+    {
+      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+      if(i >= 1)
+        grouping_value_condition_string += ",";
+      
+//      System.out.println(i + "::" + subgoal_arg_ids[0] + "::" + subgoal_arg_ids[1] + "::"+ values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'");
+      
+      grouping_value_condition_string += "'" + values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'";
+    }
+    grouping_value_condition_string += ")";
+    
+    return grouping_value_condition_string;
+//    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+//    {
+//      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+//      
+//      grouping_attr_values.add(values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]));
+//    }
+//    
+//    Head_strs group_attr_values = new Head_strs(grouping_attr_values);
+//    
+//    return group_attr_values;
+    
     
 //    curr_view_grouping_attr_values.add(grouping_attr_values);
   }

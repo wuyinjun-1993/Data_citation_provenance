@@ -25,7 +25,7 @@ import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.views.Query_converter;
 import edu.upenn.cis.citation.views.Single_view;
 
-public class Check_valid_view_mappings_agg implements Check_valid_view_mappings {
+public class Check_valid_view_mappings_agg_batch_processing implements Check_valid_view_mappings {
   private Thread t;
   private String threadName;
   public Single_view view;
@@ -51,7 +51,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
   
 //  ConcurrentHashMap<String, String> subgoal_name_mappings;
   
-  public Check_valid_view_mappings_agg( String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings, ConcurrentHashMap<Head_strs, Head_strs> grouping_value_agg_value_mapping, Query query, Connection c, PreparedStatement pst) {
+  public Check_valid_view_mappings_agg_batch_processing( String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings, ConcurrentHashMap<Head_strs, Head_strs> grouping_value_agg_value_mapping, Query query, Connection c, PreparedStatement pst) {
      threadName = name;
 
      this.view = view;
@@ -417,6 +417,20 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
 //    
 //    return valid_head_vals;
 //  }
+  String gen_instantiation_condition_string(Vector<Argument> args)
+  {
+    String grouping_value_condition_string = "(";
+    for(int i = 0; i<args.size(); i++)
+    {
+      if(i >= 1)
+        grouping_value_condition_string += ",";
+      Argument view_grouping_attr = (Argument) args.get(i);
+      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+      grouping_value_condition_string += view_grouping_attr_name;
+    }
+    grouping_value_condition_string += ")";
+    return grouping_value_condition_string;
+  }
   
   HashMap<Head_strs, Integer> count_tuples_within_view_groups_given_aggregate_values(Tuple tuple, HashMap<Head_strs, Head_strs> view_head_value_query_head_value_mappings, boolean has_having_clause) throws SQLException
   {
@@ -425,22 +439,17 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     HashSet<Head_strs> head_values = tuple_rows.get(tuple);
     
 //    System.out.println(head_values);
-    String grouping_values = new String();
-    String grouping_value_condition_string = "(";
-    HashSet<Head_strs> view_grouping_values_from_query = new HashSet<Head_strs>();
-    Vector<String> view_grouping_attr_names = new Vector<String>();
-    for(int i = 0; i<view.head.args.size(); i++)
-    {
-      if(i >= 1)
-        grouping_value_condition_string += ",";
-      Argument view_grouping_attr = (Argument) view.head.args.get(i);
-      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
-      grouping_value_condition_string += "cast(" + view_grouping_attr_name + " as text)";
-      view_grouping_attr_names.add(view_grouping_attr_name);
-    }
-    
-    grouping_value_condition_string += ")";
-    
+    Vector<String> grouping_values = new Vector<String>();
+    String grouping_value_condition_string = gen_instantiation_condition_string(view.head.args);
+//    for(int i = 0; i<view.head.args.size(); i++)
+//    {
+//      if(i >= 1)
+//        grouping_value_condition_string += ",";
+//      Argument view_grouping_attr = (Argument) view.head.args.get(i);
+//      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+//      grouping_value_condition_string += view_grouping_attr_name;
+//    }
+//    grouping_value_condition_string += ")";
     int count = 0;
     
     if(view.head.args.size() > 0)
@@ -452,29 +461,45 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
       
       for(Integer rid: curr_rids)
       {
-        if(count >= 1)
-          grouping_values += ",";
+//        if(count >= 1)
+//          grouping_values += ",";
         
-        grouping_values = view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, grouping_values);
-        System.out.println(grouping_values.length());
+        grouping_values.add(view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, query));
+//        System.out.println(grouping_values.length());
 //        grouping_value_condition_string += curr_grouping_value_condition_string;
 //        view_grouping_values_from_query.add(view_grouping_values);
-        System.out.println(count);
+//        System.out.println(count);
         count ++;
       }
       
     }
     
-    grouping_value_condition_string += "= ANY (VALUES" + grouping_values + ")";
+    
+    
+//    grouping_value_condition_string += "= ANY (VALUES" + grouping_values + ")";
 //    System.out.println(view_grouping_values_from_query);
     
-    String sql = Query_converter.data2sql_check_having_clause(tuple, view, view_grouping_values_from_query, query.head.args, grouping_value_condition_string);
+    HashMap<String, String> sql_clauses = Query_converter.data2sql_check_having_clause(tuple, view);
     
-    System.out.println(sql);
+    view_head_vals_tuple_count = cal_count_partitions(grouping_values, grouping_value_condition_string, sql_clauses, view.head.args.size());
+    int[] query_head_attr_view_head_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(tuple);
+
+    for(Head_strs view_head_val: view_head_vals_tuple_count.keySet())
+    {
+      Vector<String> q_head_values = new Vector<String>();
+      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
+      {
+        q_head_values.add(view_head_val.head_vals.get(query_head_attr_view_head_ids[i]));
+      }
+      
+      view_head_value_query_head_value_mappings.put(view_head_val, new Head_strs(q_head_values));
+    }
     
-    pst = c.prepareStatement(sql);
-    
-    ResultSet rs = pst.executeQuery();
+//    System.out.println(sql);
+//    
+//    pst = c.prepareStatement(sql);
+//    
+//    ResultSet rs = pst.executeQuery();
     
 //    HashSet<Head_strs> potentail_invalid_head_values = null;
 //    
@@ -485,35 +510,34 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
 //      potentail_invalid_head_values.addAll(view_head_value_query_head_value_mappings.keySet());
 //    }
     
-    int[] query_head_attr_view_head_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(tuple);
     
-    while(rs.next())
-    {
-      Vector<String> h_values = new Vector<String>();
-      for(int i = 0; i<view.head.args.size(); i++)
-      {
-        h_values.add(rs.getString(i + 1));
-      }
-      
-      int tuple_count = rs.getInt(view.head.args.size() + 1);
-      
-      Head_strs view_head_values = new Head_strs(h_values);
-      
-      view_head_vals_tuple_count.put(view_head_values, tuple_count);
-      
-      
-      Vector<String> q_head_values = new Vector<String>();
-      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
-      {
-        q_head_values.add(h_values.get(query_head_attr_view_head_ids[i]));
-      }
-      
-      view_head_value_query_head_value_mappings.put(view_head_values, new Head_strs(q_head_values));
-      
-//      System.out.println("head_values::" + view_head_values);
-//      if(has_having_clause)
-//        potentail_invalid_head_values.remove(view_head_values);
-    }
+//    while(rs.next())
+//    {
+//      Vector<String> h_values = new Vector<String>();
+//      for(int i = 0; i<view.head.args.size(); i++)
+//      {
+//        h_values.add(rs.getString(i + 1));
+//      }
+//      
+//      int tuple_count = rs.getInt(view.head.args.size() + 1);
+//      
+//      Head_strs view_head_values = new Head_strs(h_values);
+//      
+//      view_head_vals_tuple_count.put(view_head_values, tuple_count);
+//      
+//      
+//      Vector<String> q_head_values = new Vector<String>();
+//      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
+//      {
+//        q_head_values.add(h_values.get(query_head_attr_view_head_ids[i]));
+//      }
+//      
+//      view_head_value_query_head_value_mappings.put(view_head_values, new Head_strs(q_head_values));
+//      
+////      System.out.println("head_values::" + view_head_values);
+////      if(has_having_clause)
+////        potentail_invalid_head_values.remove(view_head_values);
+//    }
 //    System.out.println(potentail_invalid_head_values);
 //    if(has_having_clause)
 //    {
@@ -529,11 +553,37 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     return view_head_vals_tuple_count;
   }
   
-  HashMap<Head_strs, Integer> count_tuples_within_view_groups_given_provenance(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values, HashMap<Head_strs, Integer> q_provenance_count) throws SQLException
+  
+  String convert_head_string2string(Head_strs string)
   {
-    HashMap<Head_strs, Integer> view_head_vals_tuple_count = new HashMap<Head_strs, Integer>();
+    String res = "(";
+    for(int i = 0; i<string.head_vals.size(); i++)
+    {
+      if(i >= 1)
+        res += ",";
+      String arg_name = string.head_vals.get(i).replaceAll("'", "''");
+      res += "'" + arg_name + "'";
+    }
+    res += ")";
+    return res;
+  }
+  
+  HashMap<Head_strs, Integer> count_tuples_within_view_groups_given_provenance(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values, HashMap<Head_strs, Integer> q_provenance_count, Vector<Argument> all_view_instantiation_condition_args) throws SQLException
+  {
+//    HashMap<Head_strs, Integer> view_head_vals_tuple_count = new HashMap<Head_strs, Integer>();
     
     HashSet<Head_strs> head_values = tuple_rows.get(tuple);
+    Vector<String> all_view_grouping_values = new Vector<String>();
+    
+//    Vector<Argument> all_view_instantiation_condition_args = new Vector<Argument>();
+    for(int i = 0; i<view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).size(); i++)
+    {
+      int subgoal_id = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).get(i);
+      Subgoal subgoal = view.subgoals.get(subgoal_id);
+      all_view_instantiation_condition_args.addAll(subgoal.args);
+    }
+    
+    String view_instantiation_where_clause = gen_instantiation_condition_string(all_view_instantiation_condition_args);
     
     for(Head_strs head_val : head_values)
     {
@@ -556,6 +606,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
 //        curr_view_provenance_values.add(view_grouping_values);
         
         view_provenance_values.put(view_grouping_values, head_val);
+        all_view_grouping_values.add(convert_head_string2string(view_grouping_values));
 
       }
       
@@ -564,13 +615,17 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     
 //    System.out.println(head_values);
     
-    String sql = Query_converter.data2sql_check_count_grouping_values(view, view_provenance_values.keySet(), view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple));
+    HashMap<String, String> sql_clauses = Query_converter.data2sql_check_count_grouping_values(view);
+    HashMap<Head_strs, Integer> view_head_vals_tuple_count = cal_count_partitions(all_view_grouping_values, view_instantiation_where_clause, sql_clauses, view.head.args.size());
+
     
-    pst = c.prepareStatement(sql);
-    
-    System.out.println(sql);
-    
-    ResultSet rs = pst.executeQuery();
+//    String sql = Query_converter.data2sql_check_count_grouping_values(view, view_provenance_values.keySet(), view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple));
+//    
+//    pst = c.prepareStatement(sql);
+//    
+//    System.out.println(sql);
+//    
+//    ResultSet rs = pst.executeQuery();
     
 //    HashSet<Head_strs> potentail_invalid_head_values = null;
 //    
@@ -583,21 +638,21 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     
     
     
-    while(rs.next())
-    {
-      Vector<String> h_values = new Vector<String>();
-      for(int i = 0; i<view.head.args.size(); i++)
-      {
-        h_values.add(rs.getString(i + 1));
-      }
-      
-      int tuple_count = rs.getInt(view.head.args.size() + 1);
-      
-      Head_strs view_head_values = new Head_strs(h_values);
-      
-      view_head_vals_tuple_count.put(view_head_values, tuple_count);
-      
-    }
+//    while(rs.next())
+//    {
+//      Vector<String> h_values = new Vector<String>();
+//      for(int i = 0; i<view.head.args.size(); i++)
+//      {
+//        h_values.add(rs.getString(i + 1));
+//      }
+//      
+//      int tuple_count = rs.getInt(view.head.args.size() + 1);
+//      
+//      Head_strs view_head_values = new Head_strs(h_values);
+//      
+//      view_head_vals_tuple_count.put(view_head_values, tuple_count);
+//      
+//    }
     
     return view_head_vals_tuple_count;
   }
@@ -633,40 +688,49 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
   }
   
   
-  HashMap<Head_strs, Integer> compute_provenance_count_in_view(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values) throws SQLException
+  HashMap<Head_strs, Integer> compute_provenance_count_in_view(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values, Vector<Argument> view_instantiated_with_provenance_args) throws SQLException
   {
-    HashSet<Head_strs> q_grouping_values = tuple_rows.get(tuple);
+//    HashSet<Head_strs> q_grouping_values = tuple_rows.get(tuple);
     
     Vector<Integer> view_why_prov_ids = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
     
-    String sql = Query_converter.data2sql_compute_count_grouping_values(view, view_provenance_values.keySet(), view_why_prov_ids);
-    
-    pst = c.prepareStatement(sql);
-    
-    System.out.println(sql);
-    
-    HashMap<Head_strs, Integer> q_provenance_count2 = new HashMap<Head_strs, Integer>();
-    
-    ResultSet rs = pst.executeQuery();
-    
-    int total_arg_count = 0;
-    for(int i = 0; i<view_why_prov_ids.size(); i++)
+    Vector<String> query_provenance_values = new Vector<String>();
+    for(Head_strs query_provenance: view_provenance_values.keySet())
     {
-      total_arg_count += view.subgoals.get(view_why_prov_ids.get(i)).size();
+      query_provenance_values.add(convert_head_string2string(query_provenance));
     }
     
-    while(rs.next())
-    {
-      Vector<String> provenance_values = new Vector<String>();
-      for(int i = 0; i<total_arg_count; i++)
-      {
-        provenance_values.add(rs.getString(i + 1));
-      }
-      
-      int count = rs.getInt(total_arg_count + 1);
-      
-      q_provenance_count2.put(new Head_strs(provenance_values), count);
-    }
+    HashMap<String, String> sql_clauses = Query_converter.data2sql_compute_count_grouping_values(view, view_why_prov_ids);
+    HashMap<Head_strs, Integer> q_provenance_count2 = cal_count_partitions(query_provenance_values, gen_instantiation_condition_string(view_instantiated_with_provenance_args), sql_clauses, view_instantiated_with_provenance_args.size());
+    
+//    String sql = Query_converter.data2sql_compute_count_grouping_values(view, view_provenance_values.keySet(), view_why_prov_ids);
+//    
+//    pst = c.prepareStatement(sql);
+//    
+//    System.out.println(sql);
+//    
+////    HashMap<Head_strs, Integer> q_provenance_count2 = new HashMap<Head_strs, Integer>();
+//    
+//    ResultSet rs = pst.executeQuery();
+//    
+//    int total_arg_count = 0;
+//    for(int i = 0; i<view_why_prov_ids.size(); i++)
+//    {
+//      total_arg_count += view.subgoals.get(view_why_prov_ids.get(i)).size();
+//    }
+//    
+//    while(rs.next())
+//    {
+//      Vector<String> provenance_values = new Vector<String>();
+//      for(int i = 0; i<total_arg_count; i++)
+//      {
+//        provenance_values.add(rs.getString(i + 1));
+//      }
+//      
+//      int count = rs.getInt(total_arg_count + 1);
+//      
+//      q_provenance_count2.put(new Head_strs(provenance_values), count);
+//    }
     
     return q_provenance_count2;
   }
@@ -688,6 +752,108 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     }
   }
   
+  String gen_value_partitions(Vector<String> where_clause_values, int start, int end)
+  {
+    String string = new String();
+    for(int i = start; i<end; i++)
+    {
+      if(i >= start + 1)
+        string += ",";
+      string += where_clause_values.get(i);
+    }
+    return string;
+  }
+  
+  void merge_result(HashMap<Head_strs, Integer> res1, HashMap<Head_strs, Integer> res2)
+  {
+    for(Entry<Head_strs, Integer> entry: res2.entrySet())
+    {
+      if(res1.get(entry.getKey()) == null)
+      {
+        res1.put(entry.getKey(), entry.getValue());
+      }
+      else
+      {
+        res1.put(entry.getKey(), entry.getValue() + res1.get(entry.getKey()));
+      }
+    }
+  }
+  
+  HashMap<Head_strs, Integer> retrive_result(ResultSet rs, int head_size) throws SQLException
+  {
+    HashMap<Head_strs, Integer> res = new HashMap<Head_strs, Integer>();
+    while(rs.next())
+    {
+      Vector<String> grouping_value = new Vector<String>();
+      for(int i = 0; i<head_size; i++)
+      {
+        grouping_value.add(rs.getString(i + 1));
+      }
+      int count = rs.getInt(head_size + 1);
+      res.put(new Head_strs(grouping_value), count);
+    }
+    return res;
+  }
+  
+  HashMap<Head_strs, Integer> cal_count_partitions(Vector<String> where_clause_values, String where_clause_attrs, HashMap<String, String> sql_other_clauses, int grouping_attr_num) throws SQLException
+  {
+    int partition_size = (int) Math.sqrt(where_clause_values.size());
+    
+    int num = 0;
+    
+    HashMap<Head_strs, Integer> counts_per_group = new HashMap<Head_strs, Integer>();
+    while(num < where_clause_values.size())
+    {
+      String sql = view.local_with_clause + " select ";
+      
+      if(sql_other_clauses.get("select") != null)
+      {
+        sql += sql_other_clauses.get("select") + sql_other_clauses.get("select_agg");
+      }
+      else
+      {
+        sql += sql_other_clauses.get("select_agg");
+      }
+      
+      sql += " from " + sql_other_clauses.get("from");
+      int start = num;
+      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
+      
+      
+      if(sql_other_clauses.get("where") != null)
+      {
+        sql += " where " + sql_other_clauses.get("where") + " and " + where_clause_attrs + "=ANY(VALUES" + gen_value_partitions(where_clause_values, start, end) + ")";
+      }
+      else
+      {
+        sql += " where " + where_clause_attrs + "=ANY(VALUES" + gen_value_partitions(where_clause_values, start, end) + ")";
+      }
+      
+      if(sql_other_clauses.get("group_by") != null)
+      {
+        sql += " group by " + sql_other_clauses.get("group_by"); 
+      }
+      
+      if(sql_other_clauses.get("having") != null)
+      {
+        sql += " having " + sql_other_clauses.get("having");
+      }
+      
+//      System.out.println(sql);
+      System.out.println(where_clause_attrs);
+      
+      pst = c.prepareStatement(sql);
+      
+      ResultSet rs = pst.executeQuery();
+      merge_result(counts_per_group, retrive_result(rs, grouping_attr_num));
+      System.out.println(num);
+      num += partition_size;
+    }
+    
+    return counts_per_group;
+    
+  }
+  
   void deal_with_view_with_aggregation() throws SQLException
   {
 
@@ -698,7 +864,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
 //      view.reset_values();
       
       Tuple tuple = (Tuple) iter2.next();
-      
+      System.out.println(tuple_rows.get(tuple).size());
       if(tuple_rows.get(tuple).isEmpty())
         continue;
       
@@ -721,13 +887,14 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
       if(!tuple_rows.get(tuple).isEmpty())
       {
         //store the mappings between the query provenance and query grouping values
-        HashMap<Head_strs, Head_strs> view_provenance_values = new HashMap<Head_strs, Head_strs>();
+        HashMap<Head_strs, Head_strs> query_provenance_grouping_value_mappings = new HashMap<Head_strs, Head_strs>();
         
         //store the count of the provenance expression in query
         HashMap<Head_strs, Integer> q_provenance_count1 = new HashMap<Head_strs, Integer>();
         
+        Vector<Argument> view_instantiated_with_provenance_args = new Vector<Argument>();
         //store the count of the tuples in each view grouping values (instantiated by the provenance)
-        HashMap<Head_strs, Integer> view_grouping_value_tuple_count_mappings2 = count_tuples_within_view_groups_given_provenance(tuple, view_provenance_values, q_provenance_count1);
+        HashMap<Head_strs, Integer> view_grouping_value_tuple_count_mappings2 = count_tuples_within_view_groups_given_provenance(tuple, query_provenance_grouping_value_mappings, q_provenance_count1, view_instantiated_with_provenance_args);
         
 //        System.out.println("view_grouping_value_count1::" + view_grouping_value_tuple_count_mappings1);
         
@@ -735,7 +902,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
         
 //        System.out.println("view_grouping_value_query_grouping_value_mappings::" + view_grouping_value_q_grouping_value_mappings);
         
-        compare_view_grouping_value_count(tuple_rows.get(tuple), view_grouping_value_q_grouping_value_mappings, view_grouping_value_tuple_count_mappings1, view_grouping_value_tuple_count_mappings2, view_provenance_values);
+        compare_view_grouping_value_count(tuple_rows.get(tuple), view_grouping_value_q_grouping_value_mappings, view_grouping_value_tuple_count_mappings1, view_grouping_value_tuple_count_mappings2, query_provenance_grouping_value_mappings);
         
 //        System.out.println("third_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
         System.out.println("third_test::");
@@ -743,12 +910,15 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
         {
         
           //store the count of the provenance expression in view
-          HashMap<Head_strs, Integer> q_provenance_count2 = compute_provenance_count_in_view(tuple, view_provenance_values);
+          HashMap<Head_strs, Integer> q_provenance_count2 = compute_provenance_count_in_view(tuple, query_provenance_grouping_value_mappings, view_instantiated_with_provenance_args);
+          System.out.println("q_count2::" + q_provenance_count2.size());
+          System.out.println("q_count1::" + q_provenance_count1.size());
           
-          compare_provenance_count_query_and_view(tuple, q_provenance_count1, q_provenance_count2, view_provenance_values);
+          compare_provenance_count_query_and_view(tuple, q_provenance_count1, q_provenance_count2, query_provenance_grouping_value_mappings);
           
 //          System.out.println("fourth_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
           System.out.println("fourth_test::");
+          System.out.println(tuple_rows.get(tuple).size());
         }
       }
     }

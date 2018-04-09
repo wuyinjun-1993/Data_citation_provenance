@@ -527,7 +527,9 @@ public class Query {
     {
       for(int i = 0; i<head.agg_args.size(); i++)
       {
-        result.append(",");
+        if(head.args.size() > 0 || (head.args.size() == 0 && i >= 1))
+          result.append(",");
+        
         result.append(head.agg_function.get(i) + "(" + head.agg_args.get(i) + ")");      
         
       }

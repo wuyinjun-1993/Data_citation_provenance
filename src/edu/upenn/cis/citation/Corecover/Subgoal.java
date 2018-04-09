@@ -162,7 +162,8 @@ public class Subgoal {
     {
       for(int i = 0; i<agg_args.size(); i++)
       {
-        result.append(",");
+        if(args.size() > 0 || (args.size() == 0 && i >= 1))
+          result.append(",");
         
         result.append(agg_function.get(i) + "(" + agg_args.get(i).toString() + ")");
       }

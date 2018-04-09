@@ -697,7 +697,7 @@ public class Database {
 	  Tuple tuple2 = (Tuple) iter2.next();
 
 	// joins two tuples
-	Tuple tuple = join(tuple1, schema1, tuple2, schema2, resName);
+	Tuple tuple = join(tuple1, schema1, tuple1.agg_args, tuple1.agg_functions, tuple2, schema2, tuple2.agg_args, tuple2.agg_functions, resName);
 	if (tuple != null) {
 	    resTuples.add(tuple);
 	}
@@ -759,7 +759,7 @@ public class Database {
 		  Tuple tuple2 = (Tuple) iter2.next();
 
 		// joins two tuples
-		Tuple tuple = join(tuple1, schema1, tuple2, schema2, resName);
+		Tuple tuple = join(tuple1, schema1, tuple1.agg_args, tuple1.agg_functions, tuple2, schema2, tuple2.agg_args, tuple2.agg_functions, resName);
 		if (tuple != null) {
 		    resTuples.add(tuple);
 		}
@@ -773,12 +773,20 @@ public class Database {
   /**
    * Joins two given tuples with their schemas, 
    */
-  Tuple join(Tuple tuple1, Vector schema1, 
-	     Tuple tuple2, Vector schema2, String resName) {
+  Tuple join(Tuple tuple1, Vector schema1, Vector agg_schema1, Vector agg_function1,
+	     Tuple tuple2, Vector schema2, Vector agg_schema2, Vector agg_function2, String resName) {
     
     Vector resTupleArgs = new Vector();
+    Vector resTupleagg_args = new Vector();
+    Vector resTupleagg_functions = new Vector();
     Vector tuple1Args = tuple1.getArgs();
     Vector tuple2Args = tuple2.getArgs();
+    
+    
+    resTupleagg_args.addAll(agg_schema1);
+    resTupleagg_args.addAll(agg_schema2);
+    resTupleagg_functions.addAll(agg_function1);
+    resTupleagg_functions.addAll(agg_function2);
     
     if (tuple1Args.size() != schema1.size() || 
 	tuple2Args.size() != schema2.size()) {
@@ -851,7 +859,7 @@ public class Database {
     HashMap mapSubgoals  = (HashMap) mapSubgoals1.clone();
     mapSubgoals.putAll(mapSubgoals2);
 
-    return new Tuple(resName, resTupleArgs, phi, phi_str, phi_r_str, mapSubgoals);
+    return new Tuple(resName, resTupleArgs, resTupleagg_args, resTupleagg_functions, phi, phi_str, phi_r_str, mapSubgoals);
   }
 
   public String toString() {

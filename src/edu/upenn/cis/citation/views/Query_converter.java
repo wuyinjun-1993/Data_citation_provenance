@@ -2,6 +2,8 @@ package edu.upenn.cis.citation.views;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import edu.upenn.cis.citation.Corecover.Argument;
@@ -159,6 +161,8 @@ public class Query_converter {
     
     if(query.head.has_agg)
     {
+      if(query.head.args.size() > 0)
+        sql += ",";
       sql += get_agg_item_in_select_clause(query);
     }
     
@@ -182,7 +186,7 @@ public class Query_converter {
     
     sql += condition_str;
     
-    if(query.head.has_agg)
+    if(query.head.has_agg && query.head.args.size() > 0)
     {
       sql += " group by " + sel_item;
       
@@ -396,11 +400,32 @@ public class Query_converter {
     return sql;
   }
   
-  static String get_grouping_attr_condition(Tuple tuple, Single_view view, Set<Head_strs> grouping_values)
+  static String get_grouping_attr_condition(Tuple tuple, Single_view view, Set<Head_strs> grouping_values, Vector<Argument> query_groupng_attrs)
   {
     String string = new String();
     
     int count = 0;
+    
+    Vector<String> view_head_arg_names = new Vector<String>();
+    for(int i = 0; i<view.head.args.size(); i++)
+    {
+      
+      Argument head_arg = (Argument) view.head.args.get(i);
+      
+//      Argument view_head_arg = tuple.reverse_phi.apply(head_arg);
+      if(tuple.phi.apply(head_arg) != null)
+      {
+        
+        view_head_arg_names.add(head_arg.name.replace(init.separator, "."));
+        
+//        if(num >= 1)
+//          string += " and ";
+//        
+//        string += head_arg.name.replace(init.separator, ".") + "='" + h.head_vals.get(num++) + "'";
+      }
+      
+    }
+    
     
     for(Head_strs h: grouping_values)
     {
@@ -411,28 +436,34 @@ public class Query_converter {
       
       int num = 0;
       
-      for(int i = 0; i<view.head.args.size(); i++)
+      for(int i = 0; i<view_head_arg_names.size(); i++)
       {
         
-        Argument head_arg = (Argument) view.head.args.get(i);
+        if(i >= 1)
+          string += " and ";
+        string += view_head_arg_names.get(i) + "='" + h.head_vals.get(num++) + "'";
         
-        if(tuple.phi.apply(head_arg) != null)
-        {
-          if(num >= 1)
-            string += " and ";
-          
-          string += head_arg.name.replace(init.separator, ".") + "='" + h.head_vals.get(num++) + "'";
-        }
+//        Argument head_arg = (Argument) view.head.args.get(i);
+//        
+////        Argument view_head_arg = tuple.reverse_phi.apply(head_arg);
+//        if(tuple.phi.apply(head_arg) != null)
+//        {
+//          if(num >= 1)
+//            string += " and ";
+//          
+//          string += head_arg.name.replace(init.separator, ".") + "='" + h.head_vals.get(num++) + "'";
+//        }
         
       }
       string += ")";
-      
+      System.out.println(count);
       count++;
     }
+    System.out.println("done");
     return string;
   }
   
-  public static String data2sql_check_having_clause(Tuple tuple, Single_view view, Set<Head_strs> grouping_values)
+  public static String data2sql_check_having_clause(Tuple tuple, Single_view view, Set<Head_strs> grouping_values, Vector<Argument> q_grouping_attrs, String grouping_value_condition_string)
   {
     String sql = new String();
     
@@ -444,7 +475,7 @@ public class Query_converter {
     
     String having_clause = get_having_clauses(view, false);
     
-    String grouping_attr_condition_string = get_grouping_attr_condition(tuple, view, grouping_values);
+    String grouping_attr_condition_string = grouping_value_condition_string;//get_grouping_attr_condition(tuple, view, grouping_values, q_grouping_attrs);
     
     sql = "select " + sel_item;
     
@@ -489,6 +520,65 @@ public class Query_converter {
     }
     
     return sql;
+  }
+  
+  public static HashMap<String, String> data2sql_check_having_clause(Tuple tuple, Single_view view)
+  {
+    HashMap<String, String> sql_clauses = new HashMap<String, String>();
+    
+    String sql = new String();
+    
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    
+    String agg_attributes = new String();
+    
+    String citation_table = get_relations_without_citation_table(view, false);
+
+    String condition = get_condition(view, false);
+    
+    String having_clause = get_having_clauses(view, false);
+    
+    sql = "select " + sel_item;
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+        agg_attributes += ",";
+      
+      agg_attributes += "count(*),"; 
+      agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+      
+    }
+    sql_clauses.put("select_agg", agg_attributes);
+    sql_clauses.put("select", sel_item);
+    sql_clauses.put("from", citation_table);
+    if(condition != null && !condition.isEmpty())
+    {
+      sql_clauses.put("where", condition);
+    }
+    if(view.head.has_agg && view.head.args.size() > 0)
+    {
+      sql_clauses.put("group_by", sel_item);
+    }
+    
+    if(!having_clause.isEmpty())
+    {
+      sql_clauses.put("having", having_clause);
+    }
+    return sql_clauses;
+//    sql += " from " + citation_table;
+//    
+//    if(view.head.args.size() > 0)
+//    {
+//      sql += " where (" + grouping_attr_condition_string + ")";
+//      
+//      if(condition != null && !condition.isEmpty())
+//      {
+//        sql += " and " + condition;
+//      }
+//
+//    }
+//    else
   }
   
   static String get_view_provenance_clause(Single_view view, Set<Head_strs> provenance_values, Vector<Integer> view_why_prov_ids)
@@ -573,6 +663,48 @@ public class Query_converter {
     return sql;
   }
   
+  public static HashMap<String, String> data2sql_compute_count_grouping_values(Single_view view, Vector<Integer> view_why_prov_ids)
+  {
+    
+    HashMap<String, String> sql_clauses = new HashMap<String, String>();
+    String sql = new String();
+    
+    String sel_item = new String();
+    
+    for(int i = 0; i<view_why_prov_ids.size(); i++)
+    {
+      if(i >= 1)
+        sel_item += ",";
+      
+      sel_item += get_sel_item_with_why_token_columns(view.subgoals.get(view_why_prov_ids.get(i)).args, false);
+    }
+    
+    String citation_table = get_relations_without_citation_table(view, false);
+    
+    String condition = get_condition(view, false);
+    
+//    String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
+    
+    sql_clauses.put("select", sel_item);
+    
+    sql_clauses.put("select_agg", ", count(*)");
+    
+    sql_clauses.put("from", citation_table);
+    
+//    sql += "select " + sel_item + ", count(*) from " + citation_table + " where (" + grouping_attr_condition_string + ")";
+    
+    if(condition != null && !condition.isEmpty())
+    {
+      sql_clauses.put("where", condition);
+      sql += " and " + condition;
+    }
+    
+    sql_clauses.put("group_by", sel_item);
+//    sql += " group by (" + sel_item + ")";
+    
+    return sql_clauses;
+  }
+  
   public static String data2sql_check_count_grouping_values(Single_view view, Set<Head_strs> provenance_values, Vector<Integer> view_why_prov_ids)
   {
     String sql = new String();
@@ -618,6 +750,61 @@ public class Query_converter {
     }
     
     return sql;
+  }
+  
+  public static HashMap<String, String> data2sql_check_count_grouping_values(Single_view view)
+  {
+    HashMap<String, String> sql_clauses = new HashMap<String, String>();
+    String sql = new String();
+    
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    
+    String citation_table = get_relations_without_citation_table(view, false);
+
+    String condition = get_condition(view, false);
+    
+    String having_clause = get_having_clauses(view, false);
+    
+//    String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
+    String agg_attributes = new String();
+    sql_clauses.put("select", sel_item);
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+        agg_attributes += ",";
+      
+      agg_attributes += "count(*),";
+      
+      agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+    }
+    
+    sql_clauses.put("select_agg", agg_attributes);
+    sql_clauses.put("from", citation_table);
+//    sql += " from " + citation_table + " where (" + grouping_attr_condition_string + ")";
+    
+    if(condition != null && !condition.isEmpty())
+    {
+      sql_clauses.put("where", condition);
+      sql += " and " + condition;
+    }
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+      {
+        sql_clauses.put("group_by", sel_item);
+      }
+//        sql += " group by " + sel_item;
+    }
+    
+    if(!having_clause.isEmpty())
+    {
+      sql_clauses.put("having", having_clause);
+//      sql += " having " + having_clause;
+    }
+    
+    return sql_clauses;
   }
   
   public static String data2sql_partial_instantiation_with_provenance_values(Single_view view, Vector<Argument> selected_args, Vector<Argument> grouping_args, Vector<String> agg_functions, String[] view_subgoal_copies, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
@@ -882,15 +1069,59 @@ public class Query_converter {
           Subgoal subgoal = (Subgoal) q.subgoals.get(i);
           
           if(isProv_query)
-            str += "\"" + q.subgoal_name_mappings.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
+            str += "\"" + "_tmp_" + q.subgoal_name_mappings.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
           else
-            str += q.subgoal_name_mappings.get(subgoal.name) + " " + subgoal.name;
+            str += "_tmp_" + q.subgoal_name_mappings.get(subgoal.name) + " " + subgoal.name;
           
 //        str += "," + q.subgoal_name_mapping.get(subgoal.name) + populate_db.suffix + " " + subgoal.name + populate_db.suffix; 
       }
       
       return str;
       
+  }
+  
+  static String gen_with_clause(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_mappings)
+  {
+    String string = "with ";
+    HashMap<String, Vector<String>> unique_relations = new HashMap<String, Vector<String>>();
+    for(int i = 0; i<subgoals.size(); i++)
+    {
+      Subgoal subgoal = subgoals.get(i);
+      String origin_name = subgoal_mappings.get(subgoals.get(i).name);
+      if(unique_relations.get(origin_name) == null)
+      {
+        Vector<String> arg_list = new Vector<String>();
+        for(int j = 0; j<subgoal.args.size(); j++)
+        {
+          Argument arg = (Argument) subgoal.args.get(j);
+          String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          arg_list.add(arg_name);
+        }
+        unique_relations.put(origin_name, arg_list);
+      }
+      
+    }
+    int count = 0;
+    for(Entry<String, Vector<String>> entry: unique_relations.entrySet())
+    {
+      String relation_name = entry.getKey();
+      Vector<String> arg_names = entry.getValue();
+      if(count > 0)
+        string += ",";
+      
+      string += "_tmp_" + relation_name + " as (select ";
+      for(int i = 0; i<arg_names.size(); i++)
+      {
+        String arg_name_string = arg_names.get(i);
+        if(i >= 1)
+          string += ",";
+        string += "case when "+ arg_name_string +" is null then 'null' else cast (" + arg_name_string +" as text) end";
+      }
+      string += " from " + relation_name + ")";
+      
+      count ++;
+    }
+    return string;
   }
   
   public static String get_condition(Query q, boolean isPro_query)

@@ -88,7 +88,7 @@ public class provenance_citation {
   
 //    Query query = query_storage.get_query_by_id(1, c, pst);
   
-  Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
+  Query query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
     
     boolean iscluster = Boolean.valueOf(args[0]);
     
@@ -104,7 +104,7 @@ public class provenance_citation {
   
 //    Prov_reasoning4.init_from_database(c, pst);
     
-    Prov_reasoning4.init_from_files("views", c, pst);
+    Prov_reasoning4.init_from_files(c, pst);
     
     double start = 0;
     
@@ -293,7 +293,7 @@ public class provenance_citation {
     
     Prov_reasoning4.init();
   
-    Prov_reasoning4.init_from_files("views", c, pst);//(c, pst);
+    Prov_reasoning4.init_from_files(c, pst);//(c, pst);
     
     double start = 0;
     

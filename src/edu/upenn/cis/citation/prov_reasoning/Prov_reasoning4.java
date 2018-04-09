@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -44,6 +45,7 @@ import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets;
 import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets_first_round;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
 import edu.upenn.cis.citation.pre_processing.view_operation;
 import edu.upenn.cis.citation.query.Query_provenance;
@@ -63,6 +65,11 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   static ConcurrentHashMap<String, Vector<String>> rel_attr_mappings = new ConcurrentHashMap<String, Vector<String>>();
   
 //  static ConcurrentHashMap<String, Head_strs> tuples = new ConcurrentHashMap<String, Head_strs>();
+  public static String view_file_name = "views";
+  
+  public static String citation_query_file_name = "citation_queries";
+  
+  public static String view_citation_query_mapping_file_name = "view_citation_query_mappings";
   
   public static boolean test_case = true;
   
@@ -169,17 +176,27 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     reliable_agg_functions.put("AVG", r_agg_funs1);
   }
   
-  public static void init_from_files(String file_name, Connection c, PreparedStatement pst) throws SQLException
+  public static void init_from_files(Connection c, PreparedStatement pst) throws SQLException
   {
-    Vector<Query> views = Load_views_and_citation_queries.get_views(file_name, c, pst);
-    
+    Vector<Query> views = Load_views_and_citation_queries.get_views(view_file_name, c, pst);
+    Vector<Query> citation_queries = Load_views_and_citation_queries.get_views(citation_query_file_name, c, pst);
+    HashMap<String, HashMap<String, String>> view_citation_query_mappings = Load_views_and_citation_queries.get_view_citation_query_mappings(view_citation_query_mapping_file_name);
+    HashMap<String, Query> name_citation_query_mappings = new HashMap<String, Query>();
+    for(int i = 0; i<citation_queries.size(); i++)
+    {
+      name_citation_query_mappings.put(citation_queries.get(i).name, citation_queries.get(i));
+    }
     for(int i = 0; i<views.size(); i++)
     {
       Query view = views.get(i);
       
+      System.out.println(view);
+      
       Single_view view_obj = new Single_view(view, view.name, c, pst);
       
       view_objs.add(view_obj);
+      
+      view_obj.load_citation_queries(view_citation_query_mappings.get(view.name), name_citation_query_mappings);
     }
   }
 
@@ -833,7 +850,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       else
       {
-        check_thread = new Check_valid_view_mappings_agg(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+        check_thread = new Check_valid_view_mappings_agg_batch_processing(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
       }
       
       
@@ -910,21 +927,21 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
             
     }
     
-    System.out.println();
-    
-    System.out.println(all_why_tokens);
-    
-    System.out.println();
-    
-    System.out.println(grouping_value_agg_value_mappings);
-    
-    System.out.println();
-    
-    System.out.println(tuple_why_prov_mappings);
-    
-    System.out.println();
-    
-    System.out.println(tuple_valid_rows);
+//    System.out.println();
+//    
+//    System.out.println(all_why_tokens);
+//    
+//    System.out.println();
+//    
+//    System.out.println(grouping_value_agg_value_mappings);
+//    
+//    System.out.println();
+//    
+//    System.out.println(tuple_why_prov_mappings);
+//    
+//    System.out.println();
+//    
+//    System.out.println(tuple_valid_rows);
     
     get_valid_view_mappings_per_group(user_query.head.has_agg);
     

@@ -73,7 +73,7 @@ public class Query_provenance {
     
     String sql = null;
     
-    if(!test_case)
+    if(query.lambda_term.size() <= 0)
       sql = Query_converter.data2sql_with_why_token_columns(query);
     else
       sql = Query_converter.data2sql_with_why_token_columns_test(query);
@@ -148,9 +148,11 @@ public class Query_provenance {
     
     PreparedStatement pst = null;
     
-    Query query = Load_views_and_citation_queries.get_views("query", c, pst).get(0);
+    Query query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
 
     System.out.println(query.toString());
+    
+    System.out.println(query.lambda_term.get(0));
     
     c.close();
     
