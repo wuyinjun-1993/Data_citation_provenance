@@ -24,7 +24,7 @@ public class MD5 {
   }
 
   public static void main(String[] args) throws NoSuchAlgorithmException {
-      System.out.println(getMD5("Javarmi.com"));
+      System.out.println(getMD5("Succinate receptor|gpcr"));
   }
   
   public static String get_MD5_encoding(String relation)

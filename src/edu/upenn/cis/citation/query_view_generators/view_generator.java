@@ -544,7 +544,7 @@ public class view_generator {
   {
     
     Vector<Argument> all_args = get_all_attributes(query);
-    all_args.remove(query.head.args);
+    all_args.removeAll(query.head.args);
     
     Vector<Subgoal> body = new Vector<Subgoal>();
     

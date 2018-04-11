@@ -46,6 +46,8 @@ import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets_first_round;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
 import edu.upenn.cis.citation.pre_processing.view_operation;
 import edu.upenn.cis.citation.query.Query_provenance;
@@ -850,7 +852,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       else
       {
-        check_thread = new Check_valid_view_mappings_agg_batch_processing(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+        check_thread = new Check_valid_view_mappings_agg_batch_processing_multi_thread(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
       }
       
       
