@@ -110,9 +110,9 @@ public class provenance_citation {
     
     double end = 0;
     
-    start = System.nanoTime();
-    
     Vector<String[]> provenance_instances = Query_provenance.get_provenance_instance();
+    
+    start = System.nanoTime();
     
     ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
     
@@ -144,6 +144,10 @@ public class provenance_citation {
     
     write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
 
+    System.out.println(covering_sets);
+    
+    System.out.println(covering_sets.size());
+    
     if(iscluster)
       write2file(path + "covering_sets3", covering_sets);
     else

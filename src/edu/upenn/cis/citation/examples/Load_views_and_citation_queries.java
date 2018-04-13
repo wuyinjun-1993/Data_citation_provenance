@@ -163,6 +163,39 @@ public class Load_views_and_citation_queries {
 	  
 	}
 	
+	   public static void append2files(String file_name, Vector<String> views)
+	    {
+	      
+	      BufferedWriter bw = null;
+	      try {
+	         //Specify the file name and path here
+	     File file = new File(file_name);
+
+	     /* This logic will make sure that the file 
+	      * gets created if it is not present at the
+	      * specified location*/
+	      if (!file.exists()) {
+	         file.createNewFile();
+	      }
+
+	      FileWriter fw = new FileWriter(file, true);
+	      bw = new BufferedWriter(fw);
+	      
+	      for(int i = 0; i<views.size(); i++)
+	      {
+	        bw.append(views.get(i));
+	        bw.newLine();
+	      }
+	      
+	      bw.close();
+
+	      } catch (IOException ioe) {
+	       ioe.printStackTrace();
+	    }
+	      
+	      
+	    }
+	
 	public static Vector<String> views2text_strings(Vector<Query> views)
 	{
 	  Vector<String> strings = new Vector<String>();

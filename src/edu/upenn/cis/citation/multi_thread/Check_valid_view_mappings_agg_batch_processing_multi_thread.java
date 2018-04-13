@@ -87,6 +87,7 @@ public class Check_valid_view_mappings_agg_batch_processing_multi_thread impleme
     if(row_ids.isEmpty())
       return;
 
+    StringBuilder sb = new StringBuilder();
     String sql_base = "select " + temp_table_name + ".row_id from (VALUES ";
     
     HashSet<Integer> valid_row_ids = new HashSet<Integer>();

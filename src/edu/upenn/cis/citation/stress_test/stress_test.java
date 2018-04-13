@@ -25,17 +25,21 @@ public class stress_test {
       .getConnection(init.db_url, init.usr_name , init.passwd);
     
     Query query = query_generator.generate_query(3, c, pst);
-    Vector<Query> queries = new Vector<Query>();
-    queries.add(query);
+  
+//    Vector<Query> queries = new Vector<Query>();
+//    queries.add(query);
+//    
+//    Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
+//  Load_views_and_citation_queries.write2files("query", query_strings);
+    query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
     
-    Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
-    Load_views_and_citation_queries.write2files("query", query_strings);
 //    Vector<String> parameters = new Vector<String>();
 //    parameters.add(query.lambda_term.get(0).toString());
 //    Load_views_and_citation_queries.write2files("user_query_subsets", parameters);
-    
-    Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, 5, query.body.size(), c, pst);
-    view_generator.store_views_with_citation_queries(views);
+    int offset = 45;
+    Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, 5, query.body.size(),offset,  c, pst);
+//    view_generator.store_views_with_citation_queries(views);
+    view_generator.append_views_with_citation_queries(views, offset);
     System.out.println(query);
   }
   

@@ -661,8 +661,8 @@ public class Database {
   Relation join(Relation rel1, Relation rel2, String resName) {
     
     // returns the other relation if one relation's schema is empty
-    if (rel1.getAttrNum() == 0) return rel2;
-    if (rel2.getAttrNum() == 0) return rel1;
+//    if (rel1.getAttrNum() == 0) return rel2;
+//    if (rel2.getAttrNum() == 0) return rel1;
 
     //System.out.println("rel1 = " + rel1 );
     //System.out.println("rel2 = " + rel2 );

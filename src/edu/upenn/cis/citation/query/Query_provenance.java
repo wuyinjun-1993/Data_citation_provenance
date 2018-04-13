@@ -50,7 +50,7 @@ public class Query_provenance {
     Class.forName("org.gprom.jdbc.driver.GProMDriver");
     Class.forName(driverURL);
     
-    PropertyConfigurator.configureDefaultConsoleLogger(Level.OFF);
+    PropertyConfigurator.configureDefaultConsoleLogger(Level.FATAL);
     
     Properties info = new Properties();
     
@@ -73,7 +73,7 @@ public class Query_provenance {
     
     String sql = null;
     
-    if(query.lambda_term.size() <= 0)
+    if(!test_case)
       sql = Query_converter.data2sql_with_why_token_columns(query);
     else
       sql = Query_converter.data2sql_with_why_token_columns_test(query);
@@ -161,11 +161,12 @@ public class Query_provenance {
     
 //    Query query = query_storage.get_query_by_id(1, con, pst);
     
-    
+    long t1 = System.nanoTime();
     ResultSet rs = get_provenance4query(query, test_case);
-    
+    long t2 = System.nanoTime();
+    double time = (t2 - t1)*1.0/1000000000;
     printResult(rs);
-    
+    System.out.println("time::" + time);
     reset();
   }
   

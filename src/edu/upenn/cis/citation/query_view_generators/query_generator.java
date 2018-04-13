@@ -38,7 +38,9 @@ public class query_generator {
 	
 	
 	
-	public static String [] citatable_tables = {"ligand", "gpcr","object", "family", "introduction"};
+//	public static String [] citatable_tables = {"ligand", "gpcr","object", "family", "introduction"};
+	
+	public static String [] citatable_tables = {"ligand", "object", "family", "introduction"};
 	
 	static HashMap<String, HashMap<String, String>> parameterizable_attri_type = new HashMap<String, HashMap<String, String>>();
 	
@@ -73,7 +75,7 @@ public class query_generator {
 	
 	static int view_nums = 100;
 	
-	public static int query_result_size = 500000;
+	public static int query_result_size = 100000;
 
 	
 	static HashMap<String, String> relation_primary_key_mapping = new HashMap<String, String>();
@@ -502,7 +504,7 @@ public class query_generator {
 											
 			int head_size = rand.nextInt((int)(attr_list.size() * head_var_rate + 1)) + 1;
 									
-			Vector<Argument> head_vars = gen_head_vars(false, relation, relation_name, parameterizable_attri.get(relation), 3, c, pst);
+			Vector<Argument> head_vars = gen_head_vars(false, relation, relation_name, parameterizable_attri.get(relation), 4, c, pst);
 			
 			Vector<Argument> agg_vars = gen_head_vars(true, relation, relation_name, parameterizable_attri.get(relation), 3, c, pst);
 			
@@ -531,11 +533,11 @@ public class query_generator {
 		
 		String name = "Q";
 				
-		Vector<Conditions> predicates = new Vector<Conditions>();
+		Vector<Conditions> predicates = gen_conditions(body);
 		
-		lambda_terms1.add(new Lambda_term(query_local_predicate[0]));
-		
-		lambda_terms2.add(new Lambda_term(query_local_predicate[1]));
+//		lambda_terms1.add(new Lambda_term(query_local_predicate[0]));
+//		
+//		lambda_terms2.add(new Lambda_term(query_local_predicate[1]));
 						
 		gen_shuffled_head_args(head_grouping_vars);
 		
@@ -546,6 +548,21 @@ public class query_generator {
 		return query;
 	}
 	
+	
+	static Vector<Conditions> gen_conditions(Vector<Subgoal> subgoals)
+	{
+	  int size = (int) Math.pow(query_result_size, 1.0/subgoals.size());
+	  Vector<Conditions> conditions = new Vector<Conditions>();
+	  for(int i = 0; i<subgoals.size(); i++)
+	  {
+//	    Argument arg = (Argument) subgoals.get(i).args.get(0);
+	    Argument arg_const = new Argument("'" + size + "'");
+	    Argument arg = new Argument(subgoals.get(i).name + init.separator + relation_primary_key_mapping.get(subgoals.get(i).name), subgoals.get(i).name);
+	    Conditions condition = new Conditions(arg, arg.relation_name, new op_less_equal(), arg_const, new String(), null, null);
+	    conditions.add(condition);
+	  }
+	  return conditions;
+	}
 	
 	static void gen_shuffled_head_args(Vector<Argument> head_args)
 	{
@@ -747,7 +764,7 @@ public class query_generator {
 		{
 			int index = r.nextInt(attr_list.size());
 			
-			if(parameterizable_attri.get(relation).contains(attr_list.get(index)))
+			if(parameterizable_attri.get(relation).contains(attr_list.get(index)) && !relation_primary_key_mapping.get(relation_name).contains(attr_list.get(index)))
 			{
 			  if(!is_agg_attrs)
 				id_set.add(index);
@@ -759,14 +776,19 @@ public class query_generator {
 			      
 			      id_set.add(index);
 			    }
+			    else
+			    {
+			      i--;
+			      continue;
+			    }
 			  }
 			}
-//			else
-//			{
-//				i--;
-//				
-//				continue;
-//			}
+			else
+			{
+				i--;
+				
+				continue;
+			}
 //			
 		}
 		

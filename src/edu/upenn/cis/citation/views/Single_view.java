@@ -875,9 +875,9 @@ public class Single_view {
     {
       Subgoal subgoal = subgoals.get(v_why_column_ids.get(i));
       
-      for(int j = 0; j<subgoal.args.size(); j++)
+//      for(int j = 0; j<subgoal.args.size(); j++)
       {
-        view_provenance_values.add(clean_boolean_type((Argument) subgoal.args.get(j), values.get(q_why_column_ids.get(i)).head_vals.get(j)));
+        view_provenance_values.add(clean_boolean_type((Argument) subgoal.args.get(0), values.get(q_why_column_ids.get(i)).head_vals.get(0)));
 //        view_provenance_values.add(values.get(q_why_column_ids.get(i)).head_vals.get(j));
       }
       
@@ -940,44 +940,83 @@ public class Single_view {
     return Query_converter.gen_with_clause(view.subgoals, view.subgoal_name_mappings);
   }
   
-//  public String evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple, Query query)
-//  {
-//    Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
-////    Vector<String> grouping_attr_values = new Vector<String>();
-//    
-////    System.out.println(values);
-//    
-//    String grouping_value_condition_string = "(";
-////    String grouping_value_condition_string = new String();
-//    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
-//    {
-//      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
-//      if(i >= 1)
-//        grouping_value_condition_string += ",";
-//      
-//      Subgoal subgoal = (Subgoal) query.body.get(subgoal_arg_ids[0]);
-//      Argument arg = (Argument) subgoal.args.get(subgoal_arg_ids[1]);
-////      System.out.println(i + "::" + subgoal_arg_ids[0] + "::" + subgoal_arg_ids[1] + "::"+ values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'");
-//      String curr_value = values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]);
-//      if(arg.data_type.equals("boolean"))
-//      {
-//        if(curr_value.equals("t"))
-//        {
-//          curr_value = "true";
-//        }
-//        if(curr_value.equals("f"))
-//        {
-//          curr_value = "false";
-//        }
-//      }
-//      grouping_value_condition_string += "'" + MD5.getMD5(curr_value) + "'";
-//    }
+  public String evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple, Query query)
+  {
+    Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
+//    Vector<String> grouping_attr_values = new Vector<String>();
+    
+//    System.out.println(values);
+    
+    String grouping_value_condition_string = "(";
+//    String grouping_value_condition_string = new String();
+    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+    {
+      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+      if(i >= 1)
+        grouping_value_condition_string += ",";
+      
+      Subgoal subgoal = (Subgoal) query.body.get(subgoal_arg_ids[0]);
+      Argument arg = (Argument) subgoal.args.get(subgoal_arg_ids[1]);
+//      System.out.println(i + "::" + subgoal_arg_ids[0] + "::" + subgoal_arg_ids[1] + "::"+ values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'");
+      String curr_value = values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]);
+      if(arg.data_type.equals("boolean"))
+      {
+        if(curr_value.equals("t"))
+        {
+          curr_value = "true";
+        }
+        if(curr_value.equals("f"))
+        {
+          curr_value = "false";
+        }
+      }
+      grouping_value_condition_string += "'" + MD5.getMD5(curr_value) + "'";
+    }
+    grouping_value_condition_string += ")";
+        
 //    grouping_value_condition_string += ")";
-//        
-////    grouping_value_condition_string += ")";
-//    
-//    return grouping_value_condition_string;
-//  }
+    
+    return grouping_value_condition_string;
+  }
+  
+  public String evaluate_view_grouping_attrs2(Vector<Head_strs> values, Tuple tuple, Query query)
+  {
+    Vector<int[]> view_grouping_attr_ids = view_mapping_view_grouping_attr_ids_mappings.get(tuple);
+//    Vector<String> grouping_attr_values = new Vector<String>();
+    
+//    System.out.println(values);
+    
+    String grouping_value_condition_string = "(";
+//    String grouping_value_condition_string = new String();
+    for(int i = 0; i<view_grouping_attr_ids.size(); i++)
+    {
+      int[] subgoal_arg_ids = view_grouping_attr_ids.get(i);
+      if(i >= 1)
+        grouping_value_condition_string += ",";
+      
+      Subgoal subgoal = (Subgoal) query.body.get(subgoal_arg_ids[0]);
+      Argument arg = (Argument) subgoal.args.get(subgoal_arg_ids[1]);
+//      System.out.println(i + "::" + subgoal_arg_ids[0] + "::" + subgoal_arg_ids[1] + "::"+ values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]) + "'");
+      String curr_value = values.get(subgoal_arg_ids[0]).head_vals.get(subgoal_arg_ids[1]);
+      if(arg.data_type.equals("boolean"))
+      {
+        if(curr_value.equals("t"))
+        {
+          curr_value = "true";
+        }
+        if(curr_value.equals("f"))
+        {
+          curr_value = "false";
+        }
+      }
+      grouping_value_condition_string += "'" + (curr_value) + "'";
+    }
+    grouping_value_condition_string += ")";
+        
+//    grouping_value_condition_string += ")";
+    
+    return grouping_value_condition_string;
+  }
   
   public String evaluate_view_grouping_attrs(Vector<Head_strs> values, Tuple tuple, Query query, Vector<String> relation_seqs)
   {

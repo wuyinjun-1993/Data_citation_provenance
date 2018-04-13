@@ -19,6 +19,7 @@ import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.Operation.op_equal;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
+import edu.upenn.cis.citation.views.Query_converter;
 
 public class view_generator {
   
@@ -234,6 +235,26 @@ public class view_generator {
     
   }
   
+  public static void append_views_with_citation_queries(Vector<Query> views, int offset)
+  {
+    Vector<String> view_strings = Load_views_and_citation_queries.views2text_strings(views);
+    Load_views_and_citation_queries.append2files(view_file_name, view_strings);
+    Vector<Query> citation_queries = new Vector<Query>();
+    Vector<String> view_citation_query_mappings = new Vector<String>();
+    for(int i = 0; i<views.size(); i++)
+    {
+      int id = i + offset;
+      Query query = store_citation_queries(views.get(i), id, "q" + id);
+      citation_queries.add(query);
+      view_citation_query_mappings.add(views.get(i).name + "|" + query.name + "|" + "Contributor");
+    }
+    Vector<String> citation_query_strings = Load_views_and_citation_queries.views2text_strings(citation_queries);
+    Load_views_and_citation_queries.append2files(citation_query_file_name, citation_query_strings);
+    Load_views_and_citation_queries.append2files(view_citation_query_mapping_file_name, view_citation_query_mappings);
+    
+    
+  }
+  
   static Query store_citation_queries(Query view, int num, String qname)
   {
       Vector<String> citable_table_names = new Vector<String>();
@@ -343,7 +364,7 @@ public class view_generator {
     
   }
   
-  public static Vector<Query> gen_views(HashSet<String> subgoal_names, Query query, int num_views, int sizeofquety, Connection c, PreparedStatement pst) throws SQLException
+  public static Vector<Query> gen_views(HashSet<String> subgoal_names, Query query, int num_views, int sizeofquety, int offset, Connection c, PreparedStatement pst) throws SQLException
   {
     initial();
     
@@ -369,7 +390,7 @@ public class view_generator {
           
           int size = sizes.get(num);
                       
-          Query view = generate_view_without_predicates_partial_mappings(subgoal_names, query, num + 1, sizeofquety, all_citable_tables, relation_primary_key_mappings, c, pst);
+          Query view = generate_view_without_predicates_partial_mappings(subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, c, pst);
                       
 //      if(!queries.contains(query))
           {
@@ -579,21 +600,37 @@ public class view_generator {
         }
       }
     }
+    
+    if(head_agg_attrs.isEmpty())
+    {
+      head_agg_attrs.add((Argument) query.head.agg_args.get(0));
+      head_agg_functions.add((String) query.head.agg_function.get(0));
+    }
     maps.putAll(query.subgoal_name_mapping);
     
     for(int i = 0; i<all_args.size(); i++)
     {
-      Boolean b = r.nextBoolean();
+      Argument arg = all_args.get(i);
       
-      if(b)
+      String arg_relation = arg.relation_name;
+      String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      
+      if(query_generator.parameterizable_attri.get(arg_relation).contains(arg_name) && !query_generator.relation_primary_key_mapping.get(arg_relation).contains(arg_name))
       {
-        head_grouping_attrs.add(all_args.get(i));
+        Boolean b = r.nextBoolean();
+        
+        if(b)
+        {
+          head_grouping_attrs.add(all_args.get(i));
+          break;
+        }
       }
+
     }
     
     Subgoal head = new Subgoal("v" + id, head_grouping_attrs, head_agg_attrs, head_agg_functions, true);
     
-    return new Query("v" + id, head, body, new Vector<Lambda_term>(), new Vector<Conditions>(), maps);
+    return new Query("v" + id, head, body, new Vector<Lambda_term>(), query_generator.gen_conditions(body), maps);
     
 //    
 //    

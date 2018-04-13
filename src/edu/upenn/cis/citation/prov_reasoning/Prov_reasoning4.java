@@ -46,6 +46,7 @@ import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets_first_round;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
@@ -838,6 +839,10 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
     Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
     
+    int batch_size = 10;
+    
+    int count = 0;
+    
     for(Iterator iter = views.iterator(); iter.hasNext();)
     {
       Single_view view = (Single_view) iter.next();
@@ -852,13 +857,37 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       else
       {
-        check_thread = new Check_valid_view_mappings_agg_batch_processing_multi_thread(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+        try {
+          check_thread = new Check_valid_view_mappings_agg_batch_processing1(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+        } catch (ClassNotFoundException | SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
       }
       
       
       check_thread.start();
       
+      count++;
+      
       check_threads.add(check_thread);
+      
+      if(count % batch_size == 0)
+      {
+        for(int i = 0; i<check_threads.size(); i++)
+        {
+          check_threads.get(i).join();
+        }
+        
+        for(int i = 0; i<check_threads.size(); i++)
+        {
+          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+        }
+        check_threads.clear();
+      }
+      
+//      check_thread.join();
+      
       
     }
     
@@ -871,6 +900,14 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     {
       tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
     }
+    check_threads.clear();
+    
+//    for(int i = 0; i<check_threads.size(); i++)
+//    {
+//      check_threads.get(i).join();
+//    }
+    
+
     
     int id = 0;
     
@@ -943,7 +980,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    
 //    System.out.println();
 //    
-//    System.out.println(tuple_valid_rows);
+    System.out.println(tuple_valid_rows.size());
     
     get_valid_view_mappings_per_group(user_query.head.has_agg);
     
