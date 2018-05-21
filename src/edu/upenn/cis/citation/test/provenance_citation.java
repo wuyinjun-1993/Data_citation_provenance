@@ -82,17 +82,23 @@ public class provenance_citation {
     
   Class.forName("org.postgresql.Driver");
   c = DriverManager
-      .getConnection(init.db_url, init.usr_name , init.passwd);
+      .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
   
 //  view_operation.delete_view_by_name("v2", c, pst);
   
 //    Query query = query_storage.get_query_by_id(1, c, pst);
   
-  Query query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
+  Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
     
+  System.out.println(query);
+  
     boolean iscluster = Boolean.valueOf(args[0]);
     
     boolean sortcluster = false;//Boolean.valueOf(args[1]);
+    
+    int thread_num = 2;//Integer.valueOf(args[1]);
+    
+    Prov_reasoning4.batch_size = thread_num;
     
     int factor = 2;//Integer.valueOf(args[1]);
     
@@ -110,7 +116,7 @@ public class provenance_citation {
     
     double end = 0;
     
-    Vector<String[]> provenance_instances = Query_provenance.get_provenance_instance();
+    Vector<String[]> provenance_instances = Query_provenance.get_provenance_instance(query);
     
     start = System.nanoTime();
     

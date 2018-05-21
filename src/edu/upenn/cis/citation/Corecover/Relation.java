@@ -79,7 +79,7 @@ class Relation {
     }    
   }
 
-  public Relation project(Vector usefulArgs, Vector agg_args, Vector agg_functions) {
+  public Relation project(Vector usefulArgs) {
     Vector  resSchema = new Vector();
     HashSet resTuples = new HashSet();
 
@@ -95,8 +95,8 @@ class Relation {
     for (Iterator iter = tuples.iterator(); iter.hasNext();) {
       Tuple  tuple = (Tuple) iter.next();
       Vector resTupleArgs = new Vector();
-      Vector resTuple_agg_args = new Vector();
-      Vector resTuple_agg_functions = new Vector();
+//      Vector resTuple_agg_args = new Vector();
+//      Vector resTuple_agg_functions = new Vector();
       
       for (int i = 0; i < schema.size(); i ++) {
 	Argument argSchema = (Argument) schema.elementAt(i);
@@ -104,21 +104,20 @@ class Relation {
 	if (usefulArgs.contains(argSchema)) 
 	  resTupleArgs.add(argVale);
 	
-	if(agg_args != null && agg_args.contains(argSchema))
-    {
-	  resTuple_agg_args.add(argVale);
-	  
-	  int id = agg_args.indexOf(argSchema);
-	  
-	  resTuple_agg_functions.add(agg_functions.get(id));
-	  
-    }
+//	if(agg_args != null && agg_args.contains(argSchema))
+//    {
+//	  resTuple_agg_args.add(argVale);
+//	  
+//	  int id = agg_args.indexOf(argSchema);
+//	  
+//	  resTuple_agg_functions.add(agg_functions.get(id));
+//	  
+//    }
       }
       
 
       // yields one tuple
-      resTuples.add(new Tuple(tuple.name, resTupleArgs, resTuple_agg_args, resTuple_agg_functions,
-			      tuple.getMapping(), tuple.getMapping_str(), tuple.get_Reverse_Mapping(), tuple.getMapSubgoals()));
+      resTuples.add(new Tuple(tuple.name, resTupleArgs, tuple.getMapping(), tuple.getMapping_str(), tuple.get_Reverse_Mapping(), tuple.getMapSubgoals()));
     }
     
     return new Relation(this.getName(), resSchema, resTuples);

@@ -19,6 +19,7 @@ import org.gprom.jdbc.driver.GProMConnection;
 import org.gprom.jdbc.utility.PropertyConfigurator;
 import com.sun.jna.Native;
 import edu.upenn.cis.citation.Corecover.Query;
+import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
@@ -31,10 +32,19 @@ public class Query_provenance {
   
   public static String sql_result_file = "provenance_instance.txt";
   
+  public static String db_url = init.db_url;
+  
+  public static String db_prov_url = init.db_prov_url;
+  
+  public static String directory = "/home/wuyinjun/workspace/Data_citation_demo/test_example/";
+  
+  public static String query_file = directory + "query";
+  
+  public static String view_file = directory + "views";
   
   public static String separator = "|";
   
-  public static String separator_input = "\\" + separator;
+  public static String separator_input = "\\|";
 //  static String usr_name = null;
 //  
 //  static String passwd = null;
@@ -50,7 +60,7 @@ public class Query_provenance {
     Class.forName("org.gprom.jdbc.driver.GProMDriver");
     Class.forName(driverURL);
     
-    PropertyConfigurator.configureDefaultConsoleLogger(Level.FATAL);
+    PropertyConfigurator.configureDefaultConsoleLogger(Level.OFF);
     
     Properties info = new Properties();
     
@@ -77,6 +87,8 @@ public class Query_provenance {
       sql = Query_converter.data2sql_with_why_token_columns(query);
     else
       sql = Query_converter.data2sql_with_why_token_columns_test(query);
+    
+//    sql = "select \"type\", count((\"name\"|| \"family_id\")) from \"family\" group by \"type\"";
     
     System.out.println(sql);
     
@@ -144,11 +156,11 @@ public class Query_provenance {
     
     Class.forName("org.postgresql.Driver");
     Connection c = DriverManager
-        .getConnection(init.db_url, init.usr_name , init.passwd);
+        .getConnection(db_url, init.usr_name , init.passwd);
     
     PreparedStatement pst = null;
     
-    Query query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
+    Query query = Load_views_and_citation_queries.get_query_test_case(query_file, c, pst).get(0);
 
     System.out.println(query.toString());
     
@@ -157,7 +169,7 @@ public class Query_provenance {
     c.close();
     
     
-    connect(init.db_prov_url, init.usr_name, init.passwd);
+    connect(db_prov_url, init.usr_name, init.passwd);
     
 //    Query query = query_storage.get_query_by_id(1, con, pst);
     
@@ -170,7 +182,7 @@ public class Query_provenance {
     reset();
   }
   
-  public static Vector<String[]> get_provenance_instance() throws IOException
+  public static Vector<String[]> get_provenance_instance(Query query) throws IOException
   {
     Vector<String[]> provenance_instances = new Vector<String[]>();
     
@@ -182,10 +194,53 @@ public class Query_provenance {
 
     String line = null;
     
-    while((line = bufferedReader.readLine()) != null) {
+    int size = query.head.args.size() + query.head.agg_args.size();
+    for(int i = 0; i<query.body.size(); i++)
+    {
+      Subgoal subgoal = (Subgoal) query.body.get(i);
+      size += subgoal.args.size();
+    }
+//    String [] curr_provenance_values = new String[size];
+//    int col_count = 0;
+    while((line = bufferedReader.readLine()) != null) {   
+      
         String[] curr_provenance_row = line.split(separator_input, -1);
         
+//        if(col_count > 0)
+//        {
+//          curr_provenance_values[col_count - 1] += "\n" + curr_provenance_row[0];
+//          for(int i = 1; i<curr_provenance_row.length; i++)
+//          {
+//            curr_provenance_values[i + col_count - 1] = curr_provenance_row[i];
+//          }
+//          col_count += curr_provenance_row.length - 1;
+//
+//        }
+//        else
+//        {
+//          for(int i = 0; i<curr_provenance_row.length; i++)
+//          {
+//            curr_provenance_values[i + col_count] = curr_provenance_row[i];
+//          }
+//          col_count += curr_provenance_row.length;
+//
+//        }
+        if(curr_provenance_row.length != size)
+        {
+          int y = 0;
+          y++;
+        }
+
         provenance_instances.add(curr_provenance_row);
+
+        
+//        if(col_count >= size)
+//        {
+//          curr_provenance_values = new String[size];
+//          col_count = 0;
+//        }
+        
+        
     }   
 
     // Always close files.

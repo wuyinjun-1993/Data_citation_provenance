@@ -20,6 +20,10 @@ public class init {
   public static String db_prov_url = "jdbc:gprom:postgresql://localhost:5432/provenance";
   
   public static String db_url2 = "jdbc:postgresql://localhost:5432/test2";
+  
+  public static String db_dblp_url = "jdbc:postgresql://localhost:5432/dblp2";
+  
+  public static String db_dblp_prov_url = "jdbc:gprom:postgresql://localhost:5432/dblp2";
 
   
   static String [] view_tables = {"view2conditions", "view2lambda_term", "view2subgoals", "view_table", 

@@ -261,7 +261,7 @@ public class view_operation {
         
         Vector<String> agg_functions = new Vector<String>();
         
-        Vector<Argument> agg_head_var = new Vector<Argument>();
+        Vector<Vector<Argument>> agg_head_var = new Vector<Vector<Argument>>();
         
         boolean has_agg = get_head_vars(id, head_var, agg_head_var, agg_functions, name_arg_mappings, c, pst);
         
@@ -1347,9 +1347,9 @@ public class view_operation {
             
     }
 	
-	static boolean get_head_vars(int id, Vector<Argument> head_var, Vector<Argument> agg_head_var, Vector<String> agg_functions, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
+	static boolean get_head_vars(int id, Vector<Argument> head_var, Vector<Vector<Argument>> agg_head_var, Vector<String> agg_functions, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String query = "select head_var, agg_function from view2head_var where view = '" + id + "'";
+		String query = "select head_var_table.head_var_id, head_var, agg_function from view2head_var join view_head_var_table on (view_head_var_table.head_var_id = view2head_var.head_var_id) where view = '" + id + "'";
 		
 		pst = c.prepareStatement(query);
 		
@@ -1359,20 +1359,34 @@ public class view_operation {
 		
 		boolean has_agg = false;
 		
+		HashMap<String, Vector<Argument>> head_var_id_vars_mappings = new HashMap<String, Vector<Argument>>();
+		
+		HashMap<String, String> head_var_id_agg_function_mappings = new HashMap<String, String>(); 
+		
 		while(rs.next())
 		{			
-			String head_var_str = rs.getString(1).trim();
+		  String head_var_id = rs.getString(1).trim();
+		  
+			String head_var_str = rs.getString(2).trim();
 			
-			String agg_function = rs.getString(2).trim();
+			String agg_function = rs.getString(3).trim();
 			
 			Argument arg = name_arg_mappings.get(head_var_str);
             
 			if(agg_function != null)
 			{
-			  agg_functions.add(agg_function);
+			  head_var_id_agg_function_mappings.put(head_var_id, agg_function);
 			  
-			  agg_head_var.add(arg);
+			  Vector<Argument> curr_head_var = head_var_id_vars_mappings.get(head_var_id);
 			  
+			  if(curr_head_var == null)
+			  {
+			    curr_head_var = new Vector<Argument>();
+			  }
+              curr_head_var.add(arg);
+
+              head_var_id_vars_mappings.put(head_var_id, curr_head_var);
+              
 			  has_agg = true;
 			}
 			else
@@ -1381,6 +1395,19 @@ public class view_operation {
 			}
 			
 			
+		}
+		
+		Set<String> head_var_ids = head_var_id_agg_function_mappings.keySet();
+		
+		for(String head_var_id: head_var_ids)
+		{
+		  Vector<Argument> head_vars = head_var_id_vars_mappings.get(head_var_id);
+		  
+		  String agg_function = head_var_id_agg_function_mappings.get(head_var_id);
+		  
+		  agg_head_var.add(head_vars);
+		  
+		  agg_functions.add(agg_function);
 		}
 		
 		return has_agg;

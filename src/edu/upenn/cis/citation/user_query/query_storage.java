@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.Vector;
 
 import edu.upenn.cis.citation.Corecover.Argument;
@@ -161,7 +162,7 @@ public class query_storage {
         
         Vector<Argument> head_var = new Vector<Argument>();
         
-        Vector<Argument> agg_head_var = new Vector<Argument>();
+        Vector<Vector<Argument>> agg_head_var = new Vector<Vector<Argument>>();
         
 //        String id = get_id_head_vars(name, head_var, c, pst);
 
@@ -195,7 +196,7 @@ public class query_storage {
 	{
         Vector<Argument> head_var = new Vector<Argument>();
         
-        Vector<Argument> agg_head_var = new Vector<Argument>();
+        Vector<Vector<Argument>> agg_head_var = new Vector<Vector<Argument>>();
 //        String id = get_id_head_vars(name, head_var, c, pst);
 
         Vector<String> agg_functions = new Vector<String>();
@@ -435,9 +436,9 @@ public class query_storage {
 	}
 	
 	
-	static boolean get_head_vars(int id, Vector<Argument> head_args, Vector<Argument> agg_head_var, Vector<String> agg_functions, Connection c, PreparedStatement pst) throws SQLException
+	static boolean get_head_vars(int id, Vector<Argument> head_args, Vector<Vector<Argument>> agg_head_var, Vector<String> agg_functions, Connection c, PreparedStatement pst) throws SQLException
 	{
-		String query = "select head_var, agg_function from user_query2head_var where query_id = '" + id + "'";
+		String query = "select user_query2head_var.head_var_id, head_var, agg_function from user_query2head_var join user_query_head_var_table on (user_query_head_var_table.head_var_id = user_query2head_var.head_var_id where query_id = '" + id + "'";
 		
 		pst = c.prepareStatement(query);
 		
@@ -445,11 +446,18 @@ public class query_storage {
 		
 		boolean has_agg = false;
 		
+		HashMap<String, Vector<Argument>> head_id_argument_mappings = new HashMap<String, Vector<Argument>>();
+		
+		HashMap<String, String> head_id_agg_function_mappings = new HashMap<String, String>();
+		
 		while(rs.next())
 		{			
-			String head_var_str = rs.getString(1).trim();
+		  
+		  String head_var_id = rs.getString(1).trim();
+		  
+			String head_var_str = rs.getString(2).trim();
 			
-			String agg_function = rs.getString(2);
+			String agg_function = rs.getString(3);
 			
 			String []values = split_relation_attr_name(head_var_str);
             
@@ -459,9 +467,18 @@ public class query_storage {
 			
 			if(agg_function != null)
 			{
-			  agg_head_var.add(arg);
+			  head_id_agg_function_mappings.put(head_var_id, agg_function);
 			  
-			  agg_functions.add(agg_function.trim());
+			  Vector<Argument> curr_agg_arguments = head_id_argument_mappings.get(head_var_id);;
+			  
+			  if(curr_agg_arguments == null)
+			  {
+			    curr_agg_arguments = new Vector<Argument>();
+			  }
+			  
+			  curr_agg_arguments.add(arg);
+			  
+			  head_id_argument_mappings.put(head_var_id, curr_agg_arguments);
 			  
 			  has_agg = true;
 			}
@@ -471,6 +488,15 @@ public class query_storage {
 			}
 			
 	        
+		}
+		
+		Set<String> head_agg_ids = head_id_agg_function_mappings.keySet();
+		
+		for(String head_agg_id : head_agg_ids)
+		{
+		  agg_functions.add(head_id_agg_function_mappings.get(head_agg_id));
+		  
+		  agg_head_var.add(head_id_argument_mappings.get(head_agg_id));
 		}
 
 		return has_agg;

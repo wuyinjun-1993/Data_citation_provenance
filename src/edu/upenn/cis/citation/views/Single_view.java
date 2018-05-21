@@ -1009,6 +1009,10 @@ public class Single_view {
           curr_value = "false";
         }
       }
+      
+      if(curr_value.contains("'"))
+        curr_value = curr_value.replaceAll("'", "''");
+      
       grouping_value_condition_string += "'" + (curr_value) + "'";
     }
     grouping_value_condition_string += ")";

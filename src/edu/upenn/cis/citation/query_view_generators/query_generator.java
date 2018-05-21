@@ -75,7 +75,7 @@ public class query_generator {
 	
 	static int view_nums = 100;
 	
-	public static int query_result_size = 100000;
+	public static int query_result_size = 500000;
 
 	
 	static HashMap<String, String> relation_primary_key_mapping = new HashMap<String, String>();
@@ -106,7 +106,7 @@ public class query_generator {
 	    
 	    build_relation_primary_key_mapping(c, pst);
         
-        Query query = generate_query(3, c, pst);
+//        Query query = generate_query(3, c, pst);
 	    
 	    c.close();
 	    	    
@@ -380,25 +380,25 @@ public class query_generator {
 		}
 	}
 	
-	public static Query gen_query(int size, Connection c, PreparedStatement pst) throws SQLException
-	{		
-		
-		build_relation_primary_key_mapping(c, pst);
-								
-			Query queries = generate_query(size, c, pst);
-		
-		return queries;
-	}
-	
-	public static Query gen_query_for_provenance(int size, Connection c, PreparedStatement pst) throws SQLException
-    {       
-        
-        build_relation_primary_key_mapping(c, pst);
-                                
-            Query queries = generate_query(size, c, pst);
-        
-        return queries;
-    }
+//	public static Query gen_query(int size, Connection c, PreparedStatement pst) throws SQLException
+//	{		
+//		
+//		build_relation_primary_key_mapping(c, pst);
+//								
+//			Query queries = generate_query(size, c, pst);
+//		
+//		return queries;
+//	}
+//	
+//	public static Query gen_query_for_provenance(int size, Connection c, PreparedStatement pst) throws SQLException
+//    {       
+//        
+//        build_relation_primary_key_mapping(c, pst);
+//                                
+//            Query queries = generate_query(size, c, pst);
+//        
+//        return queries;
+//    }
 	
 	public static Vector<Argument> get_full_schema(String subgoal_name, String subgoal_origin_name, Connection c, PreparedStatement pst) throws SQLException
     {
@@ -421,7 +421,7 @@ public class query_generator {
         
     }
 	
-	public static Query generate_query(int size, Connection c, PreparedStatement pst) throws SQLException
+	public static Query generate_query(int size, int grouping_attr_num, int agg_attr_num, Connection c, PreparedStatement pst) throws SQLException
 	{
 	  build_relation_primary_key_mapping(c, pst);
 	  
@@ -448,6 +448,12 @@ public class query_generator {
 		Vector<Subgoal> body = new Vector<Subgoal>();
 		
 //		String [] tables = {"object", "object", "ligand"};
+//		int[] grouping_attr_num_arr = new int[size];
+//		int[] agg_attr_num_att = new int[size];
+//		for(int i = 0; i<size; i++)
+//		{
+//		  grouping_attr_num_arr[i] = 
+//		}
 		
 		for(int i = 0; i<size; i++)
 		{
@@ -494,7 +500,7 @@ public class query_generator {
 			HashMap<String, String> attr_list = parameterizable_attri_type.get(relation);
 			
 //			attr_list.addAll(attr_names);
-			System.out.println(attr_list);
+//			System.out.println(attr_list);
 			
 			Random rand = new Random();
 			
@@ -504,9 +510,9 @@ public class query_generator {
 											
 			int head_size = rand.nextInt((int)(attr_list.size() * head_var_rate + 1)) + 1;
 									
-			Vector<Argument> head_vars = gen_head_vars(false, relation, relation_name, parameterizable_attri.get(relation), 4, c, pst);
+			Vector<Argument> head_vars = gen_head_vars(false, relation, relation_name, parameterizable_attri.get(relation), grouping_attr_num, c, pst);
 			
-			Vector<Argument> agg_vars = gen_head_vars(true, relation, relation_name, parameterizable_attri.get(relation), 3, c, pst);
+			Vector<Argument> agg_vars = gen_head_vars(true, relation, relation_name, parameterizable_attri.get(relation), agg_attr_num, c, pst);
 			
 //			Argument head_arg = new Argument(relation_name + init.separator + primary_key_type[0], relation_name);
 			
@@ -524,9 +530,17 @@ public class query_generator {
 			body.add(new Subgoal(relation_name, args));
 		}
 		
+		Vector<Vector<Argument>> head_agg_var_arrs = new Vector<Vector<Argument>>();
+		
 		for(int i = 0; i<head_agg_vars.size(); i++)
 		{
 		  head_agg_functions.add("max");
+		  
+		  Vector<Argument> curr_head_args = new Vector<Argument>();
+		  
+		  curr_head_args.add(head_agg_vars.get(i));
+		  
+		  head_agg_var_arrs.add(curr_head_args);
 		}
 		
 		String[] query_local_predicate = gen_local_predicates_with_fixed_size(maps, relation_names, c, pst);
@@ -541,7 +555,7 @@ public class query_generator {
 						
 		gen_shuffled_head_args(head_grouping_vars);
 		
-		Query query = new Query(name, new Subgoal(name, head_grouping_vars, head_agg_vars, head_agg_functions, true), body, lambda_terms2, predicates, maps);
+		Query query = new Query(name, new Subgoal(name, head_grouping_vars, head_agg_var_arrs, head_agg_functions, true), body, lambda_terms2, predicates, maps);
 		
 //		queries[1] = new Query(name, new Subgoal(name, heads), body, lambda_terms2, predicates, maps);
 		
@@ -772,7 +786,7 @@ public class query_generator {
 			  {
 			    if(is_agg_attrs && aggregated_attributes.contains(parameterizable_attri_type.get(relation).get(attr_list.get(index))))
 			    {
-			      System.out.println(parameterizable_attri_type.get(relation).get(attr_list.get(index)));
+//			      System.out.println(parameterizable_attri_type.get(relation).get(attr_list.get(index)));
 			      
 			      id_set.add(index);
 			    }

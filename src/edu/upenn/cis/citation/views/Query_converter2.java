@@ -18,6 +18,8 @@ import edu.upenn.cis.citation.init.init;
 
 public class Query_converter2 {
 
+  static String temp_prefix = "";
+  
   public static String datalog2sql(Query query, boolean isPro_query)
   {
       
@@ -284,7 +286,7 @@ public class Query_converter2 {
     return "(" + clause + ")";
   }
   
-  public static String data2sql_partial_instantiation_with_grouping_values(Single_view view, Vector<Argument> selected_args, Vector<Argument> grouping_args, Vector<String> agg_functions, Vector<Head_strs> grouping_values, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
+  public static String data2sql_partial_instantiation_with_grouping_values(Single_view view, Vector<Argument> selected_args, Vector<Vector<Argument>> grouping_args, Vector<String> agg_functions, Vector<Head_strs> grouping_values, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
   {
     String sql = new String();
 
@@ -522,6 +524,109 @@ public class Query_converter2 {
     return sql;
   }
   
+  static String get_sel_item_with_why_token_columns_encoded(Vector<Argument> args, int[] query_head_attr_view_head_ids)
+  {
+      String str = "md5(";
+      
+//    System.out.println("head::" + q.head);
+      
+      for(int i = 0; i<args.size(); i++)
+      {
+          Argument arg = (Argument) args.get(i);
+          
+          if(i >= 1)
+              str += "||'" + init.separator + "'||";
+          
+          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          
+//          str += arg.relation_name + "." + attr_name;
+          
+          str += arg.relation_name + "." + attr_name;
+          
+      }
+      
+      str += "), md5(";
+      
+      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
+      {
+        Argument arg = args.get(query_head_attr_view_head_ids[i]);
+        
+        if(i >= 1)
+          str += "||'" + init.separator + "'||";
+        
+        String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        
+//        str += arg.relation_name + "." + attr_name;
+        
+        str += arg.relation_name + "." + attr_name;
+        
+      }
+      
+      str += ")";
+      
+      return str;
+  }
+  
+  public static HashMap<String, String> data2sql_check_having_clause(Tuple tuple, Single_view view, int[] query_head_attr_view_head_ids)
+  {
+    HashMap<String, String> sql_clauses = new HashMap<String, String>();
+    
+    String sql = new String();
+    
+    String sel_item = get_sel_item_with_why_token_columns_encoded(view.head.args, query_head_attr_view_head_ids);//get_sel_item_with_why_token_columns(view.head.args, false);
+    
+    String group_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    
+    String agg_attributes = new String();
+    
+    String citation_table = get_relations_without_citation_table(view, false);
+
+    String condition = get_condition(view, false);
+    
+    String having_clause = get_having_clauses(view, false);
+    
+    sql = "select " + sel_item;
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+        agg_attributes += ",";
+      
+      agg_attributes += "count(*)"; 
+      //agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+      
+    }
+    sql_clauses.put("select_agg", agg_attributes);
+    sql_clauses.put("select", sel_item);
+    sql_clauses.put("from", citation_table);
+    if(condition != null && !condition.isEmpty())
+    {
+      sql_clauses.put("where", condition);
+    }
+    if(view.head.has_agg && view.head.args.size() > 0)
+    {
+      sql_clauses.put("group_by", group_item);
+    }
+    
+    if(!having_clause.isEmpty())
+    {
+      sql_clauses.put("having", having_clause);
+    }
+    return sql_clauses;
+//    sql += " from " + citation_table;
+//    
+//    if(view.head.args.size() > 0)
+//    {
+//      sql += " where (" + grouping_attr_condition_string + ")";
+//      
+//      if(condition != null && !condition.isEmpty())
+//      {
+//        sql += " and " + condition;
+//      }
+//
+//    }
+//    else
+  }
   public static HashMap<String, String> data2sql_check_having_clause(Tuple tuple, Single_view view)
   {
     HashMap<String, String> sql_clauses = new HashMap<String, String>();
@@ -545,8 +650,8 @@ public class Query_converter2 {
       if(view.head.args.size() > 0)
         agg_attributes += ",";
       
-      agg_attributes += "count(*),"; 
-      agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+      agg_attributes += "count(*)"; 
+      //agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
       
     }
     sql_clauses.put("select_agg", agg_attributes);
@@ -580,6 +685,7 @@ public class Query_converter2 {
 //    }
 //    else
   }
+  
   
   static String get_view_provenance_clause(Single_view view, Set<Head_strs> provenance_values, Vector<Integer> view_why_prov_ids)
   {
@@ -778,9 +884,9 @@ public class Query_converter2 {
       if(view.head.args.size() > 0)
         agg_attributes += ",";
       
-      agg_attributes += "count(*),";
+      agg_attributes += "count(*)";
       
-      agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+//      agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
     }
     
     sql_clauses.put("select_agg", agg_attributes);
@@ -811,7 +917,7 @@ public class Query_converter2 {
     return sql_clauses;
   }
   
-  public static String data2sql_partial_instantiation_with_provenance_values(Single_view view, Vector<Argument> selected_args, Vector<Argument> grouping_args, Vector<String> agg_functions, String[] view_subgoal_copies, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
+  public static String data2sql_partial_instantiation_with_provenance_values(Single_view view, Vector<Argument> selected_args, Vector<Vector<Argument>> grouping_args, Vector<String> agg_functions, String[] view_subgoal_copies, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
   {
     String sql = new String();
 
@@ -957,13 +1063,19 @@ public class Query_converter2 {
       if(i >= 1)
         string += ",";
       
-      Argument arg = (Argument) q.head.agg_args.get(i);
-      
-      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      String agg_attr_string = get_agg_attr_string(q.head.agg_args.get(i), true);
       
       String agg_function = (String) q.head.agg_function.get(i);
       
-      string += agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
+      string += agg_function + "(" + agg_attr_string + ")"; 
+      
+//      Argument arg = (Argument) q.head.agg_args.get(i);
+//      
+//      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+//      
+//      String agg_function = (String) q.head.agg_function.get(i);
+//      
+//      string += agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
     }
     
     return string;
@@ -971,11 +1083,11 @@ public class Query_converter2 {
     
   }
   
-  static String get_agg_item_in_select_clause(Vector<Argument> agg_attributes, Vector<String> agg_functions, boolean isProv_query)
+  static String get_agg_attr_string(Vector<Argument> agg_attributes, boolean isProv_query)
   {
     String string = new String();
     
-    for(int i = 0; i < agg_attributes.size(); i++)
+    for(int i = 0; i<agg_attributes.size(); i++)
     {
       if(i >= 1)
         string += ",";
@@ -984,12 +1096,39 @@ public class Query_converter2 {
       
       String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
+      if(isProv_query)
+        string += "\"" + arg.relation_name + "." + attr_name + "\"";
+      else
+        string += arg.relation_name + "." + attr_name;
+    }
+    return string;
+  }
+  
+  static String get_agg_item_in_select_clause(Vector<Vector<Argument>> agg_attributes, Vector<String> agg_functions, boolean isProv_query)
+  {
+    String string = new String();
+    
+    for(int i = 0; i < agg_attributes.size(); i++)
+    {
+      if(i >= 1)
+        string += ",";
+      
+      String agg_attr_string = get_agg_attr_string(agg_attributes.get(i), isProv_query);
+      
       String agg_function = (String) agg_functions.get(i);
       
-      if(isProv_query)
-        string += agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
-      else
-        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
+      string += agg_function + "(" + agg_attr_string + ")"; 
+      
+//      Argument arg = (Argument) agg_attributes.get(i);
+//      
+//      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+//      
+//      String agg_function = (String) agg_functions.get(i);
+//      
+//      if(isProv_query)
+//        string += agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
+//      else
+//        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
     }
     
     return string;
@@ -1073,9 +1212,9 @@ public class Query_converter2 {
           Subgoal subgoal = (Subgoal) q.subgoals.get(i);
           
           if(isProv_query)
-            str += "\"" + "_tmp_" + q.subgoal_name_mappings.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
+            str += "\"" + temp_prefix + q.subgoal_name_mappings.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
           else
-            str += "_tmp_" + q.subgoal_name_mappings.get(subgoal.name) + " " + subgoal.name;
+            str += temp_prefix + q.subgoal_name_mappings.get(subgoal.name) + " " + subgoal.name;
           
 //        str += "," + q.subgoal_name_mapping.get(subgoal.name) + populate_db.suffix + " " + subgoal.name + populate_db.suffix; 
       }
@@ -1113,7 +1252,7 @@ public class Query_converter2 {
       if(count > 0)
         string += ",";
       
-      string += "_tmp_" + relation_name + " as (select ";
+      string += temp_prefix + relation_name + " as (select ";
       for(int i = 0; i<arg_names.size(); i++)
       {
         String arg_name_string = arg_names.get(i);

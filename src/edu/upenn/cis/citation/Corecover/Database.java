@@ -53,7 +53,7 @@ public class Database {
       sr = join(sr, subgoalRel, query.getName(), num);
 
       Vector usefulArgs = query.getUsefulArgs(i);
-      sr = sr.project(usefulArgs, query.head.agg_args, query.head.agg_function);
+      sr = sr.project(usefulArgs);
       
       num ++;
       
@@ -168,7 +168,7 @@ public class Database {
             curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
 
             Vector usefulArgs = view.getUsefulArgs(id);
-            curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
+            curr_sr = curr_sr.project(usefulArgs);
             
             num ++;
           }
@@ -198,7 +198,7 @@ public class Database {
               curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
               
               Vector usefulArgs = view.getUsefulArgs(subgoal_id);
-              curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
+              curr_sr = curr_sr.project(usefulArgs);
             }
             
             curr_srs.add(curr_sr);
@@ -320,7 +320,7 @@ public class Database {
             curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
 
             Vector usefulArgs = view.getUsefulArgs(id);
-            curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
+            curr_sr = curr_sr.project(usefulArgs);
             
             num ++;
           }
@@ -350,7 +350,7 @@ public class Database {
               curr_sr = join(curr_sr, subgoalRel, view.view_name, num);
               
               Vector usefulArgs = view.getUsefulArgs(subgoal_id);
-              curr_sr = curr_sr.project(usefulArgs, view.head.agg_args, view.head.agg_function);
+              curr_sr = curr_sr.project(usefulArgs);
               
               num++;
             }
@@ -757,6 +757,14 @@ public class Database {
 
 	      for (Iterator iter2 = tuples2.iterator(); iter2.hasNext();) {
 		  Tuple tuple2 = (Tuple) iter2.next();
+		  
+		  HashSet<String> target_strings = new HashSet<String>();
+		  target_strings.addAll(tuple1.getTargetSubgoal_strs());
+		  
+		  target_strings.removeAll(tuple2.getTargetSubgoal_strs());
+		  
+		  if(target_strings.size() != tuple1.getTargetSubgoal_strs().size())
+		    continue;
 
 		// joins two tuples
 		Tuple tuple = join(tuple1, schema1, tuple1.agg_args, tuple1.agg_functions, tuple2, schema2, tuple2.agg_args, tuple2.agg_functions, resName);
@@ -777,16 +785,43 @@ public class Database {
 	     Tuple tuple2, Vector schema2, Vector agg_schema2, Vector agg_function2, String resName) {
     
     Vector resTupleArgs = new Vector();
-    Vector resTupleagg_args = new Vector();
-    Vector resTupleagg_functions = new Vector();
+    Vector resTupleagg_args = null;
+    Vector resTupleagg_functions = null;
     Vector tuple1Args = tuple1.getArgs();
     Vector tuple2Args = tuple2.getArgs();
     
+    if(agg_schema1 != null)
+    {
+      resTupleagg_args = new Vector<>();
+      resTupleagg_functions = new Vector<>();
+      resTupleagg_args.addAll(agg_schema1);
+      resTupleagg_functions.addAll(agg_function1);
+      
+      if(agg_schema2 != null)
+      {
+        resTupleagg_args.addAll(agg_schema2);
+        
+        resTupleagg_functions.addAll(agg_function2);
+      }
+    }
+    else
+    {
+      if(agg_schema2 != null)
+      {
+        if(resTupleagg_args!=null)
+        {
+          resTupleagg_args = new Vector<>();
+          
+          resTupleagg_functions = new Vector<>();
+        }
+        
+        resTupleagg_args.addAll(agg_schema2);
+        
+        resTupleagg_functions.addAll(agg_function2);
+      }
+    }
+      
     
-    resTupleagg_args.addAll(agg_schema1);
-    resTupleagg_args.addAll(agg_schema2);
-    resTupleagg_functions.addAll(agg_function1);
-    resTupleagg_functions.addAll(agg_function2);
     
     if (tuple1Args.size() != schema1.size() || 
 	tuple2Args.size() != schema2.size()) {

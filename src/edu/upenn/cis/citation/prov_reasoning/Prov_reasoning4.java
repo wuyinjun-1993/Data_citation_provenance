@@ -48,6 +48,7 @@ import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing3;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
 import edu.upenn.cis.citation.pre_processing.view_operation;
@@ -68,11 +69,11 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   static ConcurrentHashMap<String, Vector<String>> rel_attr_mappings = new ConcurrentHashMap<String, Vector<String>>();
   
 //  static ConcurrentHashMap<String, Head_strs> tuples = new ConcurrentHashMap<String, Head_strs>();
-  public static String view_file_name = "views";
+  public static String view_file_name = Query_provenance.directory+ "views";
   
-  public static String citation_query_file_name = "citation_queries";
+  public static String citation_query_file_name = Query_provenance.directory+"citation_queries";
   
-  public static String view_citation_query_mapping_file_name = "view_citation_query_mappings";
+  public static String view_citation_query_mapping_file_name = Query_provenance.directory+"view_citation_query_mappings";
   
   public static boolean test_case = true;
   
@@ -128,6 +129,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   static ConcurrentHashMap<String, String[]> reliable_agg_functions = new ConcurrentHashMap<String, String[]>();
   
+  public static int batch_size = 5;
+  
   public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException
   {
     Vector<Integer> index = new Vector<Integer>();
@@ -182,13 +185,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   public static void init_from_files(Connection c, PreparedStatement pst) throws SQLException
   {
     Vector<Query> views = Load_views_and_citation_queries.get_views(view_file_name, c, pst);
-    Vector<Query> citation_queries = Load_views_and_citation_queries.get_views(citation_query_file_name, c, pst);
-    HashMap<String, HashMap<String, String>> view_citation_query_mappings = Load_views_and_citation_queries.get_view_citation_query_mappings(view_citation_query_mapping_file_name);
-    HashMap<String, Query> name_citation_query_mappings = new HashMap<String, Query>();
-    for(int i = 0; i<citation_queries.size(); i++)
-    {
-      name_citation_query_mappings.put(citation_queries.get(i).name, citation_queries.get(i));
-    }
+//    Vector<Query> citation_queries = Load_views_and_citation_queries.get_views(citation_query_file_name, c, pst);
+//    HashMap<String, HashMap<String, String>> view_citation_query_mappings = Load_views_and_citation_queries.get_view_citation_query_mappings(view_citation_query_mapping_file_name);
+//    HashMap<String, Query> name_citation_query_mappings = new HashMap<String, Query>();
+//    for(int i = 0; i<citation_queries.size(); i++)
+//    {
+//      name_citation_query_mappings.put(citation_queries.get(i).name, citation_queries.get(i));
+//    }
     for(int i = 0; i<views.size(); i++)
     {
       Query view = views.get(i);
@@ -199,7 +202,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
       view_objs.add(view_obj);
       
-      view_obj.load_citation_queries(view_citation_query_mappings.get(view.name), name_citation_query_mappings);
+//      view_obj.load_citation_queries(view_citation_query_mappings.get(view.name), name_citation_query_mappings);
     }
   }
 
@@ -371,9 +374,18 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     return strictly_finers;
   }
   
-  static boolean deal_with_same_agg_functions(boolean finer_grouping, Tuple tuple, Argument q_group_arg, String agg_function, int q_group_agg_id)
+  static boolean deal_with_same_agg_functions(boolean finer_grouping, Tuple tuple, Vector<Argument> q_group_arg, String agg_function, int q_group_agg_id)
   {
-    int id = tuple.agg_args.indexOf(q_group_arg);
+    int id = -1;
+    
+    for(int i = 0; i<tuple.agg_args.size(); i++)
+    {
+      if(tuple.agg_args.get(i).containsAll(q_group_arg) && q_group_arg.containsAll(tuple.agg_args.get(i)))
+      {
+        id = i;
+      }
+    }
+//    tuple.agg_args.indexOf(q_group_arg);
     
     if(id < 0)
       return false;
@@ -384,7 +396,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       {
         if(tuple.target_agg_args == null)
         {
-          tuple.target_agg_args = new Vector<Argument>();
+          tuple.target_agg_args = new Vector<Vector<Argument>>();
           
           tuple.target_agg_functions = new Vector<String>();
           
@@ -411,7 +423,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         {
           if(tuple.target_agg_args == null)
           {
-            tuple.target_agg_args = new Vector<Argument>();
+            tuple.target_agg_args = new Vector<Vector<Argument>>();
             
             tuple.target_agg_functions = new Vector<String>();
             
@@ -437,7 +449,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  static boolean deal_with_agg_functions(boolean finer_grouping, Tuple tuple, Argument q_group_arg, String q_group_function, int q_group_arg_id)
+  static boolean deal_with_agg_functions(boolean finer_grouping, Tuple tuple, Vector<Argument> q_group_arg, String q_group_function, int q_group_arg_id)
   {
     int id = 0;
     
@@ -445,7 +457,22 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     while(id >= 0)
     {
-      id = tuple.agg_args.indexOf(q_group_arg, id + 1);
+//      id = tuple.agg_args.indexOf(q_group_arg, id + 1);
+      
+      int i = 0;
+      
+      for(i = id; i<tuple.agg_args.size(); i++)
+      {
+        if(tuple.agg_args.get(i).containsAll(q_group_arg) && q_group_arg.containsAll(tuple.agg_args.get(i)))
+        {
+          id = i;
+          break;
+        }
+      }
+      
+      if(i >= tuple.agg_args.size())
+        break;
+      
       
       if(id >= 0)
       {
@@ -464,7 +491,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       {
         if(tuple.target_agg_args == null)
         {
-          tuple.target_agg_args = new Vector<Argument>();
+          tuple.target_agg_args = new Vector<Vector<Argument>>();
           
           tuple.target_agg_functions = new Vector<String>();
           
@@ -492,7 +519,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         if(tuple.target_agg_args == null)
         {
-          tuple.target_agg_args = new Vector<Argument>();
+          tuple.target_agg_args = new Vector<Vector<Argument>>();
           
           tuple.target_agg_functions = new Vector<String>();
           
@@ -584,11 +611,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         Set<Single_view> views = all_possible_view_mappings_copy.keySet();
         
-        Argument arg = (Argument) head.agg_args.get(i);
+        Vector<Argument> args = head.agg_args.get(i);
         
         String agg_function = (String) head.agg_function.get(i);
-        
-        String arg_rel_name = arg.relation_name;
         
         HashSet<Tuple> possible_view_mappings_per_head_var = new HashSet<Tuple>();
         
@@ -602,9 +627,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           {
             Tuple tuple = (Tuple) iter2.next();
             
-            
-            
-            if(tuple.args.contains(arg) || deal_with_same_agg_functions(strictly_finers.get(tuple), tuple, arg, agg_function, i) || deal_with_agg_functions(strictly_finers.get(tuple), tuple, arg, agg_function, i))
+            if(tuple.args.containsAll(args) || deal_with_same_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i) || deal_with_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i))
             {
               tuple.is_strictly_finer = strictly_finers.get(tuple);
               
@@ -839,8 +862,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
     Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
     
-    int batch_size = 10;
-    
     int count = 0;
     
     for(Iterator iter = views.iterator(); iter.hasNext();)
@@ -885,7 +906,23 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         }
         check_threads.clear();
       }
-      
+//      if(count - batch_size == 0)
+//      {
+//        for(int i = 0; i<check_threads.size(); i++)
+//        {
+//          check_threads.get(i).join();
+//          count--;
+//          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+//          check_threads.remove(i);
+//          break;
+//        }
+//        
+////        for(int i = 0; i<check_threads.size(); i++)
+////        {
+////          
+////        }
+////        check_threads.clear();
+//      }
 //      check_thread.join();
       
       

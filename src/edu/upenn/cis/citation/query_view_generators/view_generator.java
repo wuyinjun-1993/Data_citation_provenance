@@ -575,7 +575,7 @@ public class view_generator {
     
     head_grouping_attrs.addAll(query.head.args);
     
-    Vector<Argument> head_agg_attrs = new Vector<Argument>();
+    Vector<Vector<Argument>> head_agg_attrs = new Vector<Vector<Argument>>();
 
     Vector<String> head_agg_functions = new Vector<String>();
     
@@ -584,7 +584,7 @@ public class view_generator {
     HashMap<String, String> maps = new HashMap<String, String>();
     for(int i = 0; i<query.head.agg_args.size(); i++)
     {
-      Argument head_grouping_arg = (Argument) query.head.agg_args.get(i);
+      Argument head_grouping_arg = (Argument) query.head.agg_args.get(i).get(0);
       String rel_name = head_grouping_arg.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
       String origin_rel_name = query.subgoal_name_mapping.get(rel_name);
       String arg_name = head_grouping_arg.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
@@ -595,7 +595,11 @@ public class view_generator {
         
         if(b)
         {
-          head_agg_attrs.add((Argument) query.head.agg_args.get(i));
+          Vector<Argument> curr_head_arr = new Vector<Argument>();
+          
+          curr_head_arr.add((Argument) query.head.agg_args.get(i).get(0));
+          
+          head_agg_attrs.add(curr_head_arr);
           head_agg_functions.add((String) query.head.agg_function.get(i));
         }
       }
@@ -603,7 +607,11 @@ public class view_generator {
     
     if(head_agg_attrs.isEmpty())
     {
-      head_agg_attrs.add((Argument) query.head.agg_args.get(0));
+      Vector<Argument> curr_head_arr = new Vector<Argument>();
+      
+      curr_head_arr.add((Argument) query.head.agg_args.get(0).get(0));
+      
+      head_agg_attrs.add(curr_head_arr);
       head_agg_functions.add((String) query.head.agg_function.get(0));
     }
     maps.putAll(query.subgoal_name_mapping);

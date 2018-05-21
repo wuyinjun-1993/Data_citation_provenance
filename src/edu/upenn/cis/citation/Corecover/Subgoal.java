@@ -10,7 +10,7 @@ import java.util.*;
 public class Subgoal {
   public String name = null;  // subgoal name
   public Vector args = null;  // a list of arguments
-  public Vector agg_args = null;
+  public Vector<Vector<Argument>> agg_args = null;
   public Vector agg_function = null;
   public boolean has_agg = false;
 //  public String origin_name = null;
@@ -20,7 +20,7 @@ public class Subgoal {
     this.args = args;
   }
   
-  public Subgoal(String name, Vector args, Vector agg_args, Vector agg_function, boolean has_agg) {
+  public Subgoal(String name, Vector args, Vector<Vector<Argument>> agg_args, Vector agg_function, boolean has_agg) {
     this.name = name;
     this.args = args;
     this.agg_args = agg_args;

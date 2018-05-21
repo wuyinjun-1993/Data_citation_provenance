@@ -13,14 +13,14 @@ import edu.upenn.cis.citation.views.Single_view;
 public class Tuple {
   public String name = null;
   public Vector args = null;  // a list of arguments
-  public Vector agg_args = null;
+  public Vector<Vector<Argument>> agg_args = null;
   public Vector agg_functions = null;
   public Mapping phi = null;  // mapping from query args to the database deriving
 		       // the tuple
   public boolean is_strictly_finer = false;
   public Mapping reverse_phi = null;
   
-  public Vector target_agg_args = null;
+  public Vector<Vector<Argument>> target_agg_args = null;
   public Vector target_agg_functions = null;
   public Vector target_agg_ids = null;
   
@@ -97,9 +97,21 @@ public class Tuple {
     if(agg_args != null)
     for(int i = 0; i<agg_args.size(); i++)
     {
-      Argument arg = (Argument) agg_args.get(i);
+      String agg_arg_string = new String();
+      for(int k = 0; k<agg_args.get(i).size(); k++)
+      {
+        Argument arg = (Argument) agg_args.get(i).get(k);
+        
+        if(k >= 1)
+          agg_arg_string += ",";
+          
+        agg_arg_string += arg.toString();
+        
+      }
       
-      head_string += "," + agg_functions.get(i) + "(" + arg.toString() + ")";
+      
+      
+      head_string += "," + agg_functions.get(i) + "(" + agg_arg_string + ")";
       
     }
     
@@ -152,6 +164,13 @@ public class Tuple {
 	    
 	    this.hash_string = name + get_head_string() + "|" + sorted_mapping_string;
 	  }
+  
+  public void cal_hash_string()
+  {
+    String sorted_mapping_string = get_sorted_mapping_string(mapSubgoals_str);
+    
+    this.hash_string = name + get_head_string() + "|" + sorted_mapping_string;
+  }
   
   Tuple(String name, Vector args, Mapping phi, Mapping phi_str, Mapping reverse_phi, HashMap mapSubgoals) {
     this.name = name;

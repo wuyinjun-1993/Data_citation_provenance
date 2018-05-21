@@ -28,6 +28,8 @@ public class Load_views_and_citation_queries {
 	
 	static String split1 = "|";
 	
+	static String split2 = "#";
+	
 	static int col_nums = 4;
 	
 	public static void main(String [] args) throws ClassNotFoundException, SQLException
@@ -442,6 +444,8 @@ public class Load_views_and_citation_queries {
         
         arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("("));
         
+        System.out.println(arg_with_agg_function);
+        
         arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")"));
         
       }
@@ -455,7 +459,7 @@ public class Load_views_and_citation_queries {
 		
 		Vector<Argument> head_args = new Vector<Argument>();
 		
-		Vector<Argument> head_agg_args = null;
+		Vector<Vector<Argument>> head_agg_args = null;
 		
 		Vector<String> head_agg_functions = null; 
 		
@@ -474,40 +478,51 @@ public class Load_views_and_citation_queries {
 		  {
 		    head_var = arg_with_agg_function_strings[1];
 		    
+		    if(head_agg_args == null)
+		    {
+		      head_agg_args = new Vector<Vector<Argument>>();
+	            
+	          head_agg_functions = new Vector<String>();
+		    }
+		    
+		    String[] all_head_vars = head_var.split(split2);
+		    
+		    Vector<Argument> curr_head_agg_args = new Vector<Argument>();
+		    
+		    for(int k = 0; k<all_head_vars.length; k++)
+		    {
+		      String[] relation_arg = all_head_vars[k].trim().split("\\" + ".");
+		      
+		      String relation = relation_arg[0].trim();
+	            
+	          String arg = relation_arg[1].trim();
+	            
+	          Argument Arg = name_arg_mappings.get(relation + init.separator + arg);
+	          
+	          curr_head_agg_args.add(Arg);
+		    }
+		    
 		    agg_function = arg_with_agg_function_strings[0].toLowerCase();
+		    
+            head_agg_functions.add(agg_function);
+            
+            head_agg_args.add(curr_head_agg_args);
 		  }
 		  else
 		  {
 		    head_var = head_arg_strs[i];
+		    
+		    String [] relation_arg = head_var.trim().split("\\" + ".");
+            
+            String relation = relation_arg[0].trim();
+            
+            String arg = relation_arg[1].trim();
+            
+            Argument Arg = name_arg_mappings.get(relation + init.separator + arg);
+            
+            head_args.add(Arg);
 		  }
 		  
-			String [] relation_arg = head_var.trim().split("\\" + ".");
-			
-			String relation = relation_arg[0].trim();
-			
-			String arg = relation_arg[1].trim();
-			
-			Argument Arg = name_arg_mappings.get(relation + init.separator + arg);
-			
-			if(arg_with_agg_function_strings == null)
-			{
-	           head_args.add(Arg);
-			}
-			else
-			{
-			  if(head_agg_args == null)
-			  {
-			    head_agg_args = new Vector<Argument>();
-			    
-			    head_agg_functions = new Vector<String>();
-			  }
-			  
-			  head_agg_args.add(Arg);
-			  
-			  head_agg_functions.add(agg_function);
-			}
-			
-			
 		}
 		
 		if(head_agg_args != null)

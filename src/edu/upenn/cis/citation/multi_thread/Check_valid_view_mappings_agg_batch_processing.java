@@ -590,6 +590,7 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
 //    System.out.println(view_grouping_values_from_query);
     int[] query_head_attr_view_head_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(tuple);
     HashMap<String, String> sql_clauses = Query_converter.data2sql_check_having_clause(tuple, view, query_head_attr_view_head_ids);
+    System.out.println(sql_clauses);
     ArrayList<String> grouping_value_copies = new ArrayList<String>();
     grouping_value_copies.addAll(grouping_values);
     view_head_vals_tuple_count = cal_count_partitions(grouping_value_copies, grouping_value_condition_string, sql_clauses, view.head.args.size(), view_head_value_query_head_value_mappings);
@@ -1005,7 +1006,7 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
     
     HashMap<String, Integer> counts_per_group = new HashMap<String, Integer>();
     long t1 = System.nanoTime();
-    while(num < where_clause_values.size())
+//    while(num < where_clause_values.size())
     {
       String sql = view.local_with_clause + " select ";
       
@@ -1019,16 +1020,16 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
       }
       
       sql += " from " + sql_other_clauses.get("from");
-      int start = num;
-      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
+//      int start = num;
+//      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
       long t3 = System.nanoTime();
       if(sql_other_clauses.get("where") != null)
       {
-        sql += " where " + sql_other_clauses.get("where") + " and " + where_clause_attrs + "in (VALUES" + gen_value_partitions(where_clause_values, start, end) + ")";
+        sql += " where " + sql_other_clauses.get("where") + " and " + where_clause_attrs + "in (VALUES" + gen_value_partitions(where_clause_values, 0, where_clause_values.size()) + ")";
       }
       else
       {
-        sql += " where " + where_clause_attrs + "in (VALUES" + gen_value_partitions(where_clause_values, start, end) + ")";
+        sql += " where " + where_clause_attrs + "in (VALUES" + gen_value_partitions(where_clause_values, 0, where_clause_values.size()) + ")";
       }
       
       long t4 = System.nanoTime();
@@ -1149,9 +1150,10 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
     
     HashMap<String, Integer> counts_per_group = new HashMap<String, Integer>();
     long t1 = System.nanoTime();
-    while(num < where_clause_values.size())
+//    while(num < where_clause_values.size())
     {
-      String sql = view.local_with_clause + " select ";
+//      String sql = view.local_with_clause + " select ";
+      String sql = "select ";
       
       if(sql_other_clauses.get("select") != null)
       {
@@ -1163,16 +1165,16 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
       }
       
       sql += " from " + sql_other_clauses.get("from");
-      int start = num;
-      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
+//      int start = num;
+//      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
       
       if(sql_other_clauses.get("where") != null)
       {
-        sql += " where " + sql_other_clauses.get("where") + " and " + where_clause_attrs + "in (VALUES" + gen_value_partitions2(where_clause_values, start, end) + ")";
+        sql += " where " + sql_other_clauses.get("where") + " and " + where_clause_attrs + "in (VALUES" + gen_value_partitions2(where_clause_values, 0, where_clause_values.size()) + ")";
       }
       else
       {
-        sql += " where " + where_clause_attrs + "in (VALUES" + gen_value_partitions2(where_clause_values, start, end) + ")";
+        sql += " where " + where_clause_attrs + "in (VALUES" + gen_value_partitions2(where_clause_values, 0, where_clause_values.size()) + ")";
       }
       
       
@@ -1188,7 +1190,7 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
       }
       
 //      System.out.println(sql);
-      System.out.println(sql);
+//      System.out.println(sql);
       
       pst = c.prepareStatement(sql);
       
@@ -1404,12 +1406,31 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
     return args;
   }
   
+  static Vector<Vector<Argument>> get_agg_attribute_in_view(Tuple tuple, Vector<Vector<Argument>> arg_in_q)
+  {
+    Vector<Vector<Argument>> args = new Vector<Vector<Argument>>();
+    
+    for(int i = 0; i<arg_in_q.size(); i++)
+    {
+      Vector<Argument> curr_agg_args = new Vector<Argument>();
+      
+      for(int k = 0; k<arg_in_q.get(i).size(); k++)
+      {
+        curr_agg_args.add(tuple.reverse_phi.apply(arg_in_q.get(i).get(k)));
+      }
+      
+      args.add(curr_agg_args);
+    }
+    
+    return args;
+  }
+  
   void partially_instantiate_views_with_grouping_values(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
   {
     
     Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
     
-    Vector<Argument> grouping_args = get_attribute_in_view(tuple, tuple.target_agg_args);
+    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
     
     Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
     
@@ -1470,7 +1491,7 @@ public class Check_valid_view_mappings_agg_batch_processing implements Check_val
     
     Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
     
-    Vector<Argument> grouping_args = get_attribute_in_view(tuple, tuple.target_agg_args);
+    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
     
     Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
     

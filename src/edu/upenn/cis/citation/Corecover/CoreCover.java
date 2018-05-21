@@ -236,6 +236,10 @@ public class CoreCover {
           
 //          System.out.println("valid_tuple::" + tuple);
           
+          if(!set_tuple_agg_terms(tuple, view))
+            continue;
+          
+          
           if(!set_tuple_lambda_term(tuple, view.subgoal_lambda_term_mappings))
           {
               continue;
@@ -249,6 +253,61 @@ public class CoreCover {
       }
        // add them to the results
     return viewTuples;
+  }
+  
+  static boolean set_tuple_agg_terms(Tuple tuple, Single_view view)
+  {
+    if(!view.head.has_agg)
+      return true;
+    
+    Vector<Vector<Argument>> tuple_agg_variables = new Vector<Vector<Argument>>();
+    
+    Vector<String> tuple_agg_functions = new Vector<String>();
+    
+    for(int i = 0; i<view.head.agg_function.size(); i++)
+    {
+      String agg_function = (String) view.head.agg_function.get(i);
+      
+      Vector<Argument> agg_variables = view.head.agg_args.get(i);
+      
+      Vector<Argument> q_agg_variables = new Vector<Argument>();
+      
+      int k = 0;
+      
+      for(k = 0; k<agg_variables.size(); k++)
+      {
+        Argument view_agg_variable = agg_variables.get(k);
+        
+        Argument q_agg_variable = tuple.phi.apply(view_agg_variable);
+        
+        if(q_agg_variable == null)
+          break;
+        
+        q_agg_variables.add(q_agg_variable);
+      }
+      
+      if(k >0 && k < agg_variables.size())
+        return false;
+      else
+      {
+        if(k >= agg_variables.size())
+        {
+          tuple_agg_functions.add(agg_function);
+          
+          tuple_agg_variables.add(q_agg_variables);
+        }
+      }
+    }
+    
+    tuple.agg_args = tuple_agg_variables;
+    
+    tuple.agg_functions = tuple_agg_functions;
+    
+    tuple.cal_hash_string();
+    
+    return true;
+    
+    
   }
   
   static boolean set_tuple_lambda_term(Tuple tuple, Query view)

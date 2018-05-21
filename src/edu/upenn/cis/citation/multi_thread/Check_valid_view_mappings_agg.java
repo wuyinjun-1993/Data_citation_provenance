@@ -807,12 +807,31 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     return args;
   }
   
+  static Vector<Vector<Argument>> get_agg_attribute_in_view(Tuple tuple, Vector<Vector<Argument>> arg_in_q)
+  {
+    Vector<Vector<Argument>> args = new Vector<Vector<Argument>>();
+    
+    for(int i = 0; i<arg_in_q.size(); i++)
+    {
+      Vector<Argument> curr_agg_args = new Vector<Argument>();
+      
+      for(int k = 0; k<arg_in_q.get(i).size(); k++)
+      {
+        curr_agg_args.add(tuple.reverse_phi.apply(arg_in_q.get(i).get(k)));
+      }
+      
+      args.add(curr_agg_args);
+    }
+    
+    return args;
+  }
+  
   void partially_instantiate_views_with_grouping_values(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
   {
     
     Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
     
-    Vector<Argument> grouping_args = get_attribute_in_view(tuple, tuple.target_agg_args);
+    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
     
     Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
     
@@ -873,7 +892,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
     
     Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
     
-    Vector<Argument> grouping_args = get_attribute_in_view(tuple, tuple.target_agg_args);
+    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
     
     Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
     

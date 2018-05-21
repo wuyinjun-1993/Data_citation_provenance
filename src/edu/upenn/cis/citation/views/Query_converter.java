@@ -27,17 +27,39 @@ public class Query_converter {
       String sql = new String();
 
       String sel_item = get_sel_item(query);
-          
+      
+      String sel_agg_item = get_agg_item_in_select_clause(query, isPro_query);
+      
+      String having_clause = get_having_clauses(query, isPro_query);
+      
       String citation_table = get_relations_without_citation_table(query, isPro_query);
       
       String condition = get_condition(query, isPro_query);
-              
-      sql = "select " + sel_item;
+             
+      if(!sel_item.isEmpty())
+      {
+        sql = "select " + sel_item;
+        if(!sel_agg_item.isEmpty())
+          sql += "," + sel_item;
+      }
+      else
+      {
+        if(!sel_agg_item.isEmpty())
+          sql += sel_item;
+      }
+      
       
       sql += " from " + citation_table;
       
       if(condition != null && !condition.isEmpty())
           sql += " where " + condition;
+      
+      
+      if(!sel_agg_item.isEmpty())
+        sql += " group by " + sel_item;
+      
+      if(!having_clause.isEmpty())
+        sql += " having " + having_clause;
       
       return sql;
   }
@@ -79,7 +101,7 @@ public class Query_converter {
       if(query.head.args.size() > 0)
         sql += ",";
       
-      sql += get_agg_item_in_select_clause(query);
+      sql += get_agg_item_in_select_clause(query, true);
     }
     
     sql += " from " + citation_table;
@@ -166,7 +188,7 @@ public class Query_converter {
     {
       if(query.head.args.size() > 0)
         sql += ",";
-      sql += get_agg_item_in_select_clause(query);
+      sql += get_agg_item_in_select_clause(query, true);
     }
     
     sql += " from " + citation_table;
@@ -287,7 +309,7 @@ public class Query_converter {
     return "(" + clause + ")";
   }
   
-  public static String data2sql_partial_instantiation_with_grouping_values(Single_view view, Vector<Argument> selected_args, Vector<Argument> grouping_args, Vector<String> agg_functions, Vector<Head_strs> grouping_values, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
+  public static String data2sql_partial_instantiation_with_grouping_values(Single_view view, Vector<Argument> selected_args, Vector<Vector<Argument>> grouping_args, Vector<String> agg_functions, Vector<Head_strs> grouping_values, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
   {
     String sql = new String();
 
@@ -1011,7 +1033,7 @@ public class Query_converter {
     return sql_clauses;
   }
   
-  public static String data2sql_partial_instantiation_with_provenance_values(Single_view view, Vector<Argument> selected_args, Vector<Argument> grouping_args, Vector<String> agg_functions, String[] view_subgoal_copies, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
+  public static String data2sql_partial_instantiation_with_provenance_values(Single_view view, Vector<Argument> selected_args, Vector<Vector<Argument>> grouping_args, Vector<String> agg_functions, String[] view_subgoal_copies, Vector<Subgoal> subgoals, Vector<Integer> view_subgoal_ids)
   {
     String sql = new String();
 
@@ -1359,7 +1381,7 @@ public class Query_converter {
       return str;
   }
   
-  static String get_agg_item_in_select_clause(Query q)
+  static String get_agg_item_in_select_clause(Query q, boolean isProv_query)
   {
     String string = new String();
     
@@ -1368,13 +1390,22 @@ public class Query_converter {
       if(i >= 1)
         string += ",";
       
-      Argument arg = (Argument) q.head.agg_args.get(i);
-      
-      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      String agg_attr_string = get_agg_attr_string(q.head.agg_args.get(i), isProv_query);
       
       String agg_function = (String) q.head.agg_function.get(i);
       
-      string += agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
+      string += agg_function + "(" + agg_attr_string + ")"; 
+      
+//      Argument arg = (Argument) q.head.agg_args.get(i);
+//      
+//      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+//      
+//      String agg_function = (String) q.head.agg_function.get(i);
+//      
+//      if(isProv_query)
+//        string += agg_function + "(" + "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + ")";
+//      else
+//        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
     }
     
     return string;
@@ -1382,7 +1413,28 @@ public class Query_converter {
     
   }
   
-  static String get_agg_item_in_select_clause(Vector<Argument> agg_attributes, Vector<String> agg_functions, boolean isProv_query)
+  static String get_agg_attr_string(Vector<Argument> agg_attributes, boolean isProv_query)
+  {
+    String string = new String();
+    
+    for(int i = 0; i<agg_attributes.size(); i++)
+    {
+      if(i >= 1)
+        string += "||";
+      
+      Argument arg = (Argument) agg_attributes.get(i);
+      
+      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      
+      if(isProv_query)
+        string += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
+      else
+        string += arg.relation_name + "." + attr_name;
+    }
+    return string;
+  }
+  
+  static String get_agg_item_in_select_clause(Vector<Vector<Argument>> agg_attributes, Vector<String> agg_functions, boolean isProv_query)
   {
     String string = new String();
     
@@ -1391,16 +1443,20 @@ public class Query_converter {
       if(i >= 1)
         string += ",";
       
-      Argument arg = (Argument) agg_attributes.get(i);
+//      Argument arg = (Argument) agg_attributes.get(i);
+//      
+//      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
-      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      String agg_attr_string = get_agg_attr_string(agg_attributes.get(i), isProv_query);
       
       String agg_function = (String) agg_functions.get(i);
       
-      if(isProv_query)
-        string += agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
-      else
-        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
+      string += agg_function + "(" + agg_attr_string + ")"; 
+      
+//      if(isProv_query)
+//        string += agg_function + "(" + "\"" + arg.relation_name + "." + attr_name + "\"" + ")";
+//      else
+//        string += agg_function + "(" + arg.relation_name + "." + attr_name + ")";
     }
     
     return string;
