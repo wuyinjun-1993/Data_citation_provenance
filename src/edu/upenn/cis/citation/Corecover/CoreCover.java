@@ -704,14 +704,6 @@ public class CoreCover {
 	  }
   
   
-  static void computeViewCost(HashSet viewTuples)
-  {
-	  int i = 0;
-	  for (Iterator iter = viewTuples.iterator(); iter.hasNext();) {
-	      Tuple viewTuple = (Tuple) iter.next();
-	      viewTuple.cal_cost();
-	  }
-  }
   /**
    * computes the tuple cores of all view tuples.
    */
@@ -759,7 +751,6 @@ public class CoreCover {
 		     vSubgoalSubsets)) {
 	  UserLib.myprintln("!!!!Find a core: " + qSubgoalSubset);
 	  viewTuple.setCore(qSubgoalSubset);
-	  viewTuple.set_cost(0);//cal_cost(view, query, phi));
 	  return;
 	}
       }

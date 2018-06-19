@@ -45,13 +45,15 @@ public class Query_provenance {
   public static String separator = "|";
   
   public static String separator_input = "\\|";
+  
+  public static String lib_dir = "./lib";
 //  static String usr_name = null;
 //  
 //  static String passwd = null;
   
   public static void connect(String url, String usr_name, String passwd) throws ClassNotFoundException, SQLException
   {
-    System.setProperty("java.library.path", "./lib");
+    System.setProperty("java.library.path", lib_dir);
     
     Native.setProtected(true);
     
@@ -152,7 +154,14 @@ public class Query_provenance {
   
   public static void main(String [] args) throws ClassNotFoundException, SQLException, FileNotFoundException, UnsupportedEncodingException
   {
-    boolean test_case = Boolean.valueOf(args[0]);
+    query_file = args[0];
+    
+    view_file = args[1];
+    
+    boolean test_case = Boolean.valueOf(args[2]);
+    
+    if(args.length > 3)
+      sql_result_file = args[3];
     
     Class.forName("org.postgresql.Driver");
     Connection c = DriverManager
@@ -202,6 +211,8 @@ public class Query_provenance {
     }
 //    String [] curr_provenance_values = new String[size];
 //    int col_count = 0;
+    int row = 0;
+    
     while((line = bufferedReader.readLine()) != null) {   
       
         String[] curr_provenance_row = line.split(separator_input, -1);
@@ -229,6 +240,10 @@ public class Query_provenance {
         {
           int y = 0;
           y++;
+          
+          System.out.println(row);
+          
+          System.out.println(line);
         }
 
         provenance_instances.add(curr_provenance_row);
@@ -240,9 +255,13 @@ public class Query_provenance {
 //          col_count = 0;
 //        }
         
+        row++;
+        
         
     }   
 
+    System.out.println(row);
+    
     // Always close files.
     bufferedReader.close();      
     

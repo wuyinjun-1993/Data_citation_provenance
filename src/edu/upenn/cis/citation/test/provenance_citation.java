@@ -24,14 +24,16 @@ import org.json.JSONException;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view.Head_strs;
-import edu.upenn.cis.citation.citation_view.citation_view_vector;
+import edu.upenn.cis.citation.citation_view1.Covering_set;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
+import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning3;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.query.Query_provenance;
 import edu.upenn.cis.citation.user_query.query_storage;
+import edu.upenn.cis.citation.views.Query_converter;
 import edu.upenn.cis.citation.views.Single_view;
 
 public class provenance_citation {
@@ -47,10 +49,47 @@ public class provenance_citation {
   
   public static void main(String [] args) throws SQLException, ClassNotFoundException, IOException, InterruptedException, JSONException
   {
-    Query query = load_query();
+//    Query query = load_query();
+    
+//    test_query_time();
     
     use_reasoning4(args);
 //    use_reasoning3(args, query);
+    
+  }
+  
+  static void test_query_time() throws ClassNotFoundException, SQLException
+  {
+    Class.forName("org.postgresql.Driver");
+    Connection c = DriverManager
+        .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
+    
+    PreparedStatement pst = null;
+    
+    Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
+    
+    
+    double t1 = System.nanoTime();
+
+    String sql = Query_converter.datalog2sql(query, false);
+    
+    pst = c.prepareStatement(sql);
+    
+    pst.executeQuery();
+    
+    double t2 = System.nanoTime();
+    
+    double query_time = (t2 - t1)*1.0/1000000000;
+    
+    System.out.println("query_time::" + query_time);
+    
+    System.out.println(query);
+    
+    System.out.println(sql);
+    
+    c.close();
+    
+    
     
   }
   
@@ -75,29 +114,8 @@ public class provenance_citation {
 
   }
   
-  static void use_reasoning4(String [] args) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException
+  static void reasoning_with_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, Connection c, PreparedStatement pst) throws SQLException, IOException, InterruptedException, JSONException
   {
-    Connection c = null;
-    PreparedStatement pst = null;
-    
-  Class.forName("org.postgresql.Driver");
-  c = DriverManager
-      .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
-  
-//  view_operation.delete_view_by_name("v2", c, pst);
-  
-//    Query query = query_storage.get_query_by_id(1, c, pst);
-  
-  Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
-    
-  System.out.println(query);
-  
-    boolean iscluster = Boolean.valueOf(args[0]);
-    
-    boolean sortcluster = false;//Boolean.valueOf(args[1]);
-    
-    int thread_num = 2;//Integer.valueOf(args[1]);
-    
     Prov_reasoning4.batch_size = thread_num;
     
     int factor = 2;//Integer.valueOf(args[1]);
@@ -122,7 +140,7 @@ public class provenance_citation {
     
     ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
     
-    HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, provenance_instances, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, provenance_instances, c, pst);
 
     end = System.nanoTime();
     
@@ -146,13 +164,29 @@ public class provenance_citation {
       System.out.println("covering_set_time 4:" + Prov_reasoning4.covering_set_time);
 
     }
+    
+    double t1 = System.nanoTime();
+    
+    String sql = Query_converter.datalog2sql(query, false);
+    
+    pst = c.prepareStatement(sql);
+    
+    pst.executeQuery();
+    
+    double t2 = System.nanoTime();
+    
+    double query_time = (t2 - t1)*1.0/1000000000;
+    
+    System.out.println("query_time::" + query_time);
+    
+    
     Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
     
     write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
 
-    System.out.println(covering_sets);
+//    System.out.println(covering_sets);
     
-    System.out.println(covering_sets.size());
+    System.out.println("Covering_set_size::" + covering_sets.size());
     
     if(iscluster)
       write2file(path + "covering_sets3", covering_sets);
@@ -164,6 +198,142 @@ public class provenance_citation {
     write2file(path + "citation2", formatted_citations);
     
     write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    
+  }
+  
+  static void reasoning_without_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, Connection c, PreparedStatement pst) throws SQLException, IOException, JSONException, InterruptedException
+  {
+
+    Prov_reasoning3.batch_size = thread_num;
+    
+    int factor = 2;//Integer.valueOf(args[1]);
+    
+    Prov_reasoning3.factor = factor;
+    
+    Prov_reasoning3.sort_cluster = sortcluster;
+    
+    Prov_reasoning3.init();
+  
+//    Prov_reasoning4.init_from_database(c, pst);
+    
+    Prov_reasoning3.init_from_files(c, pst);
+    
+    double start = 0;
+    
+    double end = 0;
+    
+    Vector<String[]> provenance_instances = Query_provenance.get_provenance_instance(query);
+    
+    start = System.nanoTime();
+    
+    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
+    
+    HashSet<edu.upenn.cis.citation.citation_view0.Covering_set> covering_sets = Prov_reasoning3.reasoning(query, curr_valid_view_mappings, iscluster, provenance_instances, c, pst);
+
+    end = System.nanoTime();
+    
+    double time = (end - start)*1.0/1000000000;
+    
+    if(iscluster)
+    {
+      System.out.println("reasoning time 3:" + time);
+      
+      System.out.println("view_mapping_time 3:" + Prov_reasoning3.view_mapping_time);
+      
+      System.out.println("covering_set_time 3:" + Prov_reasoning3.covering_set_time);
+
+    }
+    else
+    {
+      System.out.println("reasoning time 4:" + time);
+      
+      System.out.println("view_mapping_time 4:" + Prov_reasoning3.view_mapping_time);
+      
+      System.out.println("covering_set_time 4:" + Prov_reasoning3.covering_set_time);
+
+    }
+    
+    double t1 = System.nanoTime();
+    
+    String sql = Query_converter.datalog2sql(query, false);
+    
+    pst = c.prepareStatement(sql);
+    
+    pst.executeQuery();
+    
+    double t2 = System.nanoTime();
+    
+    double query_time = (t2 - t1)*1.0/1000000000;
+    
+    System.out.println("query_time::" + query_time);
+    
+    
+    Set<Tuple> view_mappings = Prov_reasoning3.tuple_valid_rows.keySet();
+    
+    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning3.tuple_valid_rows);
+
+//    System.out.println(covering_sets);
+    
+    System.out.println("Covering_set_size::" + covering_sets.size());
+    
+    if(iscluster)
+      write2file(path + "covering_sets3", covering_sets);
+    else
+      write2file(path + "covering_sets4", covering_sets);
+    
+    HashSet<String> formatted_citations = Prov_reasoning3.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
+    
+    write2file(path + "citation2", formatted_citations);
+    
+    write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    
+  
+  }
+  
+  static void use_reasoning4(String [] args) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException
+  {
+    Connection c = null;
+    PreparedStatement pst = null;
+    
+  Class.forName("org.postgresql.Driver");
+  c = DriverManager
+      .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
+  
+//  view_operation.delete_view_by_name("v2", c, pst);
+  
+//    Query query = query_storage.get_query_by_id(1, c, pst);
+  
+  
+  
+    boolean iscluster = Boolean.valueOf(args[0]);
+    
+    boolean covering_set_opt = Boolean.valueOf(args[1]);
+    
+    boolean sortcluster = false;//Boolean.valueOf(args[1]);
+    
+    int thread_num = 2;//Integer.valueOf(args[1]);
+    
+    if(args.length > 2)
+    {
+      Query_provenance.query_file = args[2];
+      
+      Query_provenance.view_file = args[3];
+      
+      Query_provenance.sql_result_file = args[4];
+    }
+    
+    Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
+    
+    System.out.println(query);
+    
+    if(covering_set_opt)
+    {
+      reasoning_with_covering_set_opt(query, iscluster, thread_num, sortcluster, c, pst);
+    }
+    else
+    {
+      reasoning_without_covering_set_opt(query, iscluster, thread_num, sortcluster, c, pst);
+    }
     
     c.close();
   }
@@ -315,7 +485,7 @@ public class provenance_citation {
     
 //    HashSet<citation_view_vector> covering_sets = new HashSet<citation_view_vector>();
     
-    HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
 
     end = System.nanoTime();
     
@@ -466,7 +636,7 @@ public class provenance_citation {
       bw.close();
   }
   
-  public static void write2file(String file_name, ConcurrentHashMap<String, HashSet<citation_view_vector>> views) throws IOException
+  public static void write2file(String file_name, ConcurrentHashMap<String, HashSet<Covering_set>> views) throws IOException
   {
     File fout = new File(file_name);
     FileOutputStream fos = new FileOutputStream(fout);
@@ -482,13 +652,13 @@ public class provenance_citation {
       bw.write("group " + num);
       bw.newLine();
       
-      HashSet<citation_view_vector> covering_sets = views.get(label);
+      HashSet<Covering_set> covering_sets = views.get(label);
       
       String [] covering_set_string = new String [covering_sets.size()];
       
       int id = 0;
       
-      for(citation_view_vector covering_set: covering_sets)
+      for(Covering_set covering_set: covering_sets)
       {
         covering_set_string[id ++] = covering_set.toString(); 
       }

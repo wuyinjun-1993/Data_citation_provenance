@@ -17,7 +17,7 @@ import java.util.Vector;
 import org.json.JSONException;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view.citation_view_vector;
+import edu.upenn.cis.citation.citation_view1.Covering_set;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
@@ -87,7 +87,7 @@ public class provenance_citation2 {
     
     start = System.nanoTime();
     
-    HashSet<citation_view_vector> covering_sets = Prov_reasoning4.reasoning(query.get(0), curr_valid_view_mappings, iscluster, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query.get(0), curr_valid_view_mappings, iscluster, c, pst);
     
     end = System.nanoTime();
     

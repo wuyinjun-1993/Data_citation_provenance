@@ -1,4 +1,4 @@
-package edu.upenn.cis.citation.citation_view;
+package edu.upenn.cis.citation.citation_view0;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -6,12 +6,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-import edu.upenn.cis.citation.Corecover.Argument;
+
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
@@ -29,13 +30,7 @@ public class citation_view_unparametered extends citation_view{
 	
 	public Tuple view_tuple = null;
 	
-	public long[]table_name_index;
-	
-	public long[]arg_name_index;
-	
-	public long[] tuple_index;
-	
-    public String unique_id_string = new String();
+	public String unique_id_string = new String();
 	
 	public citation_view_unparametered(String name, Tuple tuple)
 	{
@@ -44,6 +39,8 @@ public class citation_view_unparametered extends citation_view{
 		set_table_name(tuple);
 	
 		this.view_tuple = tuple;
+		
+		unique_id_string = get_unique_string_id();
 //		Connection c = null;
 //		
 //	    PreparedStatement pst = null;
@@ -51,8 +48,8 @@ public class citation_view_unparametered extends citation_view{
 //		Class.forName("org.postgresql.Driver");
 //		
 //	    c = DriverManager
-//	        .getConnection(populate_db.db_url,
-//	    	        populate_db.usr_name,populate_db.passwd);
+//	        .getConnection(init.db_url,
+//	    	        init.usr_name,init.passwd);
 		
 //		gen_table_names(c, pst);
 		
@@ -62,71 +59,39 @@ public class citation_view_unparametered extends citation_view{
 //		lambda = false;
 	}
 	
-	void build_table_name_index(Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings)
+	public String get_unique_string_id()
     {
-      HashSet<String> target_subgoal_strs = tuple.getTargetSubgoal_strs();
-      
-      for(String target_str: target_subgoal_strs)
-      {
-        int id = query_subgoal_id_mappings.get(target_str);
-        
-        table_name_index[id/Long.SIZE] |= (1L << (id % Long.SIZE));
-      }
-      
-    }
-    
-    void build_arg_name_index(Tuple tuple, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings)
-    {      
-      Vector<Argument> head_args = tuple.args;
-      
-      for(Argument arg:head_args)
-      {
-        int id = query_arg_id_mappings.get(arg);
-        
-        arg_name_index[id/Long.SIZE] |= (1L << (id % Long.SIZE));
-      }
-      
+          
+          String sorted_mapping_string = get_sorted_mapping_string(this.get_view_tuple(), this.get_view_tuple().mapSubgoals_str);
+          
+          return (this.get_name() + init.separator + sorted_mapping_string);
+          
     }
 	
-	public citation_view_unparametered(String name, Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids)
+	static String get_sorted_mapping_string(Tuple view_mapping, HashMap<String, String> subgoal_name_mappings)
     {
-        this.name = name;
+      Set<String> subgoal_names =  view_mapping.mapSubgoals_str.keySet(); 
+      
+      Vector<String> subgoal_name_list = new Vector<String>(subgoal_names);
+      
+      Collections.sort(subgoal_name_list);
+      
+      String sorted_mapping_string = new String();
+      
+      int count = 0;
+      
+      for(String subgoal_name: subgoal_name_list)
+      {
+        if(count >= 1)
+          sorted_mapping_string += ",";
         
-        set_table_name(tuple);
-    
-        this.view_tuple = tuple;
+        sorted_mapping_string += subgoal_name + "=" + subgoal_name_mappings.get(subgoal_name);
         
-        table_name_index = new long[(query_subgoal_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
-        
-        arg_name_index = new long[(query_arg_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
-        
-        tuple_index = new long[(tuple_ids.size() + Long.SIZE - 1)/Long.SIZE];
-        
-        int curr_tuple_id = tuple_ids.get(tuple);
-        
-        tuple_index[curr_tuple_id/Long.SIZE] |= (1L << (curr_tuple_id % Long.SIZE)); 
-        
-        build_table_name_index(tuple, query_subgoal_id_mappings);
-        
-        build_arg_name_index(tuple, query_arg_id_mappings);
-        
-        unique_id_string = get_unique_string_id();
-//      Connection c = null;
-//      
-//      PreparedStatement pst = null;
-//        
-//      Class.forName("org.postgresql.Driver");
-//      
-//      c = DriverManager
-//          .getConnection(populate_db.db_url,
-//                  populate_db.usr_name,populate_db.passwd);
-        
-//      gen_table_names(c, pst);
-        
-//      gen_index();
-        
-//      c.close();
-//      lambda = false;
+        count ++;
+      }
+      
+      return sorted_mapping_string;
+      
     }
 	
 	void set_table_name(Tuple tuple)
@@ -140,6 +105,8 @@ public class citation_view_unparametered extends citation_view{
 			
 			table_names.add(subgoal.name);
 		}
+		
+		Collections.sort(table_names);
 		
 		table_name_str = table_names.toString();
 	}
@@ -234,7 +201,7 @@ public class citation_view_unparametered extends citation_view{
 //		Class.forName("org.postgresql.Driver");
 //		
 //	    c = DriverManager
-//	        .getConnection("jdbc:postgresql://localhost:5432/" + populate_db.db_name,
+//	        .getConnection("jdbc:postgresql://localhost:5432/" + init.db_name,
 //	        "postgres","123");
 //		
 //	    String citation_query = "select citation_view_query from citation_view where citation_view_name = '" + name + "'";
@@ -297,7 +264,6 @@ public class citation_view_unparametered extends citation_view{
 	    }
 	    return body;
 	}
-	
 	
 	@Override
 	public String gen_citation_unit(Vector<String> lambda_terms) {
@@ -371,13 +337,7 @@ public class citation_view_unparametered extends citation_view{
 				
 		c_v.view_tuple = this.view_tuple;
 		
-		c_v.tuple_index = tuple_index;
-        
-        c_v.table_name_index = table_name_index;
-        
-        c_v.arg_name_index = arg_name_index;
-        
-        c_v.unique_id_string = unique_id_string;
+		c_v.unique_id_string = unique_id_string;
 		
 		return c_v;
 	}
@@ -424,55 +384,10 @@ public class citation_view_unparametered extends citation_view{
 		return view_tuple;
 	}
 
-	public String get_unique_string_id()
-    {
-        String string = new String();
-        
-//    for(int i = 0; i<c_vec.size(); i++)
-//    {
-//        if(i >= 1)
-//            string += init.separator;
-//        
-//        string += c_vec.get(i).get_name() + c_vec.get(i).get_table_name_string(); 
-//    }
-        
-        
-        
-        for(int i = 0; i<tuple_index.length; i++)
-        {
-          
-          if(i >= 1)
-            string += ",";
-          
-          string += String.valueOf(tuple_index[i]);
-        }
-        
-        return string;
-    }
-	
 	@Override
 	public int hashCode()
 	{
-//		String string = this.get_name() + init.separator + this.get_table_name_string();
-		
-		return unique_id_string.hashCode();//string.hashCode();
-	}
-	
-	@Override
-	  public long[] get_mapped_table_name_index() {
-	    // TODO Auto-generated method stub
-	    return table_name_index;
-	  }
+	     return unique_id_string.hashCode();
 
-	  @Override
-	  public long[] get_mapped_head_var_index() {
-	    // TODO Auto-generated method stub
-	    return arg_name_index;
-	  }
-	  
-	  @Override
-	  public long[] get_tuple_index() {
-	    // TODO Auto-generated method stub
-	    return tuple_index;
-	  }
+	}
 }

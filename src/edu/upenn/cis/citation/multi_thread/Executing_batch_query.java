@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import edu.upenn.cis.citation.citation_view.Head_strs;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.views.Single_view;
 

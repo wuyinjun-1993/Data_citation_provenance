@@ -1,4 +1,4 @@
-package edu.upenn.cis.citation.citation_view;
+package edu.upenn.cis.citation.citation_view0;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Vector;
@@ -38,15 +38,9 @@ public abstract class citation_view {
 	public abstract Tuple get_view_tuple();
 	
 	@Override
-	public abstract boolean equals(Object o);
-	
-	public abstract long[] get_mapped_table_name_index();
-	
-	public abstract long[] get_mapped_head_var_index();
-	
-	public abstract long[] get_tuple_index();
+	public abstract int hashCode();
 	
 	@Override
-	public abstract int hashCode();
+	public abstract boolean equals(Object o);
 
 }

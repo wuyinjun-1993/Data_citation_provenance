@@ -33,11 +33,11 @@ import edu.upenn.cis.citation.Corecover.Database;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view1.Covering_set;
+import edu.upenn.cis.citation.citation_view0.citation_view;
+import edu.upenn.cis.citation.citation_view0.citation_view_parametered;
+import edu.upenn.cis.citation.citation_view0.citation_view_unparametered;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
-import edu.upenn.cis.citation.citation_view1.citation_view;
-import edu.upenn.cis.citation.citation_view1.citation_view_parametered;
-import edu.upenn.cis.citation.citation_view1.citation_view_unparametered;
+import edu.upenn.cis.citation.citation_view0.Covering_set;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.gen_citations.Gen_citation;
 import edu.upenn.cis.citation.init.MD5;
@@ -61,7 +61,7 @@ import fr.lri.tao.apro.ap.AproBuilder;
 import fr.lri.tao.apro.data.DataProvider;
 import fr.lri.tao.apro.data.MatrixProvider;
 
-public class Prov_reasoning4 {
+public class Prov_reasoning3 {
   
   
 public static Vector<Single_view> view_objs = new Vector<Single_view>();
@@ -1253,21 +1253,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           
           Tuple valid_tuple = (Tuple) tuple.clone();
           
-          valid_tuple.args.retainAll(args);
-              
-          
-          long [] tuple_id_contained = new long[(tuple_ids.size() + Long.SIZE - 1)/Long.SIZE];
-          
-          tuple_id_contained[id/Long.SIZE] |= (1L << (id % Long.SIZE));
-          
-          int arg_size = (query.head.has_agg)?query.head.agg_args.size():query.head.args.size(); 
-          
           if(valid_tuple.lambda_terms.size() > 0)
           {
               
-              citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
-              
-              Covering_set curr_views = new Covering_set(c, tuple_id_contained);
+//              citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
+            citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple);  
+            
+            Covering_set curr_views = new Covering_set(c);
               
               remove_duplicate(curr_covering_sets, curr_views);
               
@@ -1279,9 +1271,10 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           else
           {
               
-              citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
-              
-              Covering_set curr_views = new Covering_set(c, tuple_id_contained);
+//              citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
+            citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple);  
+            
+              Covering_set curr_views = new Covering_set(c);
               
               remove_duplicate(curr_covering_sets, curr_views);
           }
@@ -3087,60 +3080,102 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   {
       int i = 0;
       
+      int size = c_combinations.size();
+      
       if(c_combinations.contains(c_view))
       {
         return c_combinations;
       }
-                    
-      boolean removed = false;
-      
+              
       for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
       {
-//        String str = (String) iter.next();
                       
           Covering_set c_combination = (Covering_set) iter.next();
           
-//        if(c_combination.toString().equals("v11*v20*v4*v8"))
-//        {
-//            int y = 0;
-//            
-//            y++;
-//        }
+          Covering_set curr_combination = c_view;
+          
+          if(c_combination.c_vec.containsAll(curr_combination.c_vec)&& curr_combination.table_names.containsAll(c_combination.table_names) && curr_combination.head_variables.containsAll(c_combination.head_variables) && c_combination.c_vec.size() > curr_combination.c_vec.size())
           {
-              {
-                  Covering_set curr_combination = c_view;
-                  
-                  if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
-                  {
-                      iter.remove();   
-                      
-                      
-                      
-                  }
-                  
-//                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
-                  if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
-                  {
-                    
-                    removed = true;
-                    
-                      break;
-                  }
-              }
-              
+              iter.remove();                      
+          }
+          
+          if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.table_names.containsAll(curr_combination.table_names) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.c_vec.size() > c_combination.c_vec.size())
+          {
+              break;
           }
           
           i++;
       }
       
-      if(!removed)
+      
+      if(i >= size)
       {
         c_combinations.add(c_view);
-        
       }
+      
               
       return c_combinations;
   }
+
+  
+//  public static HashSet<Covering_set> remove_duplicate(HashSet<Covering_set> c_combinations, Covering_set c_view)
+//  {
+//      int i = 0;
+//      
+//      if(c_combinations.contains(c_view))
+//      {
+//        return c_combinations;
+//      }
+//                    
+//      boolean removed = false;
+//      
+//      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
+//      {
+////        String str = (String) iter.next();
+//                      
+//          Covering_set c_combination = (Covering_set) iter.next();
+//          
+////        if(c_combination.toString().equals("v11*v20*v4*v8"))
+////        {
+////            int y = 0;
+////            
+////            y++;
+////        }
+//          {
+//              {
+//                  Covering_set curr_combination = c_view;
+//                  
+//                  if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
+//                  {
+//                      iter.remove();   
+//                      
+//                      
+//                      
+//                  }
+//                  
+////                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
+//                  if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
+//                  {
+//                    
+//                    removed = true;
+//                    
+//                      break;
+//                  }
+//              }
+//              
+//          }
+//          
+//          i++;
+//      }
+//      
+//      if(!removed)
+//      {
+//        c_combinations.add(c_view);
+//        
+//      }
+//              
+//      return c_combinations;
+//  }
   
   static boolean view_vector_contains(Covering_set c_vec1, Covering_set c_vec2)
   {

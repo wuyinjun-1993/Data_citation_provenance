@@ -6,8 +6,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view.Head_strs;
-import edu.upenn.cis.citation.citation_view.citation_view_vector;
+import edu.upenn.cis.citation.citation_view1.Covering_set;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.views.Single_view;
 
@@ -19,15 +19,15 @@ public class Calculate_covering_sets implements Runnable {
 //  
 //  HashSet<citation_view_vector> covering_set2;
   
-  ArrayList<HashSet<citation_view_vector>> covering_sets;
+  ArrayList<HashSet<Covering_set>> covering_sets;
   
   int start;
   
   int end;
   
-  HashSet<citation_view_vector> resulting_covering_set;
+  HashSet<Covering_set> resulting_covering_set;
   
-  public HashSet<citation_view_vector> get_reasoning_result()
+  public HashSet<Covering_set> get_reasoning_result()
   {
     return resulting_covering_set;
   }
@@ -40,7 +40,7 @@ public class Calculate_covering_sets implements Runnable {
 //     
 //  }
   
-  public Calculate_covering_sets(ArrayList<HashSet<citation_view_vector>> covering_sets, int k, int i) {
+  public Calculate_covering_sets(ArrayList<HashSet<Covering_set>> covering_sets, int k, int i) {
     // TODO Auto-generated constructor stub
     this.covering_sets = covering_sets;
     

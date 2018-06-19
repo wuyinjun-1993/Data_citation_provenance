@@ -22,6 +22,7 @@ import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
+import edu.upenn.cis.citation.views.Query_converter;
 
 public class Load_views_and_citation_queries {
 
@@ -226,7 +227,7 @@ public class Load_views_and_citation_queries {
 	      {
 	        if(view.head.args.size() > 0 || (view.head.args.size() == 0 && i >= 1))
 	          string += ",";
-	        String arg_name = view.head.agg_function.get(i).toString() + "(" + view.head.agg_args.get(i).toString() + ")";
+	        String arg_name = view.head.agg_function.get(i).toString() + "(" + Query_converter.get_agg_attr_string(view.head.agg_args.get(i), false) + ")";
 	        string += arg_name.replaceAll("\\" + init.separator, ".");
 	      }
 	  }
@@ -444,7 +445,7 @@ public class Load_views_and_citation_queries {
         
         arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("("));
         
-        System.out.println(arg_with_agg_function);
+//        System.out.println(arg_with_agg_function);
         
         arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")"));
         

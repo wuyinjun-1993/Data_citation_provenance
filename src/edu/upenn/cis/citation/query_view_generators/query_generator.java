@@ -31,7 +31,7 @@ import edu.upenn.cis.citation.Operation.op_greater_equal;
 import edu.upenn.cis.citation.Operation.op_less;
 import edu.upenn.cis.citation.Operation.op_less_equal;
 import edu.upenn.cis.citation.Operation.op_not_equal;
-import edu.upenn.cis.citation.citation_view.citation_view;
+import edu.upenn.cis.citation.citation_view1.citation_view;
 import edu.upenn.cis.citation.init.init;
 
 public class query_generator {

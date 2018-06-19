@@ -24,7 +24,7 @@ import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.Operation.Operation;
-import edu.upenn.cis.citation.citation_view.Head_strs;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 

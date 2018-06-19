@@ -18,10 +18,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view.Head_strs;
-import edu.upenn.cis.citation.citation_view.citation_view;
-import edu.upenn.cis.citation.citation_view.citation_view_parametered;
-import edu.upenn.cis.citation.citation_view.citation_view_vector;
+import edu.upenn.cis.citation.citation_view1.Covering_set;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
+import edu.upenn.cis.citation.citation_view1.citation_view;
+import edu.upenn.cis.citation.citation_view1.citation_view_parametered;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.Query_operation;
 import edu.upenn.cis.citation.views.Query_converter;
@@ -31,7 +31,7 @@ public class Gen_citation {
   
   public static String db_name = "IUPHAR/BPS Guide to PHARMACOLOGY";
   
-  public static HashSet<String> gen_citation_entire_query(HashMap<Single_view, HashSet<Tuple>> valid_view_mappings, HashSet<citation_view_vector> covering_sets, HashMap<Tuple, HashSet<Integer>> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, HashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
+  public static HashSet<String> gen_citation_entire_query(HashMap<Single_view, HashSet<Tuple>> valid_view_mappings, HashSet<Covering_set> covering_sets, HashMap<Tuple, HashSet<Integer>> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, HashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
   {
     
     HashMap<Tuple, HashSet<Head_strs>> view_mapping_lambda_values_mappings = new HashMap<Tuple, HashSet<Head_strs>>();
@@ -337,11 +337,11 @@ public class Gen_citation {
       
   }
   
-  static ArrayList<HashMap<String, HashSet<String>>> gen_citations_covering_set_level(HashMap<Tuple, HashMap<String, HashSet<String>>> citations, HashSet<citation_view_vector> curr_res)
+  static ArrayList<HashMap<String, HashSet<String>>> gen_citations_covering_set_level(HashMap<Tuple, HashMap<String, HashSet<String>>> citations, HashSet<Covering_set> curr_res)
   {
       ArrayList<HashMap<String, HashSet<String>>> full_citations = new ArrayList<HashMap<String, HashSet<String>>>();
       
-      for(citation_view_vector c_vector: curr_res)
+      for(Covering_set c_vector: curr_res)
       {
           
           HashMap<String, HashSet<String>> curr_full_citations = new HashMap<String, HashSet<String>>();

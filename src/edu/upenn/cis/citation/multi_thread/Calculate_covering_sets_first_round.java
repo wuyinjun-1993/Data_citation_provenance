@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.Vector;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Tuple;
-import edu.upenn.cis.citation.citation_view.citation_view_vector;
+import edu.upenn.cis.citation.citation_view1.Covering_set;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.views.Single_view;
 
@@ -26,11 +26,11 @@ int start;
 
 int end;
 
-HashSet<citation_view_vector> view_com = new HashSet<citation_view_vector>();
+HashSet<Covering_set> view_com = new HashSet<Covering_set>();
 
 Vector<Argument> args;
 
-public HashSet<citation_view_vector> get_reasoning_result()
+public HashSet<Covering_set> get_reasoning_result()
 {
   return view_com;
 }

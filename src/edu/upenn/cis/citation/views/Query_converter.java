@@ -13,7 +13,7 @@ import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
-import edu.upenn.cis.citation.citation_view.Head_strs;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 
@@ -40,12 +40,12 @@ public class Query_converter {
       {
         sql = "select " + sel_item;
         if(!sel_agg_item.isEmpty())
-          sql += "," + sel_item;
+          sql += "," + sel_agg_item;
       }
       else
       {
         if(!sel_agg_item.isEmpty())
-          sql += sel_item;
+          sql += sel_agg_item;
       }
       
       
@@ -1413,7 +1413,7 @@ public class Query_converter {
     
   }
   
-  static String get_agg_attr_string(Vector<Argument> agg_attributes, boolean isProv_query)
+  public static String get_agg_attr_string(Vector<Argument> agg_attributes, boolean isProv_query)
   {
     String string = new String();
     

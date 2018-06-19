@@ -19,7 +19,7 @@ import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.bit_operation.Bit_operation;
-import edu.upenn.cis.citation.citation_view.Head_strs;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
@@ -1640,7 +1640,7 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
     
 //    if(!view.head.has_agg)
     deal_with_view_view_non_aggregation();
-    System.out.println("first_test::");
+//    System.out.println("first_test::");
     if(view.head.has_agg)
     {
       try {
@@ -1654,7 +1654,7 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
     }
     
     
-    System.out.println(view.view_name);
+//    System.out.println(view.view_name);
   }
   
   static HashSet<String> get_unique_partial_mapping_subgoals(Single_view view, Tuple tuple, int i)

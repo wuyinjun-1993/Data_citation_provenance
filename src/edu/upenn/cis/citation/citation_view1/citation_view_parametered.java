@@ -1,9 +1,10 @@
-package edu.upenn.cis.citation.citation_view;
+package edu.upenn.cis.citation.citation_view1;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -336,20 +337,20 @@ public class citation_view_parametered extends citation_view{
 	  
 	}
 	
-	void build_arg_name_index(Tuple tuple, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings)
+	void build_arg_name_index(Tuple tuple, ArrayList<Integer> query_arg_ids)
     {      
-      Vector<Argument> head_args = tuple.args;
+//      Vector<Argument> head_args = tuple.args;
       
-      for(Argument arg:head_args)
+      for(Integer query_arg_id: query_arg_ids)
       {
-        int id = query_arg_id_mappings.get(arg);
+//        int id = query_arg_id_mappings.get(arg);
         
-        arg_name_index[id/Long.SIZE] |= (1L << (id % Long.SIZE));
+        arg_name_index[query_arg_id/Long.SIZE] |= (1L << (query_arg_id));
       }
       
     }
 	
-	public citation_view_parametered(String name, Single_view view, Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings, ConcurrentHashMap<Argument, Integer> query_arg_id_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids)
+	public citation_view_parametered(String name, Single_view view, Tuple tuple, ConcurrentHashMap<String, Integer> query_subgoal_id_mappings, int query_head_arg_size, ConcurrentHashMap<Tuple, ArrayList<Integer>> view_mapping_query_arg_ids_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids)
     {
         
         this.name = name;
@@ -364,7 +365,7 @@ public class citation_view_parametered extends citation_view{
         
         table_name_index = new long[(query_subgoal_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
         
-        arg_name_index = new long[(query_arg_id_mappings.size() + Long.SIZE - 1)/Long.SIZE];
+        arg_name_index = new long[(query_head_arg_size + Long.SIZE - 1)/Long.SIZE];
         
         tuple_index = new long[(tuple_ids.size() + Long.SIZE - 1)/Long.SIZE];
      
@@ -374,7 +375,7 @@ public class citation_view_parametered extends citation_view{
         
         build_table_name_index(tuple, query_subgoal_id_mappings);
         
-        build_arg_name_index(tuple, query_arg_id_mappings);
+        build_arg_name_index(tuple, view_mapping_query_arg_ids_mappings.get(tuple));
         
         
         unique_id_string = get_unique_string_id();

@@ -38,8 +38,6 @@ public class Tuple {
   
   public Vector<Lambda_term> lambda_terms = new Vector<Lambda_term>();
   
-  double cost = 1;
-  
   public Vector<HashSet<Integer>> cluster_subgoal_ids = new Vector<HashSet<Integer>>();
   
   public Vector<HashSet<Integer>> cluster_patial_mapping_condition_ids = new Vector<HashSet<Integer>>();
@@ -47,38 +45,6 @@ public class Tuple {
   public Vector<HashSet<Integer>> cluster_non_mapping_condition_ids = new Vector<HashSet<Integer>>();
 
   public String hash_string = new String();
-  
-  public double get_cost()
-  {
-	  return cost;
-  }
-  
-  public void cal_cost()
-  {
-	  if(!lambda_terms.isEmpty())
-	  {
-		  
-		  Vector temp = lambda_terms;
-		  
-		  for(int i=0;i<query.head.size();i++)
-		  {
-			  Argument arg = (Argument) query.head.args.get(i);
-			  			  
-			  if(arg.type == 1 && lambda_terms.contains(arg))
-			  {
-				  temp.remove(query.head.args.get(i));
-			  }
-		  }
-		  
-		  if(!temp.isEmpty())
-			  cost=10;
-	  }	  
-  }
-  
-  public void set_cost(double cost)
-  {
-	  this.cost = cost;
-  }
   
   String get_head_string()
   {

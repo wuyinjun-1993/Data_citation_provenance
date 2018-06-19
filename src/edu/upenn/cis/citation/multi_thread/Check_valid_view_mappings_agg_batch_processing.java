@@ -19,7 +19,7 @@ import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.bit_operation.Bit_operation;
-import edu.upenn.cis.citation.citation_view.Head_strs;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
