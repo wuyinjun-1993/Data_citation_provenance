@@ -27,6 +27,7 @@ import edu.upenn.cis.citation.Operation.op_greater_equal;
 import edu.upenn.cis.citation.Operation.op_less;
 import edu.upenn.cis.citation.Operation.op_less_equal;
 import edu.upenn.cis.citation.Operation.op_not_equal;
+import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 
 public class Query_operation {
@@ -46,92 +47,92 @@ public class Query_operation {
 		
 		Query query = get_query_by_name("q2", c, pst);
 		
-		String query_str = covert2data_str(query);
+//		String query_str = covert2data_str(query);
 		
-		System.out.println(query_str);
+//		System.out.println(query_str);
 		
 		c.close();
 //		delete_query_by_id(10);
 		
 	}
 	
-	public static String covert2data_str(Query q)
-	{
-		String str = q.name + init.separator;
-		
-		for(int i = 0; i<q.head.args.size(); i++)
-		{
-			
-			if(i >= 1)
-				str += ",";
-			
-			String head_arg_str = q.head.args.get(i).toString().replaceFirst("\\" + init.separator, ".");
-			
-			str += head_arg_str;
-		}
-		
-		str += init.separator;
-		
-		for(int i = 0; i<q.body.size(); i++)
-		{
-			if(i >= 1)
-				str += ",";
-			Subgoal subgoal = (Subgoal) q.body.get(i);
-			
-			str += subgoal.name;
-		}
-		
-		str += init.separator;
-		
-		for(int i = 0; i<q.conditions.size(); i++)
-		{
-			
-			if(i >= 1)
-				str += ",";
-			
-			if(q.conditions.get(i).arg2.isConst())
-				str += q.conditions.get(i).subgoal1 + "." + q.conditions.get(i).arg1.name + q.conditions.get(i).op + q.conditions.get(i).arg2.name;
-			else
-				str += q.conditions.get(i).subgoal1 + "." + q.conditions.get(i).arg1.name + q.conditions.get(i).op + q.conditions.get(i).subgoal2 + "." + q.conditions.get(i).arg2.name;
-		}
-		
-		str += init.separator;
-		
-		for(int i = 0; i<q.lambda_term.size(); i++)
-		{
-			
-			Lambda_term l_term = q.lambda_term.get(i);
-			
-			String l_term_str = l_term.arg_name.replaceFirst("\\" + init.separator, ".");
-			
-			if(i >= 1)
-				str += l_term_str;
-		}
-		
-		str += init.separator;
-		
-		Set<String> relation_mapping_key = q.subgoal_name_mapping.keySet();
-		
-		int num = 0;
-		
-		for(Iterator iter = relation_mapping_key.iterator(); iter.hasNext();)
-		{
-			
-			if(num >= 1)
-				str += ",";
-			
-			String curr_name = (String) iter.next();
-			
-			String mapped_name = q.subgoal_name_mapping.get(curr_name);
-			
-			str += curr_name + ":" + mapped_name; 
-			
-			num++;
-		}
-		
-		return str;
-	}
-	
+//	public static String covert2data_str(Query q)
+//	{
+//		String str = q.name + init.separator;
+//		
+//		for(int i = 0; i<q.head.args.size(); i++)
+//		{
+//			
+//			if(i >= 1)
+//				str += ",";
+//			
+//			String head_arg_str = q.head.args.get(i).toString().replaceFirst("\\" + init.separator, ".");
+//			
+//			str += head_arg_str;
+//		}
+//		
+//		str += init.separator;
+//		
+//		for(int i = 0; i<q.body.size(); i++)
+//		{
+//			if(i >= 1)
+//				str += ",";
+//			Subgoal subgoal = (Subgoal) q.body.get(i);
+//			
+//			str += subgoal.name;
+//		}
+//		
+//		str += init.separator;
+//		
+//		for(int i = 0; i<q.conditions.size(); i++)
+//		{
+//			
+//			if(i >= 1)
+//				str += ",";
+//			
+//			if(q.conditions.get(i).arg2.isConst())
+//				str += q.conditions.get(i).subgoal1 + "." + q.conditions.get(i).arg1.name + q.conditions.get(i).op + q.conditions.get(i).arg2.name;
+//			else
+//				str += q.conditions.get(i).subgoal1 + "." + q.conditions.get(i).arg1.name + q.conditions.get(i).op + q.conditions.get(i).subgoal2 + "." + q.conditions.get(i).arg2.name;
+//		}
+//		
+//		str += init.separator;
+//		
+//		for(int i = 0; i<q.lambda_term.size(); i++)
+//		{
+//			
+//			Lambda_term l_term = q.lambda_term.get(i);
+//			
+//			String l_term_str = l_term.arg_name.replaceFirst("\\" + init.separator, ".");
+//			
+//			if(i >= 1)
+//				str += l_term_str;
+//		}
+//		
+//		str += init.separator;
+//		
+//		Set<String> relation_mapping_key = q.subgoal_name_mapping.keySet();
+//		
+//		int num = 0;
+//		
+//		for(Iterator iter = relation_mapping_key.iterator(); iter.hasNext();)
+//		{
+//			
+//			if(num >= 1)
+//				str += ",";
+//			
+//			String curr_name = (String) iter.next();
+//			
+//			String mapped_name = q.subgoal_name_mapping.get(curr_name);
+//			
+//			str += curr_name + ":" + mapped_name; 
+//			
+//			num++;
+//		}
+//		
+//		return str;
+//	}
+//	
 	public static void write2file(String file_name, Vector<String> views) throws IOException
 	{
 		File fout = new File(file_name);
@@ -506,9 +507,11 @@ public class Query_operation {
         
         HashMap<String, String> subgoal_name_mapping = new HashMap<String, String> ();
                 
-        Vector<Subgoal> subgoals = get_query_subgoals(id, subgoal_name_mapping, c, pst);
+        HashMap<String, Argument> name_arg_mappings = new HashMap<String, Argument>();
         
-        Vector<Conditions> conditions = get_query_conditions(id, c, pst);
+        Vector<Subgoal> subgoals = view_operation.get_view_subgoals_full(id, subgoal_name_mapping, name_arg_mappings, c, pst);
+        
+        Vector<Conditions> conditions = get_query_conditions(id, name_arg_mappings, c, pst);
         
         Vector<Lambda_term> lambda_terms = get_query_lambda_terms(id, c, pst);
         
@@ -537,9 +540,11 @@ public class Query_operation {
         
         HashMap<String, String> subgoal_name_mapping = new HashMap<String, String> ();
         
-        Vector<Conditions> conditions = get_query_conditions(id, c, pst);
+        HashMap<String, Argument> name_arg_mappings = new HashMap<String, Argument>();
         
-        Vector<Subgoal> subgoals = get_query_subgoals(id, subgoal_name_mapping, c, pst);
+        Vector<Subgoal> subgoals = view_operation.get_view_subgoals_full(id, subgoal_name_mapping, name_arg_mappings, c, pst);
+        
+        Vector<Conditions> conditions = get_query_conditions(id, name_arg_mappings, c, pst);
         
         Vector<Lambda_term> lambda_terms = get_query_lambda_terms(id, c, pst);
         
@@ -846,122 +851,170 @@ public class Query_operation {
 		return values;
 	}
 	
-	static Vector<Conditions> get_query_conditions(int id, Connection c, PreparedStatement pst) throws SQLException
-	{
-		String q_conditions = "select conditions, agg_function1, agg_function2 from query2conditions where query_id = '" + id + "'";
-		
-		pst = c.prepareStatement(q_conditions);
-		
-		ResultSet r = pst.executeQuery();
-		
-		Vector<Conditions> conditions = new Vector<Conditions>();
-		
-		while(r.next())
-		{
-			
-			String condition_str = r.getString(1);
-			
-			String agg_function1 = r.getString(2);
-			
-			String agg_function2 = r.getString(3);
-			
-			String []strs = null;
-			
-			Operation op = null;
-			
-			
-			if(condition_str.contains(op_equal.op))
-			{
-				strs = condition_str.split(op_equal.op);
-				
-				op = new op_equal();
-			}
-			else
-			{
-				if(condition_str.contains(op_less.op))
-				{
-					strs = condition_str.split(op_less.op);
-					
-					op = new op_less();
-				}
-				else
-				{
-					if(condition_str.contains(op_greater.op))
-					{
-						strs = condition_str.split(op_greater.op);
-						
-						op = new op_greater();
-					}
-					else
-					{
-						if(condition_str.contains(op_less_equal.op))
-						{
-							strs = condition_str.split(op_less_equal.op);
-							
-							op = new op_less_equal();
-						}
-						else
-						{
-							if(condition_str.contains(op_greater_equal.op))
-							{
-								strs = condition_str.split(op_greater_equal.op);
-								
-								op = new op_greater_equal();
-							}
-							else
-							{
-								if(condition_str.contains(op_not_equal.op))
-								{
-									strs = condition_str.split(op_not_equal.op);
-									
-									op = new op_not_equal();
-								}
-							}
-						}
-					}
-				}
-				
-			}
-			
-			
-			String str1 = strs[0];
-			
-			String str2 = strs[1];
-			
-			String relation_name1 = str1.substring(0, str1.indexOf(init.separator)).trim();
-			
-			String relation_name2 = new String();
-			
-			String arg1 = str1;//.substring(str1.indexOf(init.separator) + 1, str1.length()).trim();
-
-			String arg2 = new String ();
-			
-			Conditions condition;
-			
-			if(str2.contains("'"))
-			{
-				arg2 = str2.trim();
-				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2, agg_function1, agg_function2);
-			}
-			else
-			{
-				arg2 = str2;//.substring(str2.indexOf(init.separator) + 1, str2.length()).trim();
-				
-//				subgoal2 = strs2[0] + "_" + strs2[1];
-				
-				relation_name2 = str2.substring(0, str2.indexOf(init.separator)).trim();
-				
-				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2, agg_function1, agg_function2);
-
-			}
-			
-			conditions.add(condition);
-		}
-		return conditions;
-		
-	}
+	static Vector<Conditions> get_query_conditions(int name, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
+    {
+        String q_conditions = "select conditions, agg_function1, agg_function2 from query2conditions where query_id = '" + name + "'";
+        
+        pst = c.prepareStatement(q_conditions);
+        
+        ResultSet r = pst.executeQuery();
+        
+        Vector<Conditions> conditions = new Vector<Conditions>();
+        
+        while(r.next())
+        {
+            
+            String condition_str = r.getString(1);
+            
+//          String agg_function1 = r.getString(2);
+//          
+//          String agg_function2 = r.getString(3);
+            
+            Conditions condition = view_operation.parse_conditions(condition_str, name_arg_mappings, init.separator, Load_views_and_citation_queries.split2);
+            
+                        
+            
+            
+            
+            
+            
+//          String []strs1 = str1.split("_");
+//          
+//          String subgoal1 = strs1[0] + "_" + strs1[1];
+//          
+//          String arg1 = str1.trim();//.substring(subgoal1.length() + 1, str1.length());
+//          
+//          String subgoal2 = new String();
+            
+            
+            
+            
+            
+                
+//          Conditions condition = new Conditions(new Argument(arg1), subgoal1, op, new Argument(arg2), subgoal2);
+            
+            conditions.add(condition);
+        }
+        return conditions;
+        
+    }
 	
+//	static Vector<Conditions> get_query_conditions(int id, Connection c, PreparedStatement pst) throws SQLException
+//	{
+//		String q_conditions = "select conditions, agg_function1, agg_function2 from query2conditions where query_id = '" + id + "'";
+//		
+//		pst = c.prepareStatement(q_conditions);
+//		
+//		ResultSet r = pst.executeQuery();
+//		
+//		Vector<Conditions> conditions = new Vector<Conditions>();
+//		
+//		while(r.next())
+//		{
+//			
+//			String condition_str = r.getString(1);
+//			
+//			String agg_function1 = r.getString(2);
+//			
+//			String agg_function2 = r.getString(3);
+//			
+//			String []strs = null;
+//			
+//			Operation op = null;
+//			
+//			
+//			if(condition_str.contains(op_equal.op))
+//			{
+//				strs = condition_str.split(op_equal.op);
+//				
+//				op = new op_equal();
+//			}
+//			else
+//			{
+//				if(condition_str.contains(op_less.op))
+//				{
+//					strs = condition_str.split(op_less.op);
+//					
+//					op = new op_less();
+//				}
+//				else
+//				{
+//					if(condition_str.contains(op_greater.op))
+//					{
+//						strs = condition_str.split(op_greater.op);
+//						
+//						op = new op_greater();
+//					}
+//					else
+//					{
+//						if(condition_str.contains(op_less_equal.op))
+//						{
+//							strs = condition_str.split(op_less_equal.op);
+//							
+//							op = new op_less_equal();
+//						}
+//						else
+//						{
+//							if(condition_str.contains(op_greater_equal.op))
+//							{
+//								strs = condition_str.split(op_greater_equal.op);
+//								
+//								op = new op_greater_equal();
+//							}
+//							else
+//							{
+//								if(condition_str.contains(op_not_equal.op))
+//								{
+//									strs = condition_str.split(op_not_equal.op);
+//									
+//									op = new op_not_equal();
+//								}
+//							}
+//						}
+//					}
+//				}
+//				
+//			}
+//			
+//			
+//			String str1 = strs[0];
+//			
+//			String str2 = strs[1];
+//			
+//			String relation_name1 = str1.substring(0, str1.indexOf(init.separator)).trim();
+//			
+//			String relation_name2 = new String();
+//			
+//			String arg1 = str1;//.substring(str1.indexOf(init.separator) + 1, str1.length()).trim();
+//
+//			String arg2 = new String ();
+//			
+//			Conditions condition;
+//			
+//			if(str2.contains("'"))
+//			{
+//				arg2 = str2.trim();
+//				
+//				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2), relation_name2, agg_function1, agg_function2);
+//			}
+//			else
+//			{
+//				arg2 = str2;//.substring(str2.indexOf(init.separator) + 1, str2.length()).trim();
+//				
+////				subgoal2 = strs2[0] + "_" + strs2[1];
+//				
+//				relation_name2 = str2.substring(0, str2.indexOf(init.separator)).trim();
+//				
+//				condition = new Conditions(new Argument(arg1, relation_name1), relation_name1, op, new Argument(arg2, relation_name2), relation_name2, agg_function1, agg_function2);
+//
+//			}
+//			
+//			conditions.add(condition);
+//		}
+//		return conditions;
+//		
+//	}
+//	
 	static Vector<Subgoal> get_query_subgoals(int name, HashMap<String, String> subgoal_name_mapping, Connection c, PreparedStatement pst) throws SQLException
 	{
 		String q_subgoals = "select subgoal_names, subgoal_origin_names from query2subgoal where query_id = '" + name + "'";

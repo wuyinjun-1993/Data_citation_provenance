@@ -269,7 +269,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
         
         if(tuple.mapSubgoals_str.get(subgoal_name2) == null)
         {
-          String partial_join_mapped_attribute_name = arg1.name.replaceAll("\\" + init.separator, "_");
+          String partial_join_mapped_attribute_name = arg1.relation_name + "_" + arg1.attribute_name;//arg1.name.replaceAll("\\" + init.separator, "_");
           
           if(!partial_join_mapped_attribute_names.contains(partial_join_mapped_attribute_name))
           {

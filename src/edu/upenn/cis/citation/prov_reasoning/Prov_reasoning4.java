@@ -48,6 +48,7 @@ import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1_materialized;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing3;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
@@ -73,6 +74,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //  public static String view_file_name = Query_provenance.directory+ "views";
 //  
 //  public static String citation_query_file_name = Query_provenance.directory+"citation_queries";
+  
+  public static String db_name = "provenance";
   
   public static String view_citation_query_mapping_file_name = Query_provenance.directory+"view_citation_query_mappings";
   
@@ -178,14 +181,18 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  public static void init()
+  public static void init(Connection c, PreparedStatement pst) throws SQLException
   {
     String [] r_agg_funs1 = {"SUM", "COUNT"};
     
     reliable_agg_functions.put("AVG", r_agg_funs1);
+    
+    Single_view.get_relation_primary_key(c, pst);
+    
+    Single_view.clear_views_in_database(c, pst);
   }
   
-  public static void init_from_files(Connection c, PreparedStatement pst) throws SQLException
+  public static void init_from_files(boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException
   {
     Vector<Query> views = Load_views_and_citation_queries.get_views(Query_provenance.view_file, c, pst);
 //    Vector<Query> citation_queries = Load_views_and_citation_queries.get_views(citation_query_file_name, c, pst);
@@ -202,6 +209,10 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //      System.out.println(view);
       
       Single_view view_obj = new Single_view(view, view.name, c, pst);
+      
+      if(is_materialized)
+        Single_view.materilization(view_obj, c, pst);
+      
       
       view_objs.add(view_obj);
       
@@ -900,7 +911,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     }
   }
   
-  static ConcurrentHashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids, Query user_query, Connection c, PreparedStatement pst) throws InterruptedException
+  static ConcurrentHashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, ConcurrentHashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, Connection c, PreparedStatement pst) throws InterruptedException
   {
     Set<Single_view> views = all_possible_view_mappings.keySet();
         
@@ -923,7 +934,10 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       else
       {
         try {
-          check_thread = new Check_valid_view_mappings_agg_batch_processing1(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+          if(!is_materialized)
+            check_thread = new Check_valid_view_mappings_agg_batch_processing1(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+          else
+            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
         } catch (ClassNotFoundException | SQLException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
@@ -1407,7 +1421,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     grouping_value_agg_value_mappings.put(grouping_values, agg_values);
   }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, ConcurrentHashMap<Tuple, Integer> tuple_ids, boolean isclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, ConcurrentHashMap<Tuple, Integer> tuple_ids, boolean isclustering, boolean is_materialized, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
     
     HashSet<String> tables = new HashSet<String>();
@@ -1535,7 +1549,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
 //    set_head_vars_id_mappings(head_vals);
     
-    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, c, pst);
+    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, is_materialized, c, pst);
     
     
 //    output_view_mapping_id_mappings(tuple_ids);
@@ -1560,7 +1574,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, ConcurrentHashMap<Tuple, Integer> tuple_ids, boolean isclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, ConcurrentHashMap<Tuple, Integer> tuple_ids, boolean isclustering, Vector<String[]> provenance_instances, boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
     
     HashSet<String> tables = new HashSet<String>();
@@ -1676,7 +1690,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
 //    set_head_vars_id_mappings(head_vals);
     
-    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, c, pst);
+    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, is_materialized, c, pst);
     
     
 //    output_view_mapping_id_mappings(tuple_ids);
@@ -1829,7 +1843,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     Query_provenance.reset();
   }
   
-  public static HashSet<Covering_set> reasoning(Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  public static HashSet<Covering_set> reasoning(Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
 //    String sql = new String();
 //    
@@ -1854,7 +1868,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     ConcurrentHashMap<Tuple, Integer> tuple_ids = new ConcurrentHashMap<Tuple, Integer>();
     
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, rs, c, pst);
+    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, is_materialized, rs, c, pst);
     
     end = System.nanoTime();
     
@@ -1880,7 +1894,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     return covering_sets;
   }
   
-  public static HashSet<Covering_set> reasoning(Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  public static HashSet<Covering_set> reasoning(Query user_query, ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
 //    String sql = new String();
 //    
@@ -1905,7 +1919,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     ConcurrentHashMap<Tuple, Integer> tuple_ids = new ConcurrentHashMap<Tuple, Integer>();
     
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, provenance_instances, c, pst);
+    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, provenance_instances, is_materialized, c, pst);
     
     end = System.nanoTime();
     

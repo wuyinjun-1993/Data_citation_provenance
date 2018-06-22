@@ -20,6 +20,8 @@ public class Query_converter2 {
 
   static String temp_prefix = "";
   
+  static String default_parser = ".";
+  
   public static String datalog2sql(Query query, boolean isPro_query)
   {
       
@@ -65,7 +67,7 @@ public class Query_converter2 {
   {
     String sql = new String();
 
-    String sel_item = get_sel_item_with_why_token_columns(query.head.args, true);
+    String sel_item = get_sel_item_with_why_token_columns(query.head.args, ".", true);
         
     String citation_table = get_relations_without_citation_table(query, true);
     
@@ -116,7 +118,7 @@ public class Query_converter2 {
         if(count >= 1)
           string += " and ";
         
-        string += get_single_having_condition_str(query.conditions.get(i), isProv_query);
+        string += Query_converter.get_single_having_condition_str(query.conditions.get(i), default_parser, isProv_query);
         
         count ++;
         
@@ -126,7 +128,7 @@ public class Query_converter2 {
     return string;
   }
   
-  static String get_having_clauses(Single_view query, boolean isProv_query)
+  static String get_having_clauses(Single_view query, String parser, boolean isProv_query)
   {
     String string = new String();
     
@@ -139,7 +141,7 @@ public class Query_converter2 {
         if(count >= 1)
           string += " and ";
         
-        string += get_single_having_condition_str(query.conditions.get(i), isProv_query);
+        string += Query_converter.get_single_having_condition_str(query.conditions.get(i), parser, isProv_query);
         
         count ++;
         
@@ -153,7 +155,7 @@ public class Query_converter2 {
   {
     String sql = new String();
 
-    String sel_item = get_sel_item_with_why_token_columns(query.head.args, true);
+    String sel_item = get_sel_item_with_why_token_columns(query.head.args, ".", true);
         
     String citation_table = get_relations_without_citation_table(query, true);
     
@@ -233,7 +235,7 @@ public class Query_converter2 {
         
         Argument arg = (Argument) subgoal.args.get(j);
         
-        String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        String arg_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
         
         string += subgoal.name + "_copy." + arg.name.replace("|", "_") + " = " + subgoal.name + "." + arg_name;       
         
@@ -255,7 +257,8 @@ public class Query_converter2 {
     {
       Argument grouping_arg = grouping_args.get(i);
       
-      String grouping_arg_string = grouping_arg.name.replace("|", ".");
+//    String grouping_arg_string = grouping_arg.name.replace("|", ".");
+    String grouping_arg_string = grouping_arg.relation_name + "." + grouping_arg.attribute_name;//.name.replace("|", ".");
       
       grouping_arg_strings.add(grouping_arg_string);
     }
@@ -290,11 +293,11 @@ public class Query_converter2 {
   {
     String sql = new String();
 
-    String sel_item = get_sel_item_with_why_token_columns(selected_args, false);
+    String sel_item = get_sel_item_with_why_token_columns(selected_args, ".", false);
         
     String citation_table = get_relations_without_citation_table(view, false);
     
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
     String grouping_attr_value_clause = get_grouping_value_conditions(grouping_values, selected_args);
     
@@ -321,7 +324,7 @@ public class Query_converter2 {
     {
       sql += " group by (" + sel_item + ")";
       
-      String having_clause = get_having_clauses(view, false);
+      String having_clause = get_having_clauses(view, default_parser, false);
       
       if(!having_clause.isEmpty())
       {
@@ -351,7 +354,8 @@ public class Query_converter2 {
         
         Argument arg = head_args.get(j);
         
-        string += arg.name.replace(init.separator, ".") + "='" + grouping_attr_values.get(i)[j] + "'";
+//      string += arg.name.replace(init.separator, ".") + "='" + grouping_attr_values.get(i)[j] + "'";
+      string += arg.relation_name + "." + arg.attribute_name + "='" + grouping_attr_values.get(i)[j] + "'";
       }
       
       string += ")";
@@ -364,11 +368,11 @@ public class Query_converter2 {
   {
     String sql = new String();
     
-    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, ".", false);
     
     String citation_table = get_relations_without_citation_table(view, false);
     
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
     String grouping_attri_value_condition = get_grouping_attribute_values(grouping_attr_values, view.head.args);
     
@@ -390,7 +394,7 @@ public class Query_converter2 {
     {
       sql += " group by (" + sel_item + ")";
       
-      String having_clause = get_having_clauses(view, false);
+      String having_clause = get_having_clauses(view, default_parser, false);
       
       if(!having_clause.isEmpty())
       {
@@ -418,7 +422,8 @@ public class Query_converter2 {
       if(tuple.phi.apply(head_arg) != null)
       {
         
-        view_head_arg_names.add(head_arg.name.replace(init.separator, "."));
+//      view_head_arg_names.add(head_arg.name.replace(init.separator, "."));
+      view_head_arg_names.add(head_arg.relation_name + "." + head_arg.attribute_name);
         
 //        if(num >= 1)
 //          string += " and ";
@@ -469,13 +474,13 @@ public class Query_converter2 {
   {
     String sql = new String();
     
-    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, ".", false);
     
     String citation_table = get_relations_without_citation_table(view, false);
 
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
-    String having_clause = get_having_clauses(view, false);
+    String having_clause = get_having_clauses(view, default_parser, false);
     
     String grouping_attr_condition_string = grouping_value_condition_string;//get_grouping_attr_condition(tuple, view, grouping_values, q_grouping_attrs);
     
@@ -537,7 +542,7 @@ public class Query_converter2 {
           if(i >= 1)
               str += "||'" + init.separator + "'||";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -554,7 +559,7 @@ public class Query_converter2 {
         if(i >= 1)
           str += "||'" + init.separator + "'||";
         
-        String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
         
 //        str += arg.relation_name + "." + attr_name;
         
@@ -575,15 +580,15 @@ public class Query_converter2 {
     
     String sel_item = get_sel_item_with_why_token_columns_encoded(view.head.args, query_head_attr_view_head_ids);//get_sel_item_with_why_token_columns(view.head.args, false);
     
-    String group_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String group_item = get_sel_item_with_why_token_columns(view.head.args, ".", false);
     
     String agg_attributes = new String();
     
     String citation_table = get_relations_without_citation_table(view, false);
 
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
-    String having_clause = get_having_clauses(view, false);
+    String having_clause = get_having_clauses(view, default_parser, false);
     
     sql = "select " + sel_item;
     
@@ -633,15 +638,15 @@ public class Query_converter2 {
     
     String sql = new String();
     
-    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, ".", false);
     
     String agg_attributes = new String();
     
     String citation_table = get_relations_without_citation_table(view, false);
 
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
-    String having_clause = get_having_clauses(view, false);
+    String having_clause = get_having_clauses(view, default_parser, false);
     
     sql = "select " + sel_item;
     
@@ -657,6 +662,65 @@ public class Query_converter2 {
     sql_clauses.put("select_agg", agg_attributes);
     sql_clauses.put("select", sel_item);
     sql_clauses.put("from", citation_table);
+    if(condition != null && !condition.isEmpty())
+    {
+      sql_clauses.put("where", condition);
+    }
+    if(view.head.has_agg && view.head.args.size() > 0)
+    {
+      sql_clauses.put("group_by", sel_item);
+    }
+    
+    if(!having_clause.isEmpty())
+    {
+      sql_clauses.put("having", having_clause);
+    }
+    return sql_clauses;
+//    sql += " from " + citation_table;
+//    
+//    if(view.head.args.size() > 0)
+//    {
+//      sql += " where (" + grouping_attr_condition_string + ")";
+//      
+//      if(condition != null && !condition.isEmpty())
+//      {
+//        sql += " and " + condition;
+//      }
+//
+//    }
+//    else
+  }
+  
+  public static HashMap<String, String> data2sql_check_having_clause2(Tuple tuple, String parser, Single_view view)
+  {
+    HashMap<String, String> sql_clauses = new HashMap<String, String>();
+    
+    String sql = new String();
+    
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, parser, false);
+    
+    String agg_attributes = new String();
+    
+//    String citation_table = get_relations_without_citation_table(view, false);
+
+    String condition = get_condition(view, parser, false);
+    
+    String having_clause = get_having_clauses(view, parser, false);
+    
+    sql = "select " + sel_item;
+    
+    if(view.head.has_agg)
+    {
+      if(view.head.args.size() > 0)
+        agg_attributes += ",";
+      
+      agg_attributes += "count(*)"; 
+      //agg_attributes += get_agg_item_in_select_clause(view.head.agg_args, view.head.agg_function, false);
+      
+    }
+    sql_clauses.put("select_agg", agg_attributes);
+    sql_clauses.put("select", sel_item);
+    sql_clauses.put("from", view.view_name);
     if(condition != null && !condition.isEmpty())
     {
       sql_clauses.put("where", condition);
@@ -719,7 +783,7 @@ public class Query_converter2 {
             
             Argument arg = (Argument) subgoal.args.get(k);
             
-            String arg_name = arg.name.replace(init.separator, ".");
+            String arg_name = arg.relation_name + "." + arg.attribute_name;//arg.name.replace(init.separator, ".");
             
             string += arg_name + "='" + provenance_value.head_vals.get(arg_count++) + "'";
           }
@@ -748,12 +812,12 @@ public class Query_converter2 {
       if(i >= 1)
         sel_item += ",";
       
-      sel_item += get_sel_item_with_why_token_columns(view.subgoals.get(view_why_prov_ids.get(i)).args, false);
+      sel_item += get_sel_item_with_why_token_columns(view.subgoals.get(view_why_prov_ids.get(i)).args, default_parser, false);
     }
     
     String citation_table = get_relations_without_citation_table(view, false);
     
-    String condition = get_condition(view, false);
+    String condition = get_condition(view,default_parser, false);
     
     String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
     
@@ -769,7 +833,7 @@ public class Query_converter2 {
     return sql;
   }
   
-  public static HashMap<String, String> data2sql_compute_count_grouping_values(Single_view view, Vector<Integer> view_why_prov_ids)
+  public static HashMap<String, String> data2sql_compute_count_grouping_values(Single_view view, String parser, Vector<Integer> view_why_prov_ids, Vector<Argument> sel_args)
   {
     
     HashMap<String, String> sql_clauses = new HashMap<String, String>();
@@ -777,21 +841,21 @@ public class Query_converter2 {
     
     String sel_item = new String();
     
-    Vector<Argument> all_args = new Vector<Argument>();
+//    Vector<Argument> all_args = new Vector<Argument>();
+//    
+//    for(int i = 0; i<view_why_prov_ids.size(); i++)
+//    {
+//      
+//      all_args.add((Argument) view.subgoals.get(view_why_prov_ids.get(i)).args.get(0));
+//      
+//      
+//    }
     
-    for(int i = 0; i<view_why_prov_ids.size(); i++)
-    {
-      
-      all_args.add((Argument) view.subgoals.get(view_why_prov_ids.get(i)).args.get(0));
-      
-      
-    }
-    
-    sel_item += get_sel_item_with_why_token_columns(all_args, false);
+    sel_item += get_sel_item_with_why_token_columns(sel_args, parser, false);
     
     String citation_table = get_relations_without_citation_table(view, false);
     
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, parser, false);
     
 //    String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
     
@@ -819,13 +883,13 @@ public class Query_converter2 {
   {
     String sql = new String();
     
-    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, default_parser, false);
     
     String citation_table = get_relations_without_citation_table(view, false);
 
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser,false);
     
-    String having_clause = get_having_clauses(view, false);
+    String having_clause = get_having_clauses(view, default_parser, false);
     
     String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
     
@@ -862,18 +926,18 @@ public class Query_converter2 {
     return sql;
   }
   
-  public static HashMap<String, String> data2sql_check_count_grouping_values(Single_view view)
+  public static HashMap<String, String> data2sql_check_count_grouping_values(Single_view view, String parser)
   {
     HashMap<String, String> sql_clauses = new HashMap<String, String>();
     String sql = new String();
     
-    String sel_item = get_sel_item_with_why_token_columns(view.head.args, false);
+    String sel_item = get_sel_item_with_why_token_columns(view.head.args, parser, false);
     
     String citation_table = get_relations_without_citation_table(view, false);
 
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, parser, false);
     
-    String having_clause = get_having_clauses(view, false);
+    String having_clause = get_having_clauses(view, parser, false);
     
 //    String grouping_attr_condition_string = get_view_provenance_clause(view, provenance_values, view_why_prov_ids);
     String agg_attributes = new String();
@@ -921,13 +985,13 @@ public class Query_converter2 {
   {
     String sql = new String();
 
-    String sel_item = get_sel_item_with_why_token_columns(selected_args, false);
+    String sel_item = get_sel_item_with_why_token_columns(selected_args,default_parser, false);
         
     String citation_table = get_relations_without_citation_table(view, false);
     
     String view_subgoal_copy_sql = get_view_subgoal_copies_sql(view_subgoal_copies);
     
-    String condition = get_condition(view, false);
+    String condition = get_condition(view, default_parser, false);
     
     String join_condition = get_view_subgoal_copy_join_conditions(subgoals, view_subgoal_ids);
             
@@ -954,7 +1018,7 @@ public class Query_converter2 {
     {
       sql += " group by (" + sel_item + ")";
       
-      String having_clause = get_having_clauses(view, false);
+      String having_clause = get_having_clauses(view, default_parser, false);
       
       if(!having_clause.isEmpty())
       {
@@ -979,13 +1043,13 @@ public class Query_converter2 {
           if(i >= 1)
               str += ",";
           
-          str += arg.relation_name + "." + arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          str += arg.relation_name + "." + arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
       }
       return str;
   }
   
-  static String get_sel_item_with_why_token_columns(Vector<Argument> args, boolean isProv_query)
+  static String get_sel_item_with_why_token_columns(Vector<Argument> args, String parser, boolean isProv_query)
   {
       String str = new String();
       
@@ -998,14 +1062,14 @@ public class Query_converter2 {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
           if(isProv_query)
-            str += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
+            str += "\"" + arg.relation_name + "\""+ parser + "\"" + attr_name + "\"";
           else
-            str += arg.relation_name + "." + attr_name;
+            str += arg.relation_name + parser + attr_name;
           
       }
       
@@ -1042,7 +1106,7 @@ public class Query_converter2 {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1094,7 +1158,7 @@ public class Query_converter2 {
       
       Argument arg = (Argument) agg_attributes.get(i);
       
-      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      String attr_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
       if(isProv_query)
         string += "\"" + arg.relation_name + "." + attr_name + "\"";
@@ -1149,7 +1213,7 @@ public class Query_converter2 {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1237,7 +1301,7 @@ public class Query_converter2 {
         for(int j = 0; j<subgoal.args.size(); j++)
         {
           Argument arg = (Argument) subgoal.args.get(j);
-          String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String arg_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           arg_list.add(arg_name);
         }
         unique_relations.put(origin_name, arg_list);
@@ -1292,7 +1356,7 @@ public class Query_converter2 {
             if(count >= 1)
               str += " and ";
             
-            str += get_single_condition_str(q.conditions.get(i), isPro_query);
+            str += Query_converter.get_single_condition_str(q.conditions.get(i), default_parser, isPro_query);
             
             count ++;
             
@@ -1302,7 +1366,7 @@ public class Query_converter2 {
       return str;
   }
   
-  public static String get_condition(Single_view q, boolean isProv_query)
+  public static String get_condition(Single_view q, String parser, boolean isProv_query)
   {
       String str = new String();
       
@@ -1327,7 +1391,7 @@ public class Query_converter2 {
             if(count >= 1)
               str += " and ";
             
-            str += get_single_condition_str(q.conditions.get(i), isProv_query);
+            str += Query_converter.get_single_condition_str(q.conditions.get(i), parser, isProv_query);
             
             count ++;
             
@@ -1337,114 +1401,114 @@ public class Query_converter2 {
       return str;
   }
   
-  public static String get_single_condition_str(Conditions condition, boolean isProv_query)
-  {
-      String str = new String();
-      
-      String arg1 = null;
-      
-      if(isProv_query)
-      {
-        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
-        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-      }
-      else
-        arg1 = condition.arg1.name.replace("|", ".");
-      
-      str += arg1 + condition.op;
-      
-      if(condition.arg2.isConst())
-      {
-          
-          String arg2 = condition.arg2.toString();
-          
-          if(arg2.length() > 2)
-          {
-              arg2 = arg2.substring(1, arg2.length() - 1).replaceAll("'", "''");
-              str += "'" + arg2 + "'";
-          }
-          else
-          {
-              str += arg2;
-          }
-                      
-          
-          
-          
-      }
-      else
-      {
-        
-        String [] rel_arg_pairs = condition.arg2.name.split("\\|");
-             
-        if(isProv_query)
-          str += "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-        else
-          str += rel_arg_pairs[0] + "." + rel_arg_pairs[1];
-      }
-      
-      return str;
-  }
-  
-  public static String get_single_having_condition_str(Conditions condition, boolean isPro_query)
-  {
-      String str = new String();
-      
-      String arg1 = null;
-      
-      if(isPro_query)
-      {
-        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
-        
-        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-      }
-      else
-        arg1 = condition.arg1.name.replace("|", ".");
-      
-      if(condition.agg_function1 != null)
-        arg1 = condition.agg_function1 + "(" + arg1 + ")";
-      
-      str += arg1 + condition.op;
-      
-      if(condition.arg2.isConst())
-      {
-          
-          String arg2 = condition.arg2.toString();
-          
-          if(arg2.length() > 2)
-          {
-              arg2 = arg2.substring(1, arg2.length() - 1).replaceAll("'", "''");
-              str += "'" + arg2 + "'";
-          }
-          else
-          {
-              str += arg2;
-          }
-                      
-          
-          
-          
-      }
-      else
-      {
-        
-        String arg2 = null;
-        
-        if(isPro_query)
-        {
-          String [] rel_arg_pairs = condition.arg2.name.split("\\|");
-          arg2 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-        }
-        else
-          arg2 = condition.arg2.name.replace("|", ".");
-        
-        if(condition.agg_function2 != null)
-          arg2 = condition.agg_function2 + "(" + arg2 + ")";
-             
-          str += arg2;
-      }
-      
-      return str;
-  }
-  
+//  public static String get_single_condition_str(Conditions condition, boolean isProv_query)
+//  {
+//      String str = new String();
+//      
+//      String arg1 = null;
+//      
+//      if(isProv_query)
+//      {
+//        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
+//        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//      }
+//      else
+//        arg1 = condition.arg1.name.replace("|", ".");
+//      
+//      str += arg1 + condition.op;
+//      
+//      if(condition.arg2.isConst())
+//      {
+//          
+//          String arg2 = condition.arg2.toString();
+//          
+//          if(arg2.length() > 2)
+//          {
+//              arg2 = arg2.substring(1, arg2.length() - 1).replaceAll("'", "''");
+//              str += "'" + arg2 + "'";
+//          }
+//          else
+//          {
+//              str += arg2;
+//          }
+//                      
+//          
+//          
+//          
+//      }
+//      else
+//      {
+//        
+//        String [] rel_arg_pairs = condition.arg2.name.split("\\|");
+//             
+//        if(isProv_query)
+//          str += "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//        else
+//          str += rel_arg_pairs[0] + "." + rel_arg_pairs[1];
+//      }
+//      
+//      return str;
+//  }
+//  
+//  public static String get_single_having_condition_str(Conditions condition, boolean isPro_query)
+//  {
+//      String str = new String();
+//      
+//      String arg1 = null;
+//      
+//      if(isPro_query)
+//      {
+//        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
+//        
+//        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//      }
+//      else
+//        arg1 = condition.arg1.name.replace("|", ".");
+//      
+//      if(condition.agg_function1 != null)
+//        arg1 = condition.agg_function1 + "(" + arg1 + ")";
+//      
+//      str += arg1 + condition.op;
+//      
+//      if(condition.arg2.isConst())
+//      {
+//          
+//          String arg2 = condition.arg2.toString();
+//          
+//          if(arg2.length() > 2)
+//          {
+//              arg2 = arg2.substring(1, arg2.length() - 1).replaceAll("'", "''");
+//              str += "'" + arg2 + "'";
+//          }
+//          else
+//          {
+//              str += arg2;
+//          }
+//                      
+//          
+//          
+//          
+//      }
+//      else
+//      {
+//        
+//        String arg2 = null;
+//        
+//        if(isPro_query)
+//        {
+//          String [] rel_arg_pairs = condition.arg2.name.split("\\|");
+//          arg2 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//        }
+//        else
+//          arg2 = condition.arg2.name.replace("|", ".");
+//        
+//        if(condition.agg_function2 != null)
+//          arg2 = condition.agg_function2 + "(" + arg2 + ")";
+//             
+//          str += arg2;
+//      }
+//      
+//      return str;
+//  }
+//  
 }

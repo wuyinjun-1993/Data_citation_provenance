@@ -6,6 +6,7 @@ package edu.upenn.cis.citation.Corecover;
  */
 
 import java.util.*;
+import edu.upenn.cis.citation.init.init;
 
 public class Argument {
 
@@ -19,7 +20,7 @@ public class Argument {
   
   public String value = null;
   
-  public String origin_name = null;
+  public String attribute_name = null;
   
   public String relation_name = null; //not the original name
   
@@ -56,6 +57,8 @@ public class Argument {
     this.name = name;
     
     this.relation_name = relation_name;
+    
+    this.attribute_name = name.substring(name.indexOf(init.separator) + 1, name.length());
   }
   
   public Argument(String name, String relation_name) {
@@ -67,11 +70,11 @@ public class Argument {
 	  this(name, new String(), true);
   }
   
-  public Argument(String name, String relation_name, String lambda_term) {
-      this(name, relation_name);
-      
-      this.origin_name = lambda_term;
-  }
+//  public Argument(String name, String relation_name, String lambda_term) {
+//      this(name, relation_name);
+//      
+//      this.origin_name = lambda_term;
+//  }
 
   public void set_value(String value)
   {

@@ -572,7 +572,24 @@ public class query_generator {
 //	    Argument arg = (Argument) subgoals.get(i).args.get(0);
 	    Argument arg_const = new Argument("'" + size + "'");
 	    Argument arg = new Argument(subgoals.get(i).name + init.separator + relation_primary_key_mapping.get(subgoals.get(i).name), subgoals.get(i).name);
-	    Conditions condition = new Conditions(arg, arg.relation_name, new op_less_equal(), arg_const, new String(), null, null);
+	    
+	    Vector<Argument> args1 = new Vector<Argument>();
+	    
+	    args1.add(arg);
+	    
+	    Vector<Argument> args2 = new Vector<Argument>();
+	    
+	    args2.add(arg_const);
+	    
+	    Vector<String> subgoals1 = new Vector<String>();
+	    
+	    subgoals1.add(arg.relation_name);
+	    
+	    Vector<String> subgoals2 = new Vector<String>();
+	    
+	    subgoals2.add(new String());
+	    
+	    Conditions condition = new Conditions(args1, subgoals1, new op_less_equal(), args2, subgoals2, null, null);
 	    conditions.add(condition);
 	  }
 	  return conditions;
@@ -845,7 +862,7 @@ public class query_generator {
 			
 			Argument arg = head_vars.get(index);
 			
-			l_terms.add(new Lambda_term(arg.relation_name + init.separator + arg.name, arg.relation_name));
+			l_terms.add(new Lambda_term(arg.relation_name + init.separator + arg.attribute_name, arg.relation_name));
 		}
 		
 		return l_terms;

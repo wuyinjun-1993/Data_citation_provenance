@@ -29,7 +29,7 @@ public class Load_views_and_citation_queries {
 	
 	static String split1 = "|";
 	
-	static String split2 = "#";
+	public static String split2 = "#";
 	
 	static int col_nums = 4;
 	
@@ -386,7 +386,7 @@ public class Load_views_and_citation_queries {
 		{
 			String predicate = predicates[i].trim();
 						
-			Conditions condition = view_operation.parse_conditions(predicate, name_arg_mappings, ".");
+			Conditions condition = view_operation.parse_conditions(predicate, name_arg_mappings, ".", split2);
 			
 			conditions.add(condition);
 		}

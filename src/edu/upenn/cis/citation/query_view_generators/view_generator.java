@@ -585,9 +585,9 @@ public class view_generator {
     for(int i = 0; i<query.head.agg_args.size(); i++)
     {
       Argument head_grouping_arg = (Argument) query.head.agg_args.get(i).get(0);
-      String rel_name = head_grouping_arg.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
+      String rel_name = head_grouping_arg.relation_name;//.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
       String origin_rel_name = query.subgoal_name_mapping.get(rel_name);
-      String arg_name = head_grouping_arg.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
+      String arg_name = head_grouping_arg.attribute_name;//.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
       
       if(query_generator.parameterizable_attri.get(origin_rel_name).contains(arg_name))
       {

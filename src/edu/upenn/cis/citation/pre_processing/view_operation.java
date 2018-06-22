@@ -25,6 +25,7 @@ import edu.upenn.cis.citation.Operation.op_greater_equal;
 import edu.upenn.cis.citation.Operation.op_less;
 import edu.upenn.cis.citation.Operation.op_less_equal;
 import edu.upenn.cis.citation.Operation.op_not_equal;
+import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 
 public class view_operation {
@@ -610,11 +611,11 @@ public class view_operation {
 			
 			String condition_str = r.getString(1);
 			
-			String agg_function1 = r.getString(2);
+//			String agg_function1 = r.getString(2);
+//			
+//			String agg_function2 = r.getString(3);
 			
-			String agg_function2 = r.getString(3);
-			
-			Conditions condition = parse_conditions(condition_str, name_arg_mappings, init.separator, agg_function1, agg_function2);
+			Conditions condition = parse_conditions(condition_str, name_arg_mappings, init.separator, Load_views_and_citation_queries.split2);
 			
 						
 			
@@ -643,228 +644,228 @@ public class view_operation {
 		
 	}
 	
-	   static Vector<Conditions> get_view_conditions(int name, Connection c, PreparedStatement pst) throws SQLException
-	    {
-	        String q_conditions = "select conditions, agg_function1, agg_function2 from view2conditions where view = '" + name + "'";
-	        
-	        pst = c.prepareStatement(q_conditions);
-	        
-	        ResultSet r = pst.executeQuery();
-	        
-	        Vector<Conditions> conditions = new Vector<Conditions>();
-	        
-	        while(r.next())
-	        {
-	            
-	            String condition_str = r.getString(1);
-	            
-	            String agg_function1 = r.getString(2);
-	            
-	            String agg_function2 = r.getString(3);
-	            
-	            Conditions condition = parse_conditions(condition_str, init.separator, agg_function1, agg_function2);
-	            
-	                        
-	            
-	            
-	            
-	            
-	            
-//	          String []strs1 = str1.split("_");
-//	          
-//	          String subgoal1 = strs1[0] + "_" + strs1[1];
-//	          
-//	          String arg1 = str1.trim();//.substring(subgoal1.length() + 1, str1.length());
-//	          
-//	          String subgoal2 = new String();
-	            
-	            
-	            
-	            
-	            
-	                
-//	          Conditions condition = new Conditions(new Argument(arg1), subgoal1, op, new Argument(arg2), subgoal2);
-	            
-	            conditions.add(condition);
-	        }
-	        return conditions;
-	        
-	    }
-	
-	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser, String agg_function1, String agg_function2)
-	{
-		if(condition_str.contains("'"))
-		{
-			String str2 = condition_str.substring(condition_str.indexOf("'"), condition_str.length());
-			
-			String str1 = condition_str.substring(0, condition_str.indexOf("'"));
-			
-			String [] strs = null;
-			
-			Operation op = null;
-			
-			if(str1.contains(op_less_equal.op))
-			{
-				strs = str1.split(op_less_equal.op);
-				
-				op = new op_less_equal();
-			}
-			else
-			{
-				if(str1.contains(op_greater_equal.op))
-				{
-					strs = str1.split(op_greater_equal.op);
-					
-					op = new op_greater_equal();
-				}
-				else
-				{
-					if(str1.contains(op_not_equal.op))
-					{
-						strs = str1.split(op_not_equal.op);
-						
-						op = new op_not_equal();
-					}
-					else
-					{
-						if(str1.contains(op_less.op))
-						{
-							strs = str1.split(op_less.op);
-							
-							op = new op_less();
-						}
-						else
-						{
-							if(str1.contains(op_greater.op))
-							{
-								strs = str1.split(op_greater.op);
-								
-								op = new op_greater();
-							}
-							else
-							{
-								if(str1.contains(op_equal.op))
-								{
-									strs = str1.split(op_equal.op);
-									
-									op = new op_equal();
-								}
-							}
-						}
-					}
-				}
-				
-			}
-			
-			
-			String relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
-			
-			String relation_name2 = new String();
-			
-			String arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
-
-			String arg2 = new String ();
-			
-			Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
-			
-			Argument Arg2 = new Argument(str2);
-			
-			int value_len = str2.length();
-			
-			Arg2.value = str2.substring(1, value_len - 1);
-						
-			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
-			
-			
-		}
-		else
-		{
-			String []strs = null;
-			
-			Operation op = null;
-			
-			
-			if(condition_str.contains(op_less_equal.op))
-			{
-				strs = condition_str.split(op_less_equal.op);
-				
-				op = new op_less_equal();
-			}
-			else
-			{
-				if(condition_str.contains(op_greater_equal.op))
-				{
-					strs = condition_str.split(op_greater_equal.op);
-					
-					op = new op_greater_equal();
-				}
-				else
-				{
-					if(condition_str.contains(op_not_equal.op))
-					{
-						strs = condition_str.split(op_not_equal.op);
-						
-						op = new op_not_equal();
-					}
-					else
-					{
-						if(condition_str.contains(op_less.op))
-						{
-							strs = condition_str.split(op_less.op);
-							
-							op = new op_less();
-						}
-						else
-						{
-							if(condition_str.contains(op_greater.op))
-							{
-								strs = condition_str.split(op_greater.op);
-								
-								op = new op_greater();
-							}
-							else
-							{
-								if(condition_str.contains(op_equal.op))
-								{
-									strs = condition_str.split(op_equal.op);
-									
-									op = new op_equal();
-								}
-							}
-						}
-					}
-				}
-				
-			}
-			
-			String str1 = strs[0];
-			
-			String str2 = strs[1];
-			
-			String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
-			
-			String relation_name2 = new String();
-			
-			String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
-
-			String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
-				
-//				subgoal2 = strs2[0] + "_" + strs2[1];
-				
-				relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
-				
-				
-			Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
-				
-			Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
-			
-			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
-
-			
-		}
-
-	}
-	
+//	   static Vector<Conditions> get_view_conditions(int name, Connection c, PreparedStatement pst) throws SQLException
+//	    {
+//	        String q_conditions = "select conditions, agg_function1, agg_function2 from view2conditions where view = '" + name + "'";
+//	        
+//	        pst = c.prepareStatement(q_conditions);
+//	        
+//	        ResultSet r = pst.executeQuery();
+//	        
+//	        Vector<Conditions> conditions = new Vector<Conditions>();
+//	        
+//	        while(r.next())
+//	        {
+//	            
+//	            String condition_str = r.getString(1);
+//	            
+//	            String agg_function1 = r.getString(2);
+//	            
+//	            String agg_function2 = r.getString(3);
+//	            
+//	            Conditions condition = parse_conditions(condition_str, init.separator, agg_function1, agg_function2);
+//	            
+//	                        
+//	            
+//	            
+//	            
+//	            
+//	            
+////	          String []strs1 = str1.split("_");
+////	          
+////	          String subgoal1 = strs1[0] + "_" + strs1[1];
+////	          
+////	          String arg1 = str1.trim();//.substring(subgoal1.length() + 1, str1.length());
+////	          
+////	          String subgoal2 = new String();
+//	            
+//	            
+//	            
+//	            
+//	            
+//	                
+////	          Conditions condition = new Conditions(new Argument(arg1), subgoal1, op, new Argument(arg2), subgoal2);
+//	            
+//	            conditions.add(condition);
+//	        }
+//	        return conditions;
+//	        
+//	    }
+//	
+//	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser, String agg_function1, String agg_function2)
+//	{
+//		if(condition_str.contains("'"))
+//		{
+//			String str2 = condition_str.substring(condition_str.indexOf("'"), condition_str.length());
+//			
+//			String str1 = condition_str.substring(0, condition_str.indexOf("'"));
+//			
+//			String [] strs = null;
+//			
+//			Operation op = null;
+//			
+//			if(str1.contains(op_less_equal.op))
+//			{
+//				strs = str1.split(op_less_equal.op);
+//				
+//				op = new op_less_equal();
+//			}
+//			else
+//			{
+//				if(str1.contains(op_greater_equal.op))
+//				{
+//					strs = str1.split(op_greater_equal.op);
+//					
+//					op = new op_greater_equal();
+//				}
+//				else
+//				{
+//					if(str1.contains(op_not_equal.op))
+//					{
+//						strs = str1.split(op_not_equal.op);
+//						
+//						op = new op_not_equal();
+//					}
+//					else
+//					{
+//						if(str1.contains(op_less.op))
+//						{
+//							strs = str1.split(op_less.op);
+//							
+//							op = new op_less();
+//						}
+//						else
+//						{
+//							if(str1.contains(op_greater.op))
+//							{
+//								strs = str1.split(op_greater.op);
+//								
+//								op = new op_greater();
+//							}
+//							else
+//							{
+//								if(str1.contains(op_equal.op))
+//								{
+//									strs = str1.split(op_equal.op);
+//									
+//									op = new op_equal();
+//								}
+//							}
+//						}
+//					}
+//				}
+//				
+//			}
+//			
+//			
+//			String relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
+//			
+//			String relation_name2 = new String();
+//			
+//			String arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
+//
+//			String arg2 = new String ();
+//			
+//			Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+//			
+//			Argument Arg2 = new Argument(str2);
+//			
+//			int value_len = str2.length();
+//			
+//			Arg2.value = str2.substring(1, value_len - 1);
+//						
+//			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+//			
+//			
+//		}
+//		else
+//		{
+//			String []strs = null;
+//			
+//			Operation op = null;
+//			
+//			
+//			if(condition_str.contains(op_less_equal.op))
+//			{
+//				strs = condition_str.split(op_less_equal.op);
+//				
+//				op = new op_less_equal();
+//			}
+//			else
+//			{
+//				if(condition_str.contains(op_greater_equal.op))
+//				{
+//					strs = condition_str.split(op_greater_equal.op);
+//					
+//					op = new op_greater_equal();
+//				}
+//				else
+//				{
+//					if(condition_str.contains(op_not_equal.op))
+//					{
+//						strs = condition_str.split(op_not_equal.op);
+//						
+//						op = new op_not_equal();
+//					}
+//					else
+//					{
+//						if(condition_str.contains(op_less.op))
+//						{
+//							strs = condition_str.split(op_less.op);
+//							
+//							op = new op_less();
+//						}
+//						else
+//						{
+//							if(condition_str.contains(op_greater.op))
+//							{
+//								strs = condition_str.split(op_greater.op);
+//								
+//								op = new op_greater();
+//							}
+//							else
+//							{
+//								if(condition_str.contains(op_equal.op))
+//								{
+//									strs = condition_str.split(op_equal.op);
+//									
+//									op = new op_equal();
+//								}
+//							}
+//						}
+//					}
+//				}
+//				
+//			}
+//			
+//			String str1 = strs[0];
+//			
+//			String str2 = strs[1];
+//			
+//			String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
+//			
+//			String relation_name2 = new String();
+//			
+//			String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
+//
+//			String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
+//				
+////				subgoal2 = strs2[0] + "_" + strs2[1];
+//				
+//				relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
+//				
+//				
+//			Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+//				
+//			Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
+//			
+//			return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+//
+//			
+//		}
+//
+//	}
+//	
 	
 	static String[] get_agg_function_string(String arg_with_agg_function)
 	{
@@ -885,7 +886,156 @@ public class view_operation {
 	  return arg_with_agg_function_strings;
 	}
 	
-	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser)
+	static Object[] parse_argument_and_ops(String str1)
+	{
+	  Object [] results = new Object[3];
+	  
+	  String [] strs = null;
+	  
+	  if(str1.contains(op_less_equal.op))
+      {
+          strs = str1.split(op_less_equal.op);
+
+          results[0] = new op_less_equal();
+          
+          results[1] = strs[0];
+          
+          results[2] = (strs.length >= 2)? strs[1] : null;
+          
+      }
+      else
+      {
+          if(str1.contains(op_greater_equal.op))
+          {
+              strs = str1.split(op_greater_equal.op);
+              
+              results[0] = new op_greater_equal();
+              
+              results[1] = strs[0];
+              
+              results[2] = (strs.length >= 2)? strs[1] : null;
+          }
+          else
+          {
+              if(str1.contains(op_not_equal.op))
+              {
+                  strs = str1.split(op_not_equal.op);
+                  
+                  results[0] = new op_not_equal();
+                  
+                  results[1] = strs[0];
+                  
+                  results[2] = (strs.length >= 2)? strs[1] : null;
+              }
+              else
+              {
+                  if(str1.contains(op_less.op))
+                  {
+                      strs = str1.split(op_less.op);
+
+                      results[0] = new op_less();
+                      
+                      results[1] = strs[0];
+                      
+                      results[2] = (strs.length >= 2)? strs[1] : null;
+                  }
+                  else
+                  {
+                      if(str1.contains(op_greater.op))
+                      {
+                          strs = str1.split(op_greater.op);
+
+                          results[0] = new op_greater();
+                          
+                          results[1] = strs[0];
+                          
+                          results[2] = (strs.length >= 2)? strs[1] : null;
+                      }
+                      else
+                      {
+                          if(str1.contains(op_equal.op))
+                          {
+                              strs = str1.split(op_equal.op);
+                              
+                              results[0] = new op_equal();
+                              
+                              results[1] = strs[0];
+                              
+                              results[2] = (strs.length >= 2)? strs[1] : null;
+                          }
+                      }
+                  }
+              }
+          }
+          
+      }
+
+	  return results;
+	  
+	}
+	
+	static String parse_arg_names(String arg_name_string, Vector<Argument> args, Vector<String> subgoals, HashMap<String, Argument> name_arg_mappings, String parser, String parser2)
+	{
+      String[] arg_with_agg_function_strings1 = get_agg_function_string(arg_name_string);
+
+      if(arg_with_agg_function_strings1 != null)
+      {
+        
+        String[] arg_names = arg_with_agg_function_strings1[1].trim().split(parser2);
+        
+        String agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
+        
+        for(String arg_name:arg_names)
+        {
+          String relation_name = arg_name.substring(0, arg_name.indexOf(parser)).trim();
+          
+          String arg1 = arg_name.substring(arg_name.indexOf(parser) + 1, arg_name.length()).trim();
+          
+          Argument Arg1 = name_arg_mappings.get(relation_name + init.separator + arg1);
+          
+          args.add(Arg1);
+          
+          subgoals.add(relation_name);
+        }
+        
+        return agg_function1;
+      }
+      else
+      {
+        
+        if(arg_name_string.startsWith("'") && arg_name_string.endsWith("'"))
+        {
+          Argument arg1 = new Argument(arg_name_string);
+          
+          args.add(arg1);
+          
+          subgoals.add(new String());
+          
+          return null;
+        }
+        else
+        {
+          String relation_name1 = null;
+          
+          String arg1 = null;
+          
+          relation_name1 = arg_name_string.substring(0, arg_name_string.indexOf(parser)).trim();
+          
+          arg1 = arg_name_string.substring(arg_name_string.indexOf(parser) + 1, arg_name_string.length()).trim();
+          
+          Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+          
+          args.add(Arg1);
+          
+          subgoals.add(relation_name1);
+          
+          return null;
+        }
+        
+      }
+	}
+	
+	public static Conditions parse_conditions(String condition_str, HashMap<String, Argument> name_arg_mappings, String parser, String parser2)
     {
         if(condition_str.contains("'"))
         {
@@ -893,229 +1043,145 @@ public class view_operation {
             
             String str1 = condition_str.substring(0, condition_str.indexOf("'"));
             
-            String [] strs = null;
+            Object[] arg_name_ops = parse_argument_and_ops(str1);
             
-            Operation op = null;
+            Operation op = (Operation) arg_name_ops[0];
             
-            if(str1.contains(op_less_equal.op))
-            {
-                strs = str1.split(op_less_equal.op);
-                
-                op = new op_less_equal();
-            }
-            else
-            {
-                if(str1.contains(op_greater_equal.op))
-                {
-                    strs = str1.split(op_greater_equal.op);
-                    
-                    op = new op_greater_equal();
-                }
-                else
-                {
-                    if(str1.contains(op_not_equal.op))
-                    {
-                        strs = str1.split(op_not_equal.op);
-                        
-                        op = new op_not_equal();
-                    }
-                    else
-                    {
-                        if(str1.contains(op_less.op))
-                        {
-                            strs = str1.split(op_less.op);
-                            
-                            op = new op_less();
-                        }
-                        else
-                        {
-                            if(str1.contains(op_greater.op))
-                            {
-                                strs = str1.split(op_greater.op);
-                                
-                                op = new op_greater();
-                            }
-                            else
-                            {
-                                if(str1.contains(op_equal.op))
-                                {
-                                    strs = str1.split(op_equal.op);
-                                    
-                                    op = new op_equal();
-                                }
-                            }
-                        }
-                    }
-                }
-                
-            }
+            String arg_name = (String) arg_name_ops[1];
             
-            String[] arg_with_agg_function_strings1 = get_agg_function_string(strs[0]);
+            Vector<Argument> args = new Vector<Argument>();
             
-            String relation_name1 = null;
+            Vector<String> subgoals = new Vector<String>();
             
-            String agg_function1 = null;
-            
-            String arg1 = null;
-            
-            String agg_function2 = null;
-            
-            if(arg_with_agg_function_strings1 != null)
-            {
-              relation_name1 = arg_with_agg_function_strings1[1].substring(0, arg_with_agg_function_strings1[1].indexOf(parser)).trim();
-              
-              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
-              
-              arg1 = arg_with_agg_function_strings1[1].substring(arg_with_agg_function_strings1[1].indexOf(parser) + 1, arg_with_agg_function_strings1[1].length()).trim();
-            }
-            else
-            {
-              relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
-              
-              arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
-            }
+            String agg_function = parse_arg_names(arg_name.trim(), args, subgoals, name_arg_mappings, parser, parser2);
             
             
             
-            String relation_name2 = new String();
-            
-            
-
-            String arg2 = new String ();
-            
-            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+//            String[] arg_with_agg_function_strings1 = get_agg_function_string(arg_name);
+//            
+//            String relation_name1 = null;
+//            
+//            String agg_function1 = null;
+//            
+//            String arg1 = null;
+//            
+//            String agg_function2 = null;
+//            
+//            if(arg_with_agg_function_strings1 != null)
+//            {
+//              relation_name1 = arg_with_agg_function_strings1[1].substring(0, arg_with_agg_function_strings1[1].indexOf(parser)).trim();
+//              
+//              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
+//              
+//              arg1 = arg_with_agg_function_strings1[1].substring(arg_with_agg_function_strings1[1].indexOf(parser) + 1, arg_with_agg_function_strings1[1].length()).trim();
+//            }
+//            else
+//            {
+//              relation_name1 = arg_name.substring(0, arg_name.indexOf(parser)).trim();
+//              
+//              arg1 = arg_name.substring(arg_name.indexOf(parser) + 1, arg_name.length()).trim();
+//            }
+//            
+//            
+//            
+//            String relation_name2 = new String();
+//            
+//            
+//
+//            String arg2 = new String ();
+//            
+//            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
             
             Argument Arg2 = new Argument(str2);
             
             int value_len = str2.length();
             
             Arg2.value = str2.substring(1, value_len - 1);
+            
+            Vector<Argument> args2 = new Vector<Argument>();
+            
+            Vector<String> rels2 = new Vector<String>();
+            
+            args2.add(Arg2);
                         
-            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+            return new Conditions(args, subgoals, op, args2, rels2, agg_function, null);
             
             
         }
         else
         {
-            String []strs = null;
-            
-            Operation op = null;
-            
-            
-            if(condition_str.contains(op_less_equal.op))
-            {
-                strs = condition_str.split(op_less_equal.op);
-                
-                op = new op_less_equal();
-            }
-            else
-            {
-                if(condition_str.contains(op_greater_equal.op))
-                {
-                    strs = condition_str.split(op_greater_equal.op);
-                    
-                    op = new op_greater_equal();
-                }
-                else
-                {
-                    if(condition_str.contains(op_not_equal.op))
-                    {
-                        strs = condition_str.split(op_not_equal.op);
-                        
-                        op = new op_not_equal();
-                    }
-                    else
-                    {
-                        if(condition_str.contains(op_less.op))
-                        {
-                            strs = condition_str.split(op_less.op);
-                            
-                            op = new op_less();
-                        }
-                        else
-                        {
-                            if(condition_str.contains(op_greater.op))
-                            {
-                                strs = condition_str.split(op_greater.op);
-                                
-                                op = new op_greater();
-                            }
-                            else
-                            {
-                                if(condition_str.contains(op_equal.op))
-                                {
-                                    strs = condition_str.split(op_equal.op);
-                                    
-                                    op = new op_equal();
-                                }
-                            }
-                        }
-                    }
-                }
-                
-            }
-            
-            
-            
-            String agg_function1 = null;
-            
-            String agg_function2 = null;
-            
-            
-            
-            
-            String[] arg_with_agg_function_strings1 = get_agg_function_string(strs[0]);
-            
-            String str1 = null;
-            
-            if(arg_with_agg_function_strings1 != null)
-            {
-              str1 = arg_with_agg_function_strings1[1];
-              
-              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
-              
-            }
-            else
-            {
-              str1 = strs[0];
-            }
-            
-            
-            
-            String[] arg_with_agg_function_strings2 = get_agg_function_string(strs[1]);
-            
-            String str2 = null;
-            
-            if(arg_with_agg_function_strings2 != null)
-            {
-              str2 = arg_with_agg_function_strings2[1];
-              
-              agg_function2 = arg_with_agg_function_strings2[0].toLowerCase();
-              
-            }
-            else
-            {
-              str2 = strs[1];
-            }
-            
-            String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
-            
-            String relation_name2 = new String();
-            
-            String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
+            Object[] arg_name_op = parse_argument_and_ops(condition_str);
 
-            String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
-                
-//              subgoal2 = strs2[0] + "_" + strs2[1];
+            Operation op = (Operation) arg_name_op[0];
             
-            relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
-                
-                
-            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
-                
-            Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
+            String arg_name1 = (String) arg_name_op[1];
             
-            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+            String arg_name2 = (String) arg_name_op[2];
+            
+            Vector<Argument> args1 = new Vector<Argument>();
+            
+            Vector<String> subgoals1 = new Vector<String>();
+            
+            String agg_function1 = parse_arg_names(arg_name1.trim(), args1, subgoals1, name_arg_mappings, parser, parser2);
+            
+            Vector<Argument> args2 = new Vector<Argument>();
+            
+            Vector<String> subgoals2 = new Vector<String>();
+            
+            String agg_function2 = parse_arg_names(arg_name2.trim(), args2, subgoals2, name_arg_mappings, parser, parser2);
+            
+//            String[] arg_with_agg_function_strings1 = get_agg_function_string(arg_name1);
+//            
+//            String str1 = null;
+//            
+//            if(arg_with_agg_function_strings1 != null)
+//            {
+//              str1 = arg_with_agg_function_strings1[1];
+//              
+//              agg_function1 = arg_with_agg_function_strings1[0].toLowerCase();
+//              
+//            }
+//            else
+//            {
+//              str1 = arg_name1;
+//            }
+//            
+//            
+//            
+//            String[] arg_with_agg_function_strings2 = get_agg_function_string(arg_name2);
+//            
+//            String str2 = null;
+//            
+//            if(arg_with_agg_function_strings2 != null)
+//            {
+//              str2 = arg_with_agg_function_strings2[1];
+//              
+//              agg_function2 = arg_with_agg_function_strings2[0].toLowerCase();
+//              
+//            }
+//            else
+//            {
+//              str2 = arg_name2;
+//            }
+//            
+//            String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
+//            
+//            String relation_name2 = new String();
+//            
+//            String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
+//
+//            String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
+//                
+////              subgoal2 = strs2[0] + "_" + strs2[1];
+//            
+//            relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
+//                
+//                
+//            Argument Arg1 = name_arg_mappings.get(relation_name1 + init.separator + arg1);
+//                
+//            Argument Arg2 = name_arg_mappings.get(relation_name2 + init.separator + arg2);
+            
+            return new Conditions(args1, subgoals1, op, args2, subgoals2, agg_function1, agg_function2);
 
             
         }
@@ -1123,174 +1189,174 @@ public class view_operation {
     }
 
 	
-	public static Conditions parse_conditions(String condition_str, String parser, String agg_function1, String agg_function2)
-    {
-        if(condition_str.contains("'"))
-        {
-            String str2 = condition_str.substring(condition_str.indexOf("'"), condition_str.length());
-            
-            String str1 = condition_str.substring(0, condition_str.indexOf("'"));
-            
-            String [] strs = null;
-            
-            Operation op = null;
-            
-            if(str1.contains(op_less_equal.op))
-            {
-                strs = str1.split(op_less_equal.op);
-                
-                op = new op_less_equal();
-            }
-            else
-            {
-                if(str1.contains(op_greater_equal.op))
-                {
-                    strs = str1.split(op_greater_equal.op);
-                    
-                    op = new op_greater_equal();
-                }
-                else
-                {
-                    if(str1.contains(op_not_equal.op))
-                    {
-                        strs = str1.split(op_not_equal.op);
-                        
-                        op = new op_not_equal();
-                    }
-                    else
-                    {
-                        if(str1.contains(op_less.op))
-                        {
-                            strs = str1.split(op_less.op);
-                            
-                            op = new op_less();
-                        }
-                        else
-                        {
-                            if(str1.contains(op_greater.op))
-                            {
-                                strs = str1.split(op_greater.op);
-                                
-                                op = new op_greater();
-                            }
-                            else
-                            {
-                                if(str1.contains(op_equal.op))
-                                {
-                                    strs = str1.split(op_equal.op);
-                                    
-                                    op = new op_equal();
-                                }
-                            }
-                        }
-                    }
-                }
-                
-            }
-            
-            
-            String relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
-            
-            String relation_name2 = new String();
-            
-            String arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
-
-            String arg2 = new String ();
-            
-            Argument Arg1 = new Argument(arg1, relation_name1);
-                        
-            return new Conditions(Arg1, relation_name1, op, new Argument(str2), relation_name2, agg_function1, agg_function2);
-            
-            
-        }
-        else
-        {
-            String []strs = null;
-            
-            Operation op = null;
-            
-            
-            if(condition_str.contains(op_less_equal.op))
-            {
-                strs = condition_str.split(op_less_equal.op);
-                
-                op = new op_less_equal();
-            }
-            else
-            {
-                if(condition_str.contains(op_greater_equal.op))
-                {
-                    strs = condition_str.split(op_greater_equal.op);
-                    
-                    op = new op_greater_equal();
-                }
-                else
-                {
-                    if(condition_str.contains(op_not_equal.op))
-                    {
-                        strs = condition_str.split(op_not_equal.op);
-                        
-                        op = new op_not_equal();
-                    }
-                    else
-                    {
-                        if(condition_str.contains(op_less.op))
-                        {
-                            strs = condition_str.split(op_less.op);
-                            
-                            op = new op_less();
-                        }
-                        else
-                        {
-                            if(condition_str.contains(op_greater.op))
-                            {
-                                strs = condition_str.split(op_greater.op);
-                                
-                                op = new op_greater();
-                            }
-                            else
-                            {
-                                if(condition_str.contains(op_equal.op))
-                                {
-                                    strs = condition_str.split(op_equal.op);
-                                    
-                                    op = new op_equal();
-                                }
-                            }
-                        }
-                    }
-                }
-                
-            }
-            
-            String str1 = strs[0];
-            
-            String str2 = strs[1];
-            
-            String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
-            
-            String relation_name2 = new String();
-            
-            String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
-
-            String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
-                
-//              subgoal2 = strs2[0] + "_" + strs2[1];
-                
-                relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
-                
-                
-            Argument Arg1 = new Argument(arg1, relation_name1);
-            
-            Argument Arg2 = new Argument(arg2, relation_name2);
-            
-            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
-
-            
-        }
-
-    }
-	
+//	public static Conditions parse_conditions(String condition_str, String parser, String agg_function1, String agg_function2)
+//    {
+//        if(condition_str.contains("'"))
+//        {
+//            String str2 = condition_str.substring(condition_str.indexOf("'"), condition_str.length());
+//            
+//            String str1 = condition_str.substring(0, condition_str.indexOf("'"));
+//            
+//            String [] strs = null;
+//            
+//            Operation op = null;
+//            
+//            if(str1.contains(op_less_equal.op))
+//            {
+//                strs = str1.split(op_less_equal.op);
+//                
+//                op = new op_less_equal();
+//            }
+//            else
+//            {
+//                if(str1.contains(op_greater_equal.op))
+//                {
+//                    strs = str1.split(op_greater_equal.op);
+//                    
+//                    op = new op_greater_equal();
+//                }
+//                else
+//                {
+//                    if(str1.contains(op_not_equal.op))
+//                    {
+//                        strs = str1.split(op_not_equal.op);
+//                        
+//                        op = new op_not_equal();
+//                    }
+//                    else
+//                    {
+//                        if(str1.contains(op_less.op))
+//                        {
+//                            strs = str1.split(op_less.op);
+//                            
+//                            op = new op_less();
+//                        }
+//                        else
+//                        {
+//                            if(str1.contains(op_greater.op))
+//                            {
+//                                strs = str1.split(op_greater.op);
+//                                
+//                                op = new op_greater();
+//                            }
+//                            else
+//                            {
+//                                if(str1.contains(op_equal.op))
+//                                {
+//                                    strs = str1.split(op_equal.op);
+//                                    
+//                                    op = new op_equal();
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                
+//            }
+//            
+//            
+//            String relation_name1 = strs[0].substring(0, strs[0].indexOf(parser)).trim();
+//            
+//            String relation_name2 = new String();
+//            
+//            String arg1 = strs[0].substring(strs[0].indexOf(parser) + 1, strs[0].length()).trim();
+//
+//            String arg2 = new String ();
+//            
+//            Argument Arg1 = new Argument(arg1, relation_name1);
+//                        
+//            return new Conditions(Arg1, relation_name1, op, new Argument(str2), relation_name2, agg_function1, agg_function2);
+//            
+//            
+//        }
+//        else
+//        {
+//            String []strs = null;
+//            
+//            Operation op = null;
+//            
+//            
+//            if(condition_str.contains(op_less_equal.op))
+//            {
+//                strs = condition_str.split(op_less_equal.op);
+//                
+//                op = new op_less_equal();
+//            }
+//            else
+//            {
+//                if(condition_str.contains(op_greater_equal.op))
+//                {
+//                    strs = condition_str.split(op_greater_equal.op);
+//                    
+//                    op = new op_greater_equal();
+//                }
+//                else
+//                {
+//                    if(condition_str.contains(op_not_equal.op))
+//                    {
+//                        strs = condition_str.split(op_not_equal.op);
+//                        
+//                        op = new op_not_equal();
+//                    }
+//                    else
+//                    {
+//                        if(condition_str.contains(op_less.op))
+//                        {
+//                            strs = condition_str.split(op_less.op);
+//                            
+//                            op = new op_less();
+//                        }
+//                        else
+//                        {
+//                            if(condition_str.contains(op_greater.op))
+//                            {
+//                                strs = condition_str.split(op_greater.op);
+//                                
+//                                op = new op_greater();
+//                            }
+//                            else
+//                            {
+//                                if(condition_str.contains(op_equal.op))
+//                                {
+//                                    strs = condition_str.split(op_equal.op);
+//                                    
+//                                    op = new op_equal();
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                
+//            }
+//            
+//            String str1 = strs[0];
+//            
+//            String str2 = strs[1];
+//            
+//            String relation_name1 = str1.substring(0, str1.indexOf(parser)).trim();
+//            
+//            String relation_name2 = new String();
+//            
+//            String arg1 = str1.substring(str1.indexOf(parser) + 1, str1.length()).trim();
+//
+//            String arg2 = str2.substring(str2.indexOf(parser) + 1, str2.length()).trim();
+//                
+////              subgoal2 = strs2[0] + "_" + strs2[1];
+//                
+//                relation_name2 = str2.substring(0, str2.indexOf(parser)).trim();
+//                
+//                
+//            Argument Arg1 = new Argument(arg1, relation_name1);
+//            
+//            Argument Arg2 = new Argument(arg2, relation_name2);
+//            
+//            return new Conditions(Arg1, relation_name1, op, Arg2, relation_name2, agg_function1, agg_function2);
+//
+//            
+//        }
+//
+//    }
+//	
 	
 	static String[] split_relation_attr_name(String head_var_str)
 	{
@@ -1475,7 +1541,7 @@ public class view_operation {
 		return subgoal_names;
 	}
 	
-	static Vector<Subgoal> get_view_subgoals_full(int name, HashMap<String, String> subgoal_name_mapping, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
+	public static Vector<Subgoal> get_view_subgoals_full(int name, HashMap<String, String> subgoal_name_mapping, HashMap<String, Argument> name_arg_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
 		String q_subgoals = "select subgoal_names, subgoal_origin_names from view2subgoals where view = '" + name + "'";
 		
@@ -1721,7 +1787,7 @@ public class view_operation {
 	{
 		for(int i = 0; i<view.conditions.size(); i++)
 		{			
-			String query = "insert into view2conditions values ('" + seq + "','" + view.conditions.get(i).toStringinsql() + "')";
+			String query = "insert into view2conditions values ('" + seq + "','" + view.conditions.get(i).toString() + "')";
 			
 			pst = c.prepareStatement(query);
 			

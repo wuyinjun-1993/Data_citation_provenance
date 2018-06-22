@@ -62,7 +62,7 @@ public class provenance_citation {
   {
     Class.forName("org.postgresql.Driver");
     Connection c = DriverManager
-        .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
+        .getConnection(init.db_url, init.usr_name , init.passwd);
     
     PreparedStatement pst = null;
     
@@ -114,7 +114,7 @@ public class provenance_citation {
 
   }
   
-  static void reasoning_with_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, Connection c, PreparedStatement pst) throws SQLException, IOException, InterruptedException, JSONException
+  static void reasoning_with_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException, IOException, InterruptedException, JSONException
   {
     Prov_reasoning4.batch_size = thread_num;
     
@@ -124,11 +124,11 @@ public class provenance_citation {
     
     Prov_reasoning4.sort_cluster = sortcluster;
     
-    Prov_reasoning4.init();
+    Prov_reasoning4.init(c, pst);
   
 //    Prov_reasoning4.init_from_database(c, pst);
     
-    Prov_reasoning4.init_from_files(c, pst);
+    Prov_reasoning4.init_from_files(is_materialized, c, pst);
     
     double start = 0;
     
@@ -140,7 +140,7 @@ public class provenance_citation {
     
     ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
     
-    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, provenance_instances, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, is_materialized, provenance_instances, c, pst);
 
     end = System.nanoTime();
     
@@ -184,7 +184,7 @@ public class provenance_citation {
     
     write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
 
-//    System.out.println(covering_sets);
+    System.out.println(covering_sets);
     
     System.out.println("Covering_set_size::" + covering_sets.size());
     
@@ -201,7 +201,7 @@ public class provenance_citation {
     
   }
   
-  static void reasoning_without_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, Connection c, PreparedStatement pst) throws SQLException, IOException, JSONException, InterruptedException
+  static void reasoning_without_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException, IOException, JSONException, InterruptedException
   {
 
     Prov_reasoning3.batch_size = thread_num;
@@ -272,7 +272,7 @@ public class provenance_citation {
     
     write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning3.tuple_valid_rows);
 
-//    System.out.println(covering_sets);
+    System.out.println(covering_sets);
     
     System.out.println("Covering_set_size::" + covering_sets.size());
     
@@ -295,31 +295,31 @@ public class provenance_citation {
     Connection c = null;
     PreparedStatement pst = null;
     
-  Class.forName("org.postgresql.Driver");
-  c = DriverManager
-      .getConnection(Query_provenance.db_url, init.usr_name , init.passwd);
-  
-//  view_operation.delete_view_by_name("v2", c, pst);
-  
-//    Query query = query_storage.get_query_by_id(1, c, pst);
-  
-  
-  
     boolean iscluster = Boolean.valueOf(args[0]);
     
     boolean covering_set_opt = Boolean.valueOf(args[1]);
+    
+    boolean is_materialized = Boolean.valueOf(args[2]);
     
     boolean sortcluster = false;//Boolean.valueOf(args[1]);
     
     int thread_num = 2;//Integer.valueOf(args[1]);
     
-    if(args.length > 2)
+    String db_name = args[3];
+    
+    Prov_reasoning4.db_name = db_name;
+
+    Class.forName("org.postgresql.Driver");
+    c = DriverManager
+        .getConnection(init.db_url_prefix + db_name, init.usr_name , init.passwd);
+    
+    if(args.length > 4)
     {
-      Query_provenance.query_file = args[2];
+      Query_provenance.query_file = args[4];
       
-      Query_provenance.view_file = args[3];
+      Query_provenance.view_file = args[5];
       
-      Query_provenance.sql_result_file = args[4];
+      Query_provenance.sql_result_file = args[6];
     }
     
     Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
@@ -328,11 +328,11 @@ public class provenance_citation {
     
     if(covering_set_opt)
     {
-      reasoning_with_covering_set_opt(query, iscluster, thread_num, sortcluster, c, pst);
+      reasoning_with_covering_set_opt(query, iscluster, thread_num, sortcluster, is_materialized, c, pst);
     }
     else
     {
-      reasoning_without_covering_set_opt(query, iscluster, thread_num, sortcluster, c, pst);
+      reasoning_without_covering_set_opt(query, iscluster, thread_num, sortcluster, is_materialized, c, pst);
     }
     
     c.close();
@@ -471,9 +471,9 @@ public class provenance_citation {
     
     Prov_reasoning4.sort_cluster = sortcluster;
     
-    Prov_reasoning4.init();
+    Prov_reasoning4.init(c, pst);
   
-    Prov_reasoning4.init_from_files(c, pst);//(c, pst);
+    Prov_reasoning4.init_from_files(false, c, pst);//(c, pst);
     
     double start = 0;
     
@@ -485,7 +485,7 @@ public class provenance_citation {
     
 //    HashSet<citation_view_vector> covering_sets = new HashSet<citation_view_vector>();
     
-    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, false, rs, c, pst);
 
     end = System.nanoTime();
     

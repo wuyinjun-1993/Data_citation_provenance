@@ -30,6 +30,8 @@ import edu.upenn.cis.citation.init.init;
 
 public class Single_view {
   
+  public static HashMap<String, Vector<Integer>> relation_primary_key_mappings = new HashMap<String, Vector<Integer>>(); 
+  
   public String token_string = new String ();
   
   public String view_name = new String();
@@ -140,6 +142,130 @@ public class Single_view {
 //  }
 //  
   
+  static Vector<String> get_relation_columns(String table, Connection c, PreparedStatement pst) throws SQLException
+  {
+    String query = "select column_name from information_schema.columns where table_name = '" + table + "'";
+    
+    pst = c.prepareStatement(query);
+    
+    ResultSet rs = pst.executeQuery();
+    
+    Vector<String> cols = new Vector<String>();
+    
+    while(rs.next())
+    {
+      cols.add(rs.getString(1));
+    }
+    
+    return cols;
+  }
+  
+  public static void get_relation_primary_key(Connection c, PreparedStatement pst) throws SQLException
+  {
+    String query = "select tc.table_name, kc.column_name "
+        + "from information_schema.table_constraints tc "
+        + "join information_schema.key_column_usage kc "
+        + "on kc.table_name = tc.table_name and kc.table_schema = tc.table_schema "
+        + " and kc.constraint_name = tc.constraint_name where tc.constraint_type = 'PRIMARY KEY' ";
+//        + "and kc.position_in_unique_constraint is not null";
+    
+    pst = c.prepareStatement(query);
+    
+    ResultSet rs = pst.executeQuery();
+    
+    HashMap<String, Vector<String>> relation_attr_mappings = new HashMap<String, Vector<String>>();
+    
+    while(rs.next())
+    {
+      String table_name = rs.getString(1);
+      
+      Vector<String> all_col_names = relation_attr_mappings.get(table_name);
+      
+      if(all_col_names == null)
+      {
+        all_col_names = get_relation_columns(table_name, c, pst);
+        
+        relation_attr_mappings.put(table_name, all_col_names);
+      }
+      
+      String col_name = rs.getString(2);
+      
+      int id = all_col_names.indexOf(col_name);
+      
+//      System.out.println(table_name + "::" + id); 
+      
+      Vector<Integer> col_name_ids = relation_primary_key_mappings.get(table_name);
+      
+      if(col_name_ids == null)
+      {
+        col_name_ids = new Vector<Integer>();
+        
+        col_name_ids.add(id);
+        
+        relation_primary_key_mappings.put(table_name, col_name_ids);
+      }
+      else
+        relation_primary_key_mappings.get(table_name).add(id);
+    }
+  }
+  
+  
+  public static void clear_views_in_database(Connection c, PreparedStatement pst) throws SQLException
+  {
+//    String sql = "select table_name from INFORMATION_SCHEMA.views WHERE table_schema = ANY (current_schemas(false))";
+    
+    String sql = "SELECT oid::regclass::text FROM pg_class WHERE relkind = 'm'";
+    
+    pst = c.prepareStatement(sql);
+    
+    ResultSet rs = pst.executeQuery();
+    
+    while(rs.next())
+    {
+      String view_name = rs.getString(1);
+      
+      String drop_sql = "drop MATERIALIZED view " + view_name;
+      
+      pst = c.prepareStatement(drop_sql);
+      
+      pst.execute();
+    }
+  }
+  
+  public static void materilization(Single_view view, Connection c, PreparedStatement pst) throws SQLException
+  {
+    if(!view.head.has_agg)
+      return;
+    
+    Vector<String> indexed_cols = new Vector<String>();
+    
+    String sql = Query_converter.datalog2sql_view_conjunction(view, indexed_cols);
+    
+    System.out.println(indexed_cols);
+    
+    String view_query = "create MATERIALIZED view " + view.view_name + " as (" + sql + ")";
+    
+    System.out.println(view_query);
+    
+    pst = c.prepareStatement(view_query);
+    
+    pst.execute();
+    
+//    build_index_on_materilized_views(view, indexed_cols, c, pst);
+  }
+  
+  static void build_index_on_materilized_views(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
+  {
+    for(int i = 0; i < indexed_cols.size(); i++)
+    {
+      String sql = "create index " + view.view_name + "_" + indexed_cols.get(i) + " on " + view.view_name + "(" + indexed_cols.get(i) + ")";
+      
+      pst = c.prepareStatement(sql);
+      
+      pst.execute();
+    }
+  }
+  
   public void load_citation_queries(HashMap<String, String> view_citation_query_mappings, HashMap<String, Query> name_citation_query_mappings)
   {
     for(Entry<String, String> view_citation_query_mapping: view_citation_query_mappings.entrySet())
@@ -154,9 +280,15 @@ public class Single_view {
     
     for(int j = 0; j<conditions.size(); j++)
     {
-      String subgoal1 = conditions.get(j).subgoal1;
       
-      String subgoal2 = conditions.get(j).subgoal2;
+      Conditions condition = conditions.get(j);
+      
+      if(condition.agg_function1 != null || condition.agg_function2 != null)
+        continue;
+      
+      String subgoal1 = conditions.get(j).subgoal1.get(0);
+      
+      String subgoal2 = conditions.get(j).subgoal2.get(0);
       
       int id1 = subgoal_name_id_mappings.get(subgoal1);
       
@@ -391,7 +523,7 @@ public class Single_view {
     
   }
   
-  static void build_grouping_attr_id_mappings(Vector<Argument> view_grouping_attrs, Vector<Argument> query_grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
+  static boolean build_grouping_attr_id_mappings(Vector<Argument> view_grouping_attrs, Vector<Argument> query_grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
   {
     Vector<int[]> ids = new Vector<int[]>();
     
@@ -399,9 +531,14 @@ public class Single_view {
     {
       Argument arg = view_grouping_attrs.get(i);
       
-      String rel_name = arg.name.substring(0, arg.name.indexOf(init.separator));
+      String rel_name = arg.relation_name;//name.substring(0, arg.name.indexOf(init.separator));
       
-      int subgoal_id = subgoal_id_mappings.get(rel_name);
+      Object rel_name_in_query = tuple.mapSubgoals_str.get(rel_name);
+      
+      if(rel_name_in_query == null)
+        return false;
+      
+      int subgoal_id = subgoal_id_mappings.get((String)rel_name_in_query);
       
       int arg_id = subgoals.get(subgoal_id).args.indexOf(arg);
       
@@ -425,6 +562,8 @@ public class Single_view {
     }
     
     view_mapping_query_head_var_attr_in_view_head_ids_mappings.put(tuple, query_attr_view_head_ids);
+    
+    return true;
   }
   
   static Vector<Argument> get_query_attrs_reverse_mapped_attrs(Vector<Argument> args, Tuple tuple)
@@ -448,7 +587,8 @@ public class Single_view {
     {
       Tuple tuple = (Tuple) iter.next();
       
-      build_grouping_attr_id_mappings(head.args, q_head_vars, view_mapping_view_grouping_attr_ids_mappings, view_mapping_query_head_var_attr_in_view_head_ids_mappings, tuple, subgoal_id_mappings, subgoals);
+      if(!build_grouping_attr_id_mappings(head.args, q_head_vars, view_mapping_view_grouping_attr_ids_mappings, view_mapping_query_head_var_attr_in_view_head_ids_mappings, tuple, subgoal_id_mappings, subgoals))
+        continue;
       
       
 //      Vector<Integer> row_ids = new Vector<Integer>();
@@ -476,6 +616,9 @@ public class Single_view {
       {
         Conditions condition = tuple.conditions.get(i);
         
+        if(condition.agg_function1 != null || condition.agg_function2 != null)
+          continue;
+        
         int subgoal_id1 = -1;
         
         int arg_id1 = -1;
@@ -484,7 +627,7 @@ public class Single_view {
         
         if(condition.get_mapping1)
         {
-          String subgoal1 = condition.subgoal1;
+          String subgoal1 = condition.subgoal1.get(0);
           
           subgoal_id1 = subgoal_id_mappings.get(subgoal1);
           
@@ -495,7 +638,7 @@ public class Single_view {
             q_subgoal_id1 = -1;
           }
                   
-          Argument arg1 = condition.arg1;
+          Argument arg1 = condition.arg1.get(0);
           
           arg_id1 = subgoals.get(subgoal_id1).args.indexOf(arg1);
         }
@@ -503,7 +646,7 @@ public class Single_view {
         
         
         
-        Argument arg2 = condition.arg2;
+        Argument arg2 = condition.arg2.get(0);
         
         int subgoal_id2 = -1;
         
@@ -513,7 +656,7 @@ public class Single_view {
         
         if(!arg2.isConst() && condition.get_mapping2)
         {
-          String subgoal2 = condition.subgoal2;
+          String subgoal2 = condition.subgoal2.get(0);
           
           subgoal_id2 = subgoal_id_mappings.get(subgoal2);
           
@@ -876,8 +1019,12 @@ public class Single_view {
       Subgoal subgoal = subgoals.get(v_why_column_ids.get(i));
       
 //      for(int j = 0; j<subgoal.args.size(); j++)
+      Vector<Integer> primary_key_ids = Single_view.relation_primary_key_mappings.get(tuple.query.subgoal_name_mappings.get(subgoal.name));
+      
+//      for(int j = 0; j<subgoal.args.size(); j++)
+      for(int j = 0; j < primary_key_ids.size(); j ++)
       {
-        view_provenance_values.add(clean_boolean_type((Argument) subgoal.args.get(0), values.get(q_why_column_ids.get(i)).head_vals.get(0)));
+        view_provenance_values.add(clean_boolean_type((Argument) subgoal.args.get(primary_key_ids.get(j)), values.get(q_why_column_ids.get(i)).head_vals.get(primary_key_ids.get(j))));
 //        view_provenance_values.add(values.get(q_why_column_ids.get(i)).head_vals.get(j));
       }
       
@@ -1202,14 +1349,14 @@ public class Single_view {
   
   public boolean check_condition_satisfiability(Conditions condition)//, HashMap<String, ArrayList<Conditions>> undertermined_conditions, boolean first)
   {
-    Argument arg1 = condition.arg1;
+    Argument arg1 = condition.arg1.get(0);
     
-    Argument arg2 = condition.arg2;
+    Argument arg2 = condition.arg2.get(0);
     
     if((arg1.value != null && arg2.value != null))
     {
       if(condition.agg_function1 == null && condition.agg_function2 == null)
-        return check_condition_satisfiability_fully_evaluated(condition.arg1, condition.arg2, condition.op);    
+        return check_condition_satisfiability_fully_evaluated(condition.arg1.get(0), condition.arg2.get(0), condition.op);    
     }
     
     
@@ -1394,11 +1541,11 @@ public class Single_view {
       if(i >= 1)
         sql += " and ";
       
-      sql += condition.arg1.name.substring(condition.arg1.name.indexOf(init.separator) + 1, condition.arg1.name.length());
+      sql += condition.arg1.get(0).attribute_name;//.name.substring(condition.arg1.get(0).name.indexOf(init.separator) + 1, condition.arg1.get(0).name.length());
       
       sql += condition.op;
       
-      sql += condition.arg2.value;
+      sql += condition.arg2.get(0).value;
     }
     
     sql += ")";
@@ -1527,9 +1674,9 @@ public class Single_view {
         
         System.out.println(condition);
         
-        Argument arg2 = condition.arg2;
+        Argument arg2 = condition.arg2.get(0);
         
-        Argument arg1 = condition.arg1;
+        Argument arg1 = condition.arg1.get(0);
         
         if(arg2.value != null)
         {

@@ -375,46 +375,45 @@ public class CoreCover {
       
       for(int i = 0; i<view_conditions.size(); i++)
       {
-          boolean get_mapping1 = true;
+        Conditions view_condition = view_conditions.get(i);
+        
+        Vector<Argument> mapped_arg1 = new Vector<Argument>();
+        
+        Vector<String> mapped_subgoal1 = new Vector<String>();
+        
+          boolean get_mapping1 = map_args(view_condition.arg1, view_condition.subgoal1, tuple, mapped_arg1, mapped_subgoal1);
           
           boolean get_mapping2 = true;
           
-          String curr_arg1 = tuple.phi_str.apply(view_conditions.get(i).arg1.name);
-          
-          if(curr_arg1 == null)
-              get_mapping1 = false;
-          
-          String subgoal1 = (get_mapping1 == true) ? curr_arg1.substring(0, curr_arg1.indexOf(init.separator)) : view_conditions.get(i).subgoal1;
-          
-          curr_arg1 = (get_mapping1 == true) ? curr_arg1:view_conditions.get(i).arg1.name;
-          
-          String curr_arg2 = new String();
-          
-          String subgoal2 = new String();
-          
           Conditions condition = null;
           
-          if(view_conditions.get(i).arg2.isConst())
+          if(view_condition.arg2.size() == 1 && view_condition.arg2.get(0).isConst())
           {
-              curr_arg2 = view_conditions.get(i).arg2.name;
+              String curr_arg2 = view_condition.arg2.get(0).name;
+
+              Vector<Argument> mapped_arg2 = new Vector<Argument>();
+              
+              mapped_arg2.add(new Argument(curr_arg2));
+              
+              Vector<String> subgoal2 = new Vector<String>();
+              
+              subgoal2.add(new String());
               
               if(get_mapping1)
                   get_mapping2 = true;
               
-              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
+              condition = new Conditions(mapped_arg1, mapped_subgoal1, view_condition.op, mapped_arg2, subgoal2, view_condition.agg_function1, view_condition.agg_function2);
           }
           else
           {
-              curr_arg2 = tuple.phi_str.apply(view_conditions.get(i).arg2.name);
-                          
-              if(curr_arg2 == null)
-                  get_mapping2 = false;
+            
+            Vector<Argument> mapped_arg2 = new Vector<Argument>();
+            
+            Vector<String> subgoal2 = new Vector<String>();
+            
+            get_mapping2 = map_args(view_condition.arg2, view_condition.subgoal2, tuple, mapped_arg2, subgoal2);
               
-              subgoal2 = (get_mapping2 == true) ? curr_arg2.substring(0, curr_arg2.indexOf(init.separator)):view_conditions.get(i).subgoal2;
-              
-              curr_arg2 = (get_mapping2 == true) ? curr_arg2: view_conditions.get(i).arg2.name;
-              
-              condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
+              condition = new Conditions(mapped_arg1, mapped_subgoal1, view_condition.op, mapped_arg2, subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
           }
                   
           condition.get_mapping1 = get_mapping1;
@@ -427,7 +426,7 @@ public class CoreCover {
           }
           if(!get_mapping1 && !get_mapping2)
               continue;
-          if(!get_mapping1 && get_mapping2 && view_conditions.get(i).arg2.isConst())
+          if(!get_mapping1 && get_mapping2 && view_condition.arg2.size() == 0 && view_condition.arg2.get(0).isConst())
               continue;
           
           conditions.add(condition);
@@ -437,52 +436,80 @@ public class CoreCover {
       tuple.conditions = conditions;
   }
   
+  static boolean map_args(Vector<Argument> args, Vector<String> subgoals, Tuple tuple, Vector<Argument> mapped_args, Vector<String> mapped_subgoals)
+  {
+    
+    boolean get_mapping1 = true;
+    
+    for(int k = 0; k<args.size(); k++)
+    {
+      String curr_arg1 = tuple.phi_str.apply(args.get(k).name);
+        
+        if(curr_arg1 == null)
+            get_mapping1 = false;
+        
+        String subgoal1 = (get_mapping1 == true) ? curr_arg1.substring(0, curr_arg1.indexOf(init.separator)) : subgoals.get(k);
+        
+        curr_arg1 = (get_mapping1 == true) ? curr_arg1:args.get(k).name;
+        
+        mapped_subgoals.add(subgoal1);
+        
+        mapped_args.add(new Argument(curr_arg1, subgoal1));
+    }
+    
+    return get_mapping1;
+    
+  }
   static void set_tuple_conditions(Tuple tuple, Vector<Conditions> view_conditions, Single_view view)
   {
 	  Vector<Conditions> conditions = new Vector<Conditions>();
 	  
 	  for(int i = 0; i<view_conditions.size(); i++)
 	  {
-		  boolean get_mapping1 = true;
-		  
+	    
+	    Vector<Argument> curr_arg1 = new Vector<Argument>();
+	    
+	    Vector<String> subgoal1 = new Vector<String>();
+	    
+	    boolean get_mapping1 = map_args(view_conditions.get(i).arg1, view_conditions.get(i).subgoal1, tuple, curr_arg1, subgoal1);
+	    
 		  boolean get_mapping2 = true;
-		  
-		  String curr_arg1 = tuple.phi_str.apply(view_conditions.get(i).arg1.name);
-		  
-		  if(curr_arg1 == null)
-			  get_mapping1 = false;
-		  
-		  String subgoal1 = (get_mapping1 == true) ? curr_arg1.substring(0, curr_arg1.indexOf(init.separator)) : view_conditions.get(i).subgoal1;
-		  
-		  curr_arg1 = (get_mapping1 == true) ? curr_arg1:view_conditions.get(i).arg1.name;
-		  
-		  String curr_arg2 = new String();
-		  
-		  String subgoal2 = new String();
 		  
 		  Conditions condition = null;
 		  
-		  if(view_conditions.get(i).arg2.isConst())
+		  if(view_conditions.get(i).arg2.size() == 1 && view_conditions.get(i).arg2.get(0).isConst())
 		  {
-			  curr_arg2 = view_conditions.get(i).arg2.name;
+			  String curr_arg2 = view_conditions.get(i).arg2.get(0).name;
 			  
 //			  if(get_mapping1)
 				  get_mapping2 = true;
+				  
+			  Vector<Argument> mapped_arg2 = new Vector<Argument>();
 			  
-			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
+			  Vector<String> mapped_subgoal2 = new Vector<String>();
+			  
+			  mapped_arg2.add(new Argument(curr_arg2));
+			  
+			  condition = new Conditions(curr_arg1, subgoal1, view_conditions.get(i).op, mapped_arg2, mapped_subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
 		  }
 		  else
 		  {
-			  curr_arg2 = tuple.phi_str.apply(view_conditions.get(i).arg2.name);
-			  			  
-			  if(curr_arg2 == null)
-				  get_mapping2 = false;
+		    Vector<Argument> curr_arg2 = new Vector<Argument>();
+	          
+	        Vector<String> subgoal2 = new Vector<String>();
+		    
+		    get_mapping2 = map_args(view_conditions.get(i).arg2, view_conditions.get(i).subgoal2, tuple, curr_arg2, subgoal2);
+		    
+//			  curr_arg2 = tuple.phi_str.apply(view_conditions.get(i).arg2.name);
+//			  			  
+//			  if(curr_arg2 == null)
+//				  get_mapping2 = false;
+//			  
+//			  subgoal2 = (get_mapping2 == true) ? curr_arg2.substring(0, curr_arg2.indexOf(init.separator)):view_conditions.get(i).subgoal2;
+//			  
+//			  curr_arg2 = (get_mapping2 == true) ? curr_arg2: view_conditions.get(i).arg2.name;
 			  
-			  subgoal2 = (get_mapping2 == true) ? curr_arg2.substring(0, curr_arg2.indexOf(init.separator)):view_conditions.get(i).subgoal2;
-			  
-			  curr_arg2 = (get_mapping2 == true) ? curr_arg2: view_conditions.get(i).arg2.name;
-			  
-			  condition = new Conditions(new Argument(curr_arg1, subgoal1), subgoal1, view_conditions.get(i).op, new Argument(curr_arg2, subgoal2), subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
+			  condition = new Conditions(curr_arg1, subgoal1, view_conditions.get(i).op, curr_arg2, subgoal2, view_conditions.get(i).agg_function1, view_conditions.get(i).agg_function2);
 		  }
 		  		  
 		  condition.get_mapping1 = get_mapping1;
@@ -497,7 +524,9 @@ public class CoreCover {
 		  
 		  if((condition.get_mapping1 & condition.get_mapping2) == false)
 		  {
-		    cluster_relational_subgoals(view, tuple, view_conditions.get(i), i, condition.get_mapping1, condition.get_mapping2);
+		    
+		    if(condition.agg_function1 == null && condition.agg_function2 == null)
+		      cluster_relational_subgoals(view, tuple, view_conditions.get(i), i, condition.get_mapping1, condition.get_mapping2);
 		    
 		  }
 		  
@@ -510,7 +539,7 @@ public class CoreCover {
 		    
 		    
 		  }
-		  if(!get_mapping1 && view_conditions.get(i).arg2.isConst())
+		  if(!get_mapping1 && view_conditions.get(i).arg2.size() == 1 && view_conditions.get(i).arg2.get(0).isConst())
 		  {
 //		    cluster_relational_subgoals(view, tuple, condition, i, condition.get_mapping1, condition.get_mapping2);
 		    
@@ -538,9 +567,9 @@ public class CoreCover {
     
 //    for(int j = 0; j<view.conditions.size(); j++)
     {
-      String subgoal1 = condition.subgoal1;
+      String subgoal1 = condition.subgoal1.get(0);
       
-      String subgoal2 = condition.subgoal2;
+      String subgoal2 = condition.subgoal2.get(0);
       
       int id1 = view.subgoal_name_id_mappings.get(subgoal1);
       
@@ -600,7 +629,7 @@ public class CoreCover {
         
         curr_cluster_condition_ids.add(j);
         
-        if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
+        if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.get(0).isConst()))
         {
           tuple.cluster_patial_mapping_condition_ids.add(curr_cluster_condition_ids);
           
@@ -622,7 +651,7 @@ public class CoreCover {
         {
           if(!get_mapping1)
             tuple.cluster_subgoal_ids.get(matched_cluster_id2).add(id1);
-          if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
+          if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.get(0).isConst()))
           {
             tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id2).add(j);
           }
@@ -639,7 +668,7 @@ public class CoreCover {
             if(id2 >= 0 && !get_mapping2)
               tuple.cluster_subgoal_ids.get(matched_cluster_id1).add(id2);
             
-            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
+            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.get(0).isConst()))
             {
               tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id1).add(j);
             }
@@ -652,7 +681,7 @@ public class CoreCover {
           else
           {
             
-            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.isConst()))
+            if(get_mapping1 == true || (get_mapping2 == true && !condition.arg2.get(0).isConst()))
             {
               tuple.cluster_patial_mapping_condition_ids.get(matched_cluster_id1).add(j);
             }

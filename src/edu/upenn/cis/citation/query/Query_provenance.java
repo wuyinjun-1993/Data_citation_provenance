@@ -32,19 +32,15 @@ public class Query_provenance {
   
   public static String sql_result_file = "provenance_instance.txt";
   
-  public static String db_url = init.db_url;
-  
-  public static String db_prov_url = init.db_prov_url;
-  
   public static String directory = "/home/wuyinjun/workspace/Data_citation_demo/test_example/";
   
   public static String query_file = directory + "query";
   
   public static String view_file = directory + "views";
   
-  public static String separator = "|";
+  public static String separator = "####";
   
-  public static String separator_input = "\\|";
+  public static String separator_input = "####";
   
   public static String lib_dir = "./lib";
 //  static String usr_name = null;
@@ -125,10 +121,24 @@ public class Query_provenance {
     while(rs.next()) {      
       for(int i = 1; i < rs.getMetaData().getColumnCount(); i++)
       {
-        writer.print(rs.getString(i) + separator);
+        
+        String string = rs.getString(i);
+        
+//        string = string.replaceAll("\n", "").replaceAll("\r", "");
+        
+        writer.print(string + separator);
+        
+//        System.out.print(rs.getString(i) + separator);
+        
       }
       
-      writer.print(rs.getString(rs.getMetaData().getColumnCount()));
+      String string = rs.getString(rs.getMetaData().getColumnCount());
+      
+//      string = string.replaceAll("\n", "").replaceAll("\r", "");
+      
+      writer.print(string);
+      
+//      System.out.println(rs.getString(rs.getMetaData().getColumnCount()));
       
       writer.println();
       
@@ -160,12 +170,14 @@ public class Query_provenance {
     
     boolean test_case = Boolean.valueOf(args[2]);
     
-    if(args.length > 3)
-      sql_result_file = args[3];
+    String db_name = args[3];
+    
+    if(args.length > 4)
+      sql_result_file = args[4];
     
     Class.forName("org.postgresql.Driver");
     Connection c = DriverManager
-        .getConnection(db_url, init.usr_name , init.passwd);
+        .getConnection(init.db_url_prefix + db_name, init.usr_name , init.passwd);
     
     PreparedStatement pst = null;
     
@@ -178,7 +190,7 @@ public class Query_provenance {
     c.close();
     
     
-    connect(db_prov_url, init.usr_name, init.passwd);
+    connect(init.db_prov_url_prefix + db_name, init.usr_name, init.passwd);
     
 //    Query query = query_storage.get_query_by_id(1, con, pst);
     

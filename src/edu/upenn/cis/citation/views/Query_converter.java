@@ -16,9 +16,11 @@ import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
+import edu.upenn.cis.citation.query_view_generators.query_generator;
 
 public class Query_converter {
 
+  static String default_parser = ".";
   public static String[] numeric_data_type = {"smallint", "integer", "bigint", "decimal", "numeric", "real", "double precision", "serial", "bigserial"};
   public static HashSet<String> numeric_data_type_set = new HashSet<String>(Arrays.asList(numeric_data_type));
   public static String datalog2sql(Query query, boolean isPro_query)
@@ -26,19 +28,19 @@ public class Query_converter {
       
       String sql = new String();
 
-      String sel_item = get_sel_item(query);
+      String[] sel_item = get_sel_item(query.head);
       
-      String sel_agg_item = get_agg_item_in_select_clause(query, isPro_query);
+      String sel_agg_item = get_agg_item_in_select_clause(query.head, isPro_query);
       
-      String having_clause = get_having_clauses(query, isPro_query);
+      String having_clause = get_having_clauses(query.conditions, isPro_query);
       
-      String citation_table = get_relations_without_citation_table(query, isPro_query);
+      String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, isPro_query);
       
-      String condition = get_condition(query, isPro_query);
+      String condition = get_condition(query.conditions, isPro_query);
              
-      if(!sel_item.isEmpty())
+      if(!sel_item[0].isEmpty())
       {
-        sql = "select " + sel_item;
+        sql = "select " + sel_item[0];
         if(!sel_agg_item.isEmpty())
           sql += "," + sel_agg_item;
       }
@@ -56,7 +58,179 @@ public class Query_converter {
       
       
       if(!sel_agg_item.isEmpty())
-        sql += " group by " + sel_item;
+        sql += " group by " + sel_item[1];
+      
+      if(!having_clause.isEmpty())
+        sql += " having " + having_clause;
+      
+      return sql;
+  }
+  
+  
+  
+  static void get_view_subgoal_primary_keys(Vector<String> indexed_attributes, Vector<Subgoal> subgoals, HashMap<String, String> relation_name_mappings, HashMap<String, Vector<Integer>> relation_primary_key_mappings, Vector<String> relation_attr_pairs, Vector<String> relation_attr_name)
+  {
+    for(int k = 0; k<subgoals.size(); k++)
+    {
+      Vector<Integer> col_names = relation_primary_key_mappings.get(relation_name_mappings.get(subgoals.get(k).name)); 
+      
+      for(int p = 0; p < col_names.size(); p ++)
+      {
+        Argument arg = (Argument) subgoals.get(k).args.get(col_names.get(p));
+        
+        String curr_rel_attr_pair = arg.relation_name + "." + arg.attribute_name;
+        
+        String curr_rel_attr_name = arg.relation_name + "_" + arg.attribute_name; 
+        
+        indexed_attributes.add(curr_rel_attr_name);
+        
+        if(!relation_attr_name.contains(curr_rel_attr_name))
+        {
+          relation_attr_name.add(curr_rel_attr_name);
+          
+          relation_attr_pairs.add(curr_rel_attr_pair);
+        }
+        
+      }
+    }
+  }
+  
+  static void get_view_having_clause_args(Vector<Conditions> conditions, Vector<String> relation_attr_pairs, Vector<String> relation_attr_name)
+  {
+    for(int i = 0; i<conditions.size(); i++)
+    {
+      Conditions condition = conditions.get(i);
+      
+      Vector<Argument> args1 = condition.arg1;
+      
+      Vector<Argument> args2 = condition.arg2;
+      
+      if(condition.agg_function1 != null || condition.agg_function2 != null)
+      {
+        for(int k = 0; k<args1.size(); k++)
+        {
+          String curr_rel_attr_pair = args1.get(k).relation_name + "." + args1.get(k).attribute_name;
+          
+          String curr_rel_attr_name = args1.get(k).relation_name + "_" + args1.get(k).attribute_name; 
+          
+          if(!relation_attr_name.contains(curr_rel_attr_name))
+          {
+            relation_attr_name.add(curr_rel_attr_name);
+            
+            relation_attr_pairs.add(curr_rel_attr_pair);
+          }
+        }
+        
+        for(int k = 0; k<args2.size(); k++)
+        {
+          String curr_rel_attr_pair = args2.get(k).relation_name + "." + args2.get(k).attribute_name;
+          
+          String curr_rel_attr_name = args2.get(k).relation_name + "_" + args2.get(k).attribute_name; 
+          
+          if(!relation_attr_name.contains(curr_rel_attr_name))
+          {
+            relation_attr_name.add(curr_rel_attr_name);
+            
+            relation_attr_pairs.add(curr_rel_attr_pair);
+          }
+        }
+      }
+    }
+  }
+  
+  static String get_view_sel_items(Single_view view, Vector<String> indexed_cols)
+  {
+    Vector<String> relation_attr_pairs = new Vector<String>();
+    
+    Vector<String> relation_attr_name = new Vector<String>();
+    
+    for(int i = 0 ; i<view.head.args.size(); i++)
+    {
+      Argument arg = (Argument) view.head.args.get(i);
+      
+      relation_attr_pairs.add(arg.relation_name + "." + arg.attribute_name);
+      
+      relation_attr_name.add(arg.relation_name + "_" + arg.attribute_name);
+    }
+    
+    get_view_subgoal_primary_keys(indexed_cols, view.subgoals, view.subgoal_name_mappings, Single_view.relation_primary_key_mappings, relation_attr_pairs, relation_attr_name);
+    
+    get_view_having_clause_args(view.conditions, relation_attr_pairs, relation_attr_name);
+    
+    String string = new String();
+    
+    for(int i = 0 ; i<relation_attr_pairs.size(); i++)
+    {
+      if(i >= 1)
+        string += ",";
+      
+      string += relation_attr_pairs.get(i) + " as " + relation_attr_name.get(i);
+    }
+    
+    return string;
+  }
+  
+  
+  public static String datalog2sql_view_conjunction(Single_view view, Vector<String> indexed_cols)
+  {
+    String sql = new String();
+
+    String sel_item = get_view_sel_items(view, indexed_cols);
+    
+//    String sel_agg_item = get_agg_item_in_select_clause(view.head, isPro_query);
+    
+//    String having_clause = get_having_clauses(view.conditions, isPro_query);
+    
+    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, false);
+    
+    String condition = get_condition(view.conditions, false);
+           
+    sql = "select " + sel_item;
+    
+    sql += " from " + citation_table;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " where " + condition;
+    return sql;
+
+  }
+  
+  public static String datalog2sql(Single_view view, boolean isPro_query)
+  {
+      
+      String sql = new String();
+
+      String[] sel_item = get_sel_item(view.head);
+      
+      String sel_agg_item = get_agg_item_in_select_clause(view.head, isPro_query);
+      
+      String having_clause = get_having_clauses(view.conditions, isPro_query);
+      
+      String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, isPro_query);
+      
+      String condition = get_condition(view.conditions, isPro_query);
+             
+      if(!sel_item[0].isEmpty())
+      {
+        sql = "select " + sel_item[0];
+        if(!sel_agg_item.isEmpty())
+          sql += "," + sel_agg_item;
+      }
+      else
+      {
+        if(!sel_agg_item.isEmpty())
+          sql += sel_agg_item;
+      }
+      
+      
+      sql += " from " + citation_table;
+      
+      if(condition != null && !condition.isEmpty())
+          sql += " where " + condition;
+      
+      
+      if(!sel_agg_item.isEmpty())
+        sql += " group by " + sel_item[1];
       
       if(!having_clause.isEmpty())
         sql += " having " + having_clause;
@@ -70,9 +244,9 @@ public class Query_converter {
 
     String sel_item = get_sel_item_with_token_columns(query);
         
-    String citation_table = get_relations_without_citation_table(query, false);
+    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, false);
     
-    String condition = get_condition(query, false);
+    String condition = get_condition(query.conditions, false);
             
     sql = "select " + sel_item;
     
@@ -90,9 +264,9 @@ public class Query_converter {
 
     String sel_item = get_sel_item_with_why_token_columns(query.head.args, true);
         
-    String citation_table = get_relations_without_citation_table(query, true);
+    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, true);
     
-    String condition = get_condition(query, true);
+    String condition = get_condition(query.conditions, true);
             
     sql = "select " + sel_item;
     
@@ -101,7 +275,7 @@ public class Query_converter {
       if(query.head.args.size() > 0)
         sql += ",";
       
-      sql += get_agg_item_in_select_clause(query, true);
+      sql += get_agg_item_in_select_clause(query.head, true);
     }
     
     sql += " from " + citation_table;
@@ -114,7 +288,7 @@ public class Query_converter {
     {
       sql += " group by " + sel_item;
       
-      String having_clause = get_having_clauses(query, true);
+      String having_clause = get_having_clauses(query.conditions, true);
       
       if(!having_clause.isEmpty())
       {
@@ -126,20 +300,20 @@ public class Query_converter {
     return "PROVENANCE OF (" + sql + ")";
   }
   
-  static String get_having_clauses(Query query, boolean isProv_query)
+  static String get_having_clauses(Vector<Conditions> conditions, boolean isProv_query)
   {
     String string = new String();
     
     int count = 0;
     
-    for(int i = 0; i<query.conditions.size(); i++)
+    for(int i = 0; i<conditions.size(); i++)
     {
-      if(query.conditions.get(i).agg_function1 != null || query.conditions.get(i).agg_function2 != null)
+      if(conditions.get(i).agg_function1 != null || conditions.get(i).agg_function2 != null)
       {
         if(count >= 1)
           string += " and ";
         
-        string += get_single_having_condition_str(query.conditions.get(i), isProv_query);
+        string += get_single_having_condition_str(conditions.get(i), default_parser, isProv_query);
         
         count ++;
         
@@ -162,7 +336,7 @@ public class Query_converter {
         if(count >= 1)
           string += " and ";
         
-        string += get_single_having_condition_str(query.conditions.get(i), isProv_query);
+        string += get_single_having_condition_str(query.conditions.get(i), default_parser, isProv_query);
         
         count ++;
         
@@ -178,9 +352,9 @@ public class Query_converter {
 
     String sel_item = get_sel_item_with_why_token_columns(query.head.args, true);
         
-    String citation_table = get_relations_without_citation_table(query, true);
+    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, true);
     
-    String condition = get_condition(query, true);
+    String condition = get_condition(query.conditions, true);
             
     sql = "select " + sel_item;
     
@@ -188,7 +362,7 @@ public class Query_converter {
     {
       if(query.head.args.size() > 0)
         sql += ",";
-      sql += get_agg_item_in_select_clause(query, true);
+      sql += get_agg_item_in_select_clause(query.head, true);
     }
     
     sql += " from " + citation_table;
@@ -215,7 +389,7 @@ public class Query_converter {
     {
       sql += " group by " + sel_item;
       
-      String having_clause = get_having_clauses(query, true);
+      String having_clause = get_having_clauses(query.conditions, true);
       
       if(!having_clause.isEmpty())
       {
@@ -256,7 +430,7 @@ public class Query_converter {
         
         Argument arg = (Argument) subgoal.args.get(j);
         
-        String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        String arg_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
         
         string += subgoal.name + "_copy." + arg.name.replace("|", "_") + " = " + subgoal.name + "." + arg_name;       
         
@@ -278,7 +452,8 @@ public class Query_converter {
     {
       Argument grouping_arg = grouping_args.get(i);
       
-      String grouping_arg_string = grouping_arg.name.replace("|", ".");
+//      String grouping_arg_string = grouping_arg.name.replace("|", ".");
+      String grouping_arg_string = grouping_arg.relation_name + "." + grouping_arg.attribute_name;//.name.replace("|", ".");
       
       grouping_arg_strings.add(grouping_arg_string);
     }
@@ -374,7 +549,8 @@ public class Query_converter {
         
         Argument arg = head_args.get(j);
         
-        string += arg.name.replace(init.separator, ".") + "='" + grouping_attr_values.get(i)[j] + "'";
+//        string += arg.name.replace(init.separator, ".") + "='" + grouping_attr_values.get(i)[j] + "'";
+        string += arg.relation_name + "." + arg.attribute_name + "='" + grouping_attr_values.get(i)[j] + "'";
       }
       
       string += ")";
@@ -441,7 +617,8 @@ public class Query_converter {
       if(tuple.phi.apply(head_arg) != null)
       {
         
-        view_head_arg_names.add(head_arg.name.replace(init.separator, "."));
+//        view_head_arg_names.add(head_arg.name.replace(init.separator, "."));
+        view_head_arg_names.add(head_arg.relation_name + "." + head_arg.attribute_name);
         
 //        if(num >= 1)
 //          string += " and ";
@@ -611,7 +788,9 @@ public class Query_converter {
         if(j >= 1)
           string += "||'" + init.separator + "'||";
         Argument arg = (Argument) subgoal.args.get(j);
-        String arg_name = arg.name.replace(init.separator, ".");
+//        String arg_name = arg.name.replace(init.separator, ".");
+        String arg_name = arg.relation_name + "." + arg.attribute_name;
+        
         string += arg_name;
       }
       string += ")";
@@ -629,8 +808,8 @@ public class Query_converter {
         string += " and ";
       
       Argument arg = (Argument) view.head.args.get(i);
-      String arg_name1 = arg.name.replace(init.separator, ".");
-      String arg_name2 = arg.name.replace(init.separator, "_");
+      String arg_name1 = arg.relation_name + "." + arg.attribute_name;//.name.replace(init.separator, ".");
+      String arg_name2 = arg.relation_name + "_" + arg.attribute_name;//arg.name.replace(init.separator, "_");
       string += arg_name1 + " = " + view.view_name + "." + arg_name2;
     }
     return string;
@@ -830,7 +1009,7 @@ public class Query_converter {
             
             Argument arg = (Argument) subgoal.args.get(k);
             
-            String arg_name = arg.name.replace(init.separator, ".");
+            String arg_name = arg.relation_name + "." + arg.attribute_name;//arg.name.replace(init.separator, ".");
             
             string += arg_name + "='" + provenance_value.head_vals.get(arg_count++) + "'";
           }
@@ -1082,23 +1261,34 @@ public class Query_converter {
     return sql;
   }
   
-  static String get_sel_item(Query q)
+  static String[] get_sel_item(Subgoal head)
   {
+    String[] strings = new String[2];
+    
       String str = new String();
       
 //    System.out.println("head::" + q.head);
+      String alias_str = new String();
       
-      for(int i = 0; i<q.head.size(); i++)
+      for(int i = 0; i<head.size(); i++)
       {
-          Argument arg = (Argument) q.head.args.get(i);
+          Argument arg = (Argument) head.args.get(i);
           
           if(i >= 1)
-              str += ",";
+          {
+            str += ",";
+            alias_str += ",";
+          }
           
-          str += arg.relation_name + "." + arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          str += arg.relation_name + "." + arg.attribute_name + " as " + arg.relation_name + "_" + arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          alias_str += arg.relation_name + "_" + arg.attribute_name;
           
       }
-      return str;
+      
+      strings[0] = str;
+      
+      strings[1] = alias_str;
+      return strings;
   }
   
   static String get_sel_item_with_why_token_columns(Vector<Argument> args, boolean isProv_query)
@@ -1114,7 +1304,7 @@ public class Query_converter {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1158,7 +1348,7 @@ public class Query_converter {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1215,7 +1405,7 @@ public class Query_converter {
           if(i >= 1)
               str += "||'" + init.separator + "'||";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1243,7 +1433,7 @@ public class Query_converter {
             curr_value += "||'" + init.separator + "'||";
           
           Argument arg = (Argument) subgoal.args.get(j);
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           curr_value += arg.relation_name + "." + attr_name;
         }
         
@@ -1312,7 +1502,7 @@ public class Query_converter {
           if(i >= 1)
               str += "||'" + init.separator + "'||";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1329,7 +1519,7 @@ public class Query_converter {
         if(i >= 1)
           str += "||'" + init.separator + "'||";
         
-        String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        String attr_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
         
 //        str += arg.relation_name + "." + attr_name;
         
@@ -1350,8 +1540,9 @@ public class Query_converter {
       if(i >= 1)
         string += ",";
       Argument arg = args.get(i);
-      String arg_name = arg.name.replace(init.separator, ".");
-      string += arg_name + " as " + arg.name.replace(init.separator, "_");
+      String arg_name = arg.relation_name + "." + arg.attribute_name;//arg.name.replace(init.separator, ".");
+//      string += arg_name + " as " + arg.name.replace(init.separator, "_");
+      string += arg_name + " as " + arg.relation_name + "_" + arg.attribute_name;
     }
     return string;
   }
@@ -1369,7 +1560,7 @@ public class Query_converter {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1381,18 +1572,18 @@ public class Query_converter {
       return str;
   }
   
-  static String get_agg_item_in_select_clause(Query q, boolean isProv_query)
+  static String get_agg_item_in_select_clause(Subgoal head, boolean isProv_query)
   {
     String string = new String();
     
-    for(int i = 0; i < q.head.agg_args.size(); i++)
+    for(int i = 0; i < head.agg_args.size(); i++)
     {
       if(i >= 1)
         string += ",";
       
-      String agg_attr_string = get_agg_attr_string(q.head.agg_args.get(i), isProv_query);
+      String agg_attr_string = get_agg_attr_string(head.agg_args.get(i), isProv_query);
       
-      String agg_function = (String) q.head.agg_function.get(i);
+      String agg_function = (String) head.agg_function.get(i);
       
       string += agg_function + "(" + agg_attr_string + ")"; 
       
@@ -1424,7 +1615,7 @@ public class Query_converter {
       
       Argument arg = (Argument) agg_attributes.get(i);
       
-      String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      String attr_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
       if(isProv_query)
         string += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
@@ -1477,7 +1668,7 @@ public class Query_converter {
           if(i >= 1)
               str += ",";
           
-          String attr_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           
 //          str += arg.relation_name + "." + attr_name;
           
@@ -1505,21 +1696,21 @@ public class Query_converter {
       return str;
   }
   
-  public static String get_relations_without_citation_table(Query q, boolean isProv_query)
+  public static String get_relations_without_citation_table(Vector<Subgoal> body, HashMap<String, String> subgoal_name_mapping, boolean isProv_query)
   {
       String str = new String();
       
-      for(int i = 0; i<q.body.size(); i++)
+      for(int i = 0; i<body.size(); i++)
       {
           if(i >= 1)
               str += ",";
           
-          Subgoal subgoal = (Subgoal) q.body.get(i);
+          Subgoal subgoal = (Subgoal) body.get(i);
           
           if(isProv_query)
-            str += "\"" + q.subgoal_name_mapping.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
+            str += "\"" + subgoal_name_mapping.get(subgoal.name) + "\"" + " " + "\"" + subgoal.name + "\"";
           else
-            str += q.subgoal_name_mapping.get(subgoal.name) + " " + subgoal.name;
+            str += subgoal_name_mapping.get(subgoal.name) + " " + subgoal.name;
           
 //        str += "," + q.subgoal_name_mapping.get(subgoal.name) + populate_db.suffix + " " + subgoal.name + populate_db.suffix; 
       }
@@ -1567,7 +1758,7 @@ public class Query_converter {
         for(int j = 0; j<subgoal.args.size(); j++)
         {
           Argument arg = (Argument) subgoal.args.get(j);
-          String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          String arg_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
           arg_list.add(arg_name);
           type_list.add(arg.data_type);
         }
@@ -1604,13 +1795,13 @@ public class Query_converter {
     return string;
   }
   
-  public static String get_condition(Query q, boolean isPro_query)
+  public static String get_condition(Vector<Conditions> conditions, boolean isPro_query)
   {
       String str = new String();
       
       int count = 0;
       
-      for(int i = 0; i<q.conditions.size(); i++)
+      for(int i = 0; i<conditions.size(); i++)
       {
           
           
@@ -1624,12 +1815,12 @@ public class Query_converter {
 //        {
 //            str += q.conditions.get(i).subgoal2 + "." + q.conditions.get(i).arg2;
 //        }
-          if(q.conditions.get(i).agg_function1 == null && q.conditions.get(i).agg_function2 == null)
+          if(conditions.get(i).agg_function1 == null && conditions.get(i).agg_function2 == null)
           {
             if(count >= 1)
               str += " and ";
             
-            str += get_single_condition_str(q.conditions.get(i), isPro_query);
+            str += get_single_condition_str(conditions.get(i), default_parser, isPro_query);
             
             count ++;
             
@@ -1664,7 +1855,7 @@ public class Query_converter {
             if(count >= 1)
               str += " and ";
             
-            str += get_single_condition_str(q.conditions.get(i), isProv_query);
+            str += get_single_condition_str(q.conditions.get(i), default_parser, isProv_query);
             
             count ++;
             
@@ -1674,26 +1865,80 @@ public class Query_converter {
       return str;
   }
   
-  public static String get_single_condition_str(Conditions condition, boolean isProv_query)
+  static String convert_condition_arg2string(Vector<Argument> args, String parser, boolean isProv_query)
+  {
+    String string = new String();
+    
+    for(int i = 0; i<args.size(); i++)
+    {
+      if(i >= 1)
+        string += ",";
+      
+      String arg = null;
+      
+      if(isProv_query)
+      {
+//        String [] rel_arg_pairs = args.get(i).name.split("\\|");
+//        arg = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+        arg = "\"" + args.get(i).relation_name + "\""+ parser + "\"" + args.get(i).attribute_name + "\"";
+      }
+      else
+        arg = args.get(i).relation_name + parser + args.get(i).attribute_name;//.replace("|", ".");
+      
+      string += arg;
+    }
+    
+    return string;
+  }
+  
+  static String convert_condition_arg2string_as_single_arg(Vector<Argument> args, String parser, boolean isProv_query)
+  {
+    String string = "''||";
+    
+    for(int i = 0; i<args.size(); i++)
+    {
+      if(i >= 1)
+        string += "||";
+      
+      String arg = null;
+      
+      if(isProv_query)
+      {
+//        String [] rel_arg_pairs = args.get(i).name.split("\\|");
+//        arg = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+        arg = "\"" + args.get(i).relation_name + "\"" + parser + "\"" + args.get(i).attribute_name + "\"";
+      }
+      else
+        arg = args.get(i).relation_name + parser + args.get(i).attribute_name;//.replace("|", ".");
+      
+      string += arg;
+    }
+    
+    return string;
+  }
+  
+  public static String get_single_condition_str(Conditions condition, String parser, boolean isProv_query)
   {
       String str = new String();
       
       String arg1 = null;
       
-      if(isProv_query)
-      {
-        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
-        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-      }
-      else
-        arg1 = condition.arg1.name.replace("|", ".");
+//      if(isProv_query)
+//      {
+//        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
+//        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//      }
+//      else
+//        arg1 = condition.arg1.name.replace("|", ".");
+      
+      arg1 = convert_condition_arg2string(condition.arg1, default_parser, isProv_query);
       
       str += arg1 + condition.op;
       
-      if(condition.arg2.isConst())
+      if(condition.arg2.size() == 1 && condition.arg2.get(0).isConst())
       {
           
-          String arg2 = condition.arg2.toString();
+          String arg2 = condition.arg2.get(0).toString();
           
           if(arg2.length() > 2)
           {
@@ -1712,41 +1957,45 @@ public class Query_converter {
       else
       {
         
-        String [] rel_arg_pairs = condition.arg2.name.split("\\|");
-             
-        if(isProv_query)
-          str += "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-        else
-          str += rel_arg_pairs[0] + "." + rel_arg_pairs[1];
+        String arg2 = convert_condition_arg2string(condition.arg2, parser, isProv_query);
+        
+        str += arg2;
+        
+//        String [] rel_arg_pairs = condition.arg2.name.split("\\|");
+//             
+//        if(isProv_query)
+//          str += "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//        else
+//          str += rel_arg_pairs[0] + "." + rel_arg_pairs[1];
       }
       
       return str;
   }
   
-  public static String get_single_having_condition_str(Conditions condition, boolean isPro_query)
+  public static String get_single_having_condition_str(Conditions condition, String parser, boolean isPro_query)
   {
       String str = new String();
       
-      String arg1 = null;
+      String arg1 = convert_condition_arg2string_as_single_arg(condition.arg1, parser, isPro_query);
       
-      if(isPro_query)
-      {
-        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
-        
-        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-      }
-      else
-        arg1 = condition.arg1.name.replace("|", ".");
+//      if(isPro_query)
+//      {
+//        String [] rel_arg_pairs = condition.arg1.name.split("\\|");
+//        
+//        arg1 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//      }
+//      else
+//        arg1 = condition.arg1.name.replace("|", ".");
       
       if(condition.agg_function1 != null)
         arg1 = condition.agg_function1 + "(" + arg1 + ")";
       
       str += arg1 + condition.op;
       
-      if(condition.arg2.isConst())
+      if(condition.arg2.size() == 1 && condition.arg2.get(0).isConst())
       {
           
-          String arg2 = condition.arg2.toString();
+          String arg2 = condition.arg2.get(0).toString();
           
           if(arg2.length() > 2)
           {
@@ -1765,15 +2014,15 @@ public class Query_converter {
       else
       {
         
-        String arg2 = null;
+        String arg2 = convert_condition_arg2string_as_single_arg(condition.arg2, parser, isPro_query);
         
-        if(isPro_query)
-        {
-          String [] rel_arg_pairs = condition.arg2.name.split("\\|");
-          arg2 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
-        }
-        else
-          arg2 = condition.arg2.name.replace("|", ".");
+//        if(isPro_query)
+//        {
+//          String [] rel_arg_pairs = condition.arg2.name.split("\\|");
+//          arg2 = "\"" + rel_arg_pairs[0] + "\".\"" + rel_arg_pairs[1] + "\"";
+//        }
+//        else
+//          arg2 = condition.arg2.name.replace("|", ".");
         
         if(condition.agg_function2 != null)
           arg2 = condition.agg_function2 + "(" + arg2 + ")";

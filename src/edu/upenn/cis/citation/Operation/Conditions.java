@@ -1,5 +1,6 @@
 package edu.upenn.cis.citation.Operation;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Vector;
@@ -13,17 +14,17 @@ import edu.upenn.cis.citation.init.init;
 public class Conditions {
 	
 	
-	public String subgoal1;
+	public Vector<String> subgoal1 = new Vector<String>();
 	
 	public String agg_function1 = null;
 	
 	public String agg_function2 = null;
 		
-	public Argument arg1;
+	public Vector<Argument> arg1 = new Vector<Argument>();
 	
-	public Argument arg2;
+	public Vector<Argument> arg2 = new Vector<Argument>();
 		
-	public String subgoal2 = new String();
+	public Vector<String> subgoal2 = new Vector<String>();
 	
 	public Operation op;
 	
@@ -118,48 +119,102 @@ public class Conditions {
 //			return str + op + arg2;
 	}
 	
-	public String toStringinsql()
+//	public String toStringinsql()
+//	{
+//		if(arg2.isConst())
+//		{
+//			String str = arg2.name.replaceAll("'", "''");
+//			
+//			
+//			return subgoal1 + init.separator + arg1.name + op + str;
+//		}
+//		else
+//			return subgoal1 + init.separator + arg1.name + op + subgoal2 + init.separator + arg2;
+//	}
+	
+	static Vector<String> sort_vector_strings(Vector<Argument> args)
 	{
-		if(arg2.isConst())
-		{
-			String str = arg2.name.replaceAll("'", "''");
-			
-			
-			return subgoal1 + init.separator + arg1.name + op + str;
-		}
-		else
-			return subgoal1 + init.separator + arg1.name + op + subgoal2 + init.separator + arg2;
+	  Vector<String> arg_name_strings1 = new Vector<String>();
+      
+      for(Argument arg: args)
+      {
+        arg_name_strings1.add(arg.toString());
+      }
+      
+      Collections.sort(arg_name_strings1);
+      
+      return arg_name_strings1;
+	}
+	
+	static String cal_unique_string_one_side(Conditions condition)
+	{
+	  Vector<String> arg_string1 = sort_vector_strings(condition.arg1);
+	  
+	  Vector<String> arg_string2 = sort_vector_strings(condition.arg2);
+	  
+	  String string = new String();
+	  
+	  if(condition.agg_function1 != null)
+	  {
+	    string += condition.agg_function1;
+	  }
+	  
+	  string += arg_string1.toString() + condition.op.toString();
+	  
+	  if(condition.agg_function2 != null)
+	  {
+	    string += condition.agg_function2;
+	  }
+	  
+	  string += arg_string2.toString() + condition.op.toString();
+	  
+	  return string;
 	}
 	
 	public String cal_unique_string()
 	{
-	  String rev_condition_string = cal_reverse_condition_string(this);
+	  String condition_string1 = cal_unique_string_one_side(this);
+	  
+	  swap_args();
+	  
+	  String condition_string2 = cal_unique_string_one_side(this);
+	  
+	  swap_args();
+	  
+	  if(condition_string1.compareTo(condition_string2) >= 0)
+	  {
+	    return condition_string1 + "#" + condition_string2;
+	  }
+	  else
+	  {
+	    return condition_string2 + "#" + condition_string1;
+	  }
       
-      if(rev_condition_string.compareTo(this.toString()) >= 0)
-      {
-        String string = rev_condition_string + "|" + this.toString();
-        
-        return string;
-      }
-      else
-      {
-        String string = this.toString() + "|" + rev_condition_string;
-        
-        return string;
-      }
+//      if(rev_condition_string.compareTo(this.toString()) >= 0)
+//      {
+//        String string = rev_condition_string + "|" + this.toString();
+//        
+//        return string;
+//      }
+//      else
+//      {
+//        String string = this.toString() + "|" + rev_condition_string;
+//        
+//        return string;
+//      }
 	}
 	
-	public Conditions(Argument arg1, String subgoal1, Operation op, Argument arg2, String subgoal2, String agg_function1, String agg_function2)
+	public Conditions(Vector<Argument> arg1, Vector<String> subgoal1, Operation op, Vector<Argument> arg2, Vector<String> subgoal2, String agg_function1, String agg_function2)
 	{
-		this.arg1 = arg1;
+		this.arg1.addAll(arg1);
 		
 		this.op = op;
 		
-		this.arg2 = arg2;
+		this.arg2.addAll(arg2);
 		
-		this.subgoal1 = subgoal1;
+		this.subgoal1.addAll(subgoal1);
 		
-		this.subgoal2 = subgoal2;
+		this.subgoal2.addAll(subgoal2);
 		
 		this.agg_function1 = agg_function1;
 		
@@ -168,7 +223,28 @@ public class Conditions {
 		this.unique_string = cal_unique_string();
 	}
 	
-//	public static Conditions parse(String constraint, Vector<Subgoal> subgoals, HashMap<String, String> origin_names)
+public Conditions(Argument argument, String string, op_equal op2, Argument argument2,
+      String string2, String agg_function12, String agg_function22) {
+  
+    this.arg1.add(argument);
+    
+    this.arg2.add(argument2);
+    
+    this.subgoal1.add(string);
+    
+    this.subgoal2.add(string2);
+    
+    this.op = op2;
+    
+    this.agg_function1 = agg_function12;
+    
+    this.agg_function2 = agg_function22;
+    
+    this.unique_string = cal_unique_string();
+    // TODO Auto-generated constructor stub
+  }
+
+  //	public static Conditions parse(String constraint, Vector<Subgoal> subgoals, HashMap<String, String> origin_names)
 //	{
 //		int i = 0;
 //		
@@ -244,76 +320,81 @@ public class Conditions {
 	{
 //		if((c1.arg1.origin_name.equals(c2.arg1.origin_name) && c1.arg2.origin_name.equals(c2.arg2.origin_name) && c1.subgoal1.equals(c2.subgoal1) && c1.subgoal2.equals(c2.subgoal2) ))
 		
-		if(c1.toString().equals(c2.toString()))
-			 return true;
-		
-		if(c1.toString().equals(reverse_condition(c2).toString()))
-			return true;
-		
-		if(c1.arg2.isConst() && c2.arg2.isConst() && (c1.subgoal1.toString() + init.separator + c1.arg1.name).equals(c2.subgoal1.toString() + init.separator + c2.arg1.name))
-		{
-			try{
-				double c1_arg2 = Double.valueOf(c1.arg2.name);
-				
-				double c2_arg2 = Double.valueOf(c2.arg2.name);
-				
-				if(c1.op.equals(c2.op))
-				{
-					if((c1.op.toString().equals(">") || c1.op.toString().equals(">=")) && (c1_arg2 >= c2_arg2))
-						return true;
-					
-					if((c1.op.toString().equals("<") || c1.op.toString().equals("<=")) && (c1_arg2 <= c2_arg2))
-						return true;
-				}
-				
-				if(c1.op.toString().equals(">") && c2.op.toString().equals(">=") && c1_arg2 >= c2_arg2)
-					return true;
-				
-				if(c1.op.toString().equals("<") && c2.op.toString().equals("<=") && c1_arg2 <= c2_arg2)
-					return true;
-				
-				if(c1.op.toString().equals(">=") && c2.op.toString().equals(">") && c1_arg2 > c2_arg2)
-					return true;
-				
-				if(c1.op.toString().equals("<=") && c2.op.toString().equals("<") && c1_arg2 < c2_arg2)
-					return true;
-				
-				
-			}
-			catch(Exception e)
-			{
-				String c1_arg2 = c1.arg2.name;
-				
-				String c2_arg2 = c2.arg2.name;
-				
-				if(c1.op.equals(c2.op))
-				{
-					if((c1.op.toString().equals(">") || c1.op.toString().equals(">=")) && (c1_arg2.compareTo(c2_arg2)) >= 0)
-						return true;
-					
-					if((c1.op.toString().equals("<") || c1.op.toString().equals("<=")) && (c1_arg2.compareTo(c2_arg2)) <= 0)
-						return true;
-				}
-				
-				if(c1.op.toString().equals(">") && c2.op.toString().equals(">=") && (c1_arg2.compareTo(c2_arg2)) >= 0)
-					return true;
-				
-				if(c1.op.toString().equals("<") && c2.op.toString().equals("<=") && (c1_arg2.compareTo(c2_arg2)) <= 0)
-					return true;
-				
-				if(c1.op.toString().equals(">=") && c2.op.toString().equals(">") && (c1_arg2.compareTo(c2_arg2)) > 0)
-					return true;
-				
-				if(c1.op.toString().equals("<=") && c2.op.toString().equals("<") && (c1_arg2.compareTo(c2_arg2)) < 0)
-					return true;
-			}
-			
-			
-		}
-		
-		
-		return false;
-		
+	  if(c1.unique_string.equals(c2.unique_string))
+	    return true;
+	  
+	  return false;
+	  
+//		if(c1.toString().equals(c2.toString()))
+//			 return true;
+//		
+//		if(c1.toString().equals(reverse_condition(c2).toString()))
+//			return true;
+//		
+//		if(c1.arg2.isConst() && c2.arg2.isConst() && (c1.subgoal1.toString() + init.separator + c1.arg1.name).equals(c2.subgoal1.toString() + init.separator + c2.arg1.name))
+//		{
+//			try{
+//				double c1_arg2 = Double.valueOf(c1.arg2.name);
+//				
+//				double c2_arg2 = Double.valueOf(c2.arg2.name);
+//				
+//				if(c1.op.equals(c2.op))
+//				{
+//					if((c1.op.toString().equals(">") || c1.op.toString().equals(">=")) && (c1_arg2 >= c2_arg2))
+//						return true;
+//					
+//					if((c1.op.toString().equals("<") || c1.op.toString().equals("<=")) && (c1_arg2 <= c2_arg2))
+//						return true;
+//				}
+//				
+//				if(c1.op.toString().equals(">") && c2.op.toString().equals(">=") && c1_arg2 >= c2_arg2)
+//					return true;
+//				
+//				if(c1.op.toString().equals("<") && c2.op.toString().equals("<=") && c1_arg2 <= c2_arg2)
+//					return true;
+//				
+//				if(c1.op.toString().equals(">=") && c2.op.toString().equals(">") && c1_arg2 > c2_arg2)
+//					return true;
+//				
+//				if(c1.op.toString().equals("<=") && c2.op.toString().equals("<") && c1_arg2 < c2_arg2)
+//					return true;
+//				
+//				
+//			}
+//			catch(Exception e)
+//			{
+//				String c1_arg2 = c1.arg2.name;
+//				
+//				String c2_arg2 = c2.arg2.name;
+//				
+//				if(c1.op.equals(c2.op))
+//				{
+//					if((c1.op.toString().equals(">") || c1.op.toString().equals(">=")) && (c1_arg2.compareTo(c2_arg2)) >= 0)
+//						return true;
+//					
+//					if((c1.op.toString().equals("<") || c1.op.toString().equals("<=")) && (c1_arg2.compareTo(c2_arg2)) <= 0)
+//						return true;
+//				}
+//				
+//				if(c1.op.toString().equals(">") && c2.op.toString().equals(">=") && (c1_arg2.compareTo(c2_arg2)) >= 0)
+//					return true;
+//				
+//				if(c1.op.toString().equals("<") && c2.op.toString().equals("<=") && (c1_arg2.compareTo(c2_arg2)) <= 0)
+//					return true;
+//				
+//				if(c1.op.toString().equals(">=") && c2.op.toString().equals(">") && (c1_arg2.compareTo(c2_arg2)) > 0)
+//					return true;
+//				
+//				if(c1.op.toString().equals("<=") && c2.op.toString().equals("<") && (c1_arg2.compareTo(c2_arg2)) < 0)
+//					return true;
+//			}
+//			
+//			
+//		}
+//		
+//		
+//		return false;
+//		
 //		if((c1.arg2.origin_name.equals(c2.arg1.origin_name) && c1.arg1.origin_name.equals(c2.arg2.origin_name) && c1.subgoal2.equals(c2.subgoal1) && c1.subgoal1.equals(c2.subgoal2) ))
     }
 	
@@ -411,22 +492,22 @@ public class Conditions {
 	
 	public static boolean check_predicate_match(Conditions condition1, Conditions condition2)
 	{
-		if(condition1.arg2.isConst())
+		if(condition1.arg2.get(0).isConst())
 		{
-			if(condition2.arg2.isConst() && condition1.subgoal1.equals(condition2.subgoal1) && condition1.arg1.equals(condition2.arg1))
+			if(condition2.arg2.get(0).isConst() && condition1.subgoal1.get(0).equals(condition2.subgoal1.get(0)) && condition1.arg1.get(0).equals(condition2.arg1.get(0)))
 			{
 				return true;
 			}
 		}
 		else
 		{
-			if(!condition2.arg2.isConst() && condition1.subgoal1.equals(condition2.subgoal1) && condition1.subgoal2.equals(condition2.subgoal2) && condition1.arg1.equals(condition2.arg1) && condition1.arg2.equals(condition2.arg2))
+			if(!condition2.arg2.get(0).isConst() && condition1.subgoal1.get(0).equals(condition2.subgoal1.get(0)) && condition1.subgoal2.get(0).equals(condition2.subgoal2.get(0)) && condition1.arg1.get(0).equals(condition2.arg1.get(0))&& condition1.arg2.get(0).equals(condition2.arg2.get(0)))
 			{
 				return true;
 			}
 			else
 			{
-				if(!condition2.arg2.isConst() && condition1.subgoal1.equals(condition2.subgoal2) && condition1.subgoal2.equals(condition2.subgoal1) && condition1.arg1.equals(condition2.arg2) && condition1.arg2.equals(condition2.arg1))
+				if(!condition2.arg2.get(0).isConst() && condition2.subgoal1.get(0).equals(condition1.subgoal2.get(0)) && condition1.subgoal2.get(0).equals(condition2.subgoal1.get(0)) && condition1.arg1.get(0).equals(condition2.arg2.get(0)) && condition1.arg2.get(0).equals(condition2.arg1.get(0)))
 				{
 					return true;
 				}
@@ -465,19 +546,19 @@ public class Conditions {
 	//condition1: view condition;;condition2:query condition
 	public static boolean check_predicates_satisfy(Conditions condition1, Conditions condition2, Query query, HashMap<Head_strs, String> attr_type_mapping)
 	{
-		if(condition1.arg2.isConst())
+		if(condition1.arg2.size() == 1 && condition1.arg2.get(0).isConst())
 		{
-			String string1 = condition1.arg2.name;
+			String string1 = condition1.arg2.get(0).name;
 			
-			String string2 = condition2.arg2.name;
+			String string2 = condition2.arg2.get(0).name;
 			
-			String relation = condition1.subgoal1;
+			String relation = condition1.subgoal1.get(0);
 			
 			Operation op1 = condition1.op;
 			
 			Operation op2 = condition2.op;
 			
-			String arg_name = condition1.arg1.name.substring(condition1.arg1.name.indexOf(init.separator) + 1, condition1.arg1.name.length());
+			String arg_name = condition1.arg1.get(0).attribute_name;//.name.substring(condition1.arg1.get(0).name.indexOf(init.separator) + 1, condition1.arg1.get(0).name.length());
 			
 			String mapped_relation = query.subgoal_name_mapping.get(relation);
 			
@@ -571,27 +652,34 @@ public class Conditions {
 		}
 	}
 	
+	static void swap_vectors(Vector v1, Vector v2)
+	{
+	  Vector temp = new Vector();
+	  
+	  temp.addAll(v1);
+	  
+	  v1.clear();
+	  
+	  v1.addAll(v2);
+	  
+	  v2.clear();
+	  
+	  v2.addAll(temp);
+	}
+	
 	public void swap_args()
 	{
-	  Argument arg_temp = arg1;
-	  
-	  arg1 = arg2;
-	  
-	  arg2 = arg_temp;
-	  
-	  String str_temp = subgoal1;
-	  
-	  subgoal1 = subgoal2;
-	  
-	  subgoal2 = str_temp;
+	  swap_vectors(arg1, arg2);
+
+	  swap_vectors(subgoal1, subgoal2);
 	  
 	  op = op.counter_direction();
-	  
-	  boolean get_mapping_temp = get_mapping1;
+
+	  boolean b_temp = get_mapping1;
 	  
 	  get_mapping1 = get_mapping2;
 	  
-	  get_mapping2 = get_mapping_temp;
+	  get_mapping2 = b_temp;
 	  
 	  String agg_function_temp = agg_function1;
 	  

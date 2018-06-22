@@ -15,6 +15,10 @@ import java.security.NoSuchAlgorithmException;
 
 public class init {
   
+  public static String db_url_prefix = "jdbc:postgresql://localhost:5432/";
+  
+  public static String db_prov_url_prefix = "jdbc:gprom:postgresql://localhost:5432/";
+  
   public static String db_url = "jdbc:postgresql://localhost:5432/provenance";
   
   public static String db_prov_url = "jdbc:gprom:postgresql://localhost:5432/provenance";

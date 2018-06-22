@@ -161,7 +161,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
         
         if(tuple.mapSubgoals_str.get(subgoal_name2) == null)
         {
-          String partial_join_mapped_attribute_name = arg1.name.replaceAll("\\" + init.separator, "_");
+          String partial_join_mapped_attribute_name = arg1.relation_name + "_" + arg1.attribute_name;//arg1.name.replaceAll("\\" + init.separator, "_");
           
           if(!partial_join_mapped_attribute_names.contains(partial_join_mapped_attribute_name))
           {
@@ -431,7 +431,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
       if(i >= 1)
         grouping_value_condition_string += ",";
       Argument view_grouping_attr = (Argument) args.get(i);
-      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+      String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
       grouping_value_condition_string += "md5(" + view_grouping_attr_name + ")";
     }
     grouping_value_condition_string += ")";
@@ -444,7 +444,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
     for(int i = 0; i<all_args.size(); i++)
     {
       Argument arg = (Argument) all_args.get(i);
-      String relation_name = arg.name.substring(0, arg.name.indexOf(init.separator));
+      String relation_name = arg.relation_name;//.name.substring(0, arg.name.indexOf(init.separator));
       if(view_relation_head_arg_mappings.get(relation_name) == null)
       {
         Vector<Argument> args = new Vector<Argument>();
@@ -472,7 +472,9 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
         if(i >= 1)
           curr_condition_string += "||'" + init.separator + "'||";
         Argument view_grouping_attr = (Argument) curr_args.get(i);
-        String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+//      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+        String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
+
         curr_condition_string += view_grouping_attr_name;
       }
       
@@ -520,7 +522,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
         if(i >= 1)
           curr_condition_string += "||'" + init.separator + "'||";
         Argument view_grouping_attr = (Argument) curr_args.get(i);
-        String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+        String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
         curr_condition_string += view_grouping_attr_name;
       }
       

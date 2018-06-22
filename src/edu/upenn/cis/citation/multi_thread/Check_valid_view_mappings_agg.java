@@ -155,7 +155,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
         
         if(tuple.mapSubgoals_str.get(subgoal_name2) == null)
         {
-          String partial_join_mapped_attribute_name = arg1.name.replaceAll("\\" + init.separator, "_");
+          String partial_join_mapped_attribute_name = arg1.relation_name + "_" + arg1.attribute_name;//arg1.name.replaceAll("\\" + init.separator, "_");
           
           if(!partial_join_mapped_attribute_names.contains(partial_join_mapped_attribute_name))
           {
@@ -434,7 +434,7 @@ public class Check_valid_view_mappings_agg implements Check_valid_view_mappings 
       if(i >= 1)
         grouping_value_condition_string += ",";
       Argument view_grouping_attr = (Argument) view.head.args.get(i);
-      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+      String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
       grouping_value_condition_string += "cast(" + view_grouping_attr_name + " as text)";
       view_grouping_attr_names.add(view_grouping_attr_name);
     }
