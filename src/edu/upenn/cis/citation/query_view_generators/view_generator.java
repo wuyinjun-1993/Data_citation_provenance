@@ -44,6 +44,8 @@ public class view_generator {
   
   public static String view_citation_query_mapping_file_name = "view_citation_query_mappings";
   
+  public static int view_instance_size = 100000;
+  
   public static void main(String[] args)
   {
     
@@ -216,22 +218,22 @@ public class view_generator {
   }
   
   
-  public static void store_views_with_citation_queries(Vector<Query> views)
+  public static void store_views_with_citation_queries(Vector<Query> views, String view_file)
   {
     Vector<String> view_strings = Load_views_and_citation_queries.views2text_strings(views);
-    Load_views_and_citation_queries.write2files(view_file_name, view_strings);
+    Load_views_and_citation_queries.write2files(view_file, view_strings);
     Vector<Query> citation_queries = new Vector<Query>();
     Vector<String> view_citation_query_mappings = new Vector<String>();
-    for(int i = 0; i<views.size(); i++)
-    {
-      Query query = store_citation_queries(views.get(i), i, "q" + i);
-      citation_queries.add(query);
-      view_citation_query_mappings.add(views.get(i).name + "|" + query.name + "|" + "Contributor");
-    }
-    Vector<String> citation_query_strings = Load_views_and_citation_queries.views2text_strings(citation_queries);
-    Load_views_and_citation_queries.write2files(citation_query_file_name, citation_query_strings);
-    Load_views_and_citation_queries.write2files(view_citation_query_mapping_file_name, view_citation_query_mappings);
-    
+//    for(int i = 0; i<views.size(); i++)
+//    {
+//      Query query = store_citation_queries(views.get(i), i, "q" + i);
+//      citation_queries.add(query);
+//      view_citation_query_mappings.add(views.get(i).name + "|" + query.name + "|" + "Contributor");
+//    }
+//    Vector<String> citation_query_strings = Load_views_and_citation_queries.views2text_strings(citation_queries);
+//    Load_views_and_citation_queries.write2files(citation_query_file_name, citation_query_strings);
+//    Load_views_and_citation_queries.write2files(view_citation_query_mapping_file_name, view_citation_query_mappings);
+//    
     
   }
   
@@ -385,12 +387,14 @@ public class view_generator {
       if(!sizes.contains(1))
           sizes.set(0, 1);
       
+      Vector<Conditions> conditions = new Vector<Conditions>();
+      
       while(queries.size() < sizes.size())
       {
           
           int size = sizes.get(num);
-                      
-          Query view = generate_view_without_predicates_partial_mappings(subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, c, pst);
+             
+          Query view = generate_view_without_predicates_partial_mappings(conditions, subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, c, pst);
                       
 //      if(!queries.contains(query))
           {
@@ -405,6 +409,41 @@ public class view_generator {
       }
       
       return queries;
+  }
+  
+  public static Vector<Query> update_instance_size(Vector<Query> views, Connection c, PreparedStatement pst) throws SQLException
+  {
+    Vector<Query> updated_views = new Vector<Query>();
+    
+    Vector<Conditions> conditions = new Vector<Conditions>();
+    
+    for(int i = 0; i<views.size(); i++)
+    {
+      Query view = views.get(i);
+      
+      Vector<Conditions> q_conditions = new Vector<Conditions>();
+      
+      if(conditions.isEmpty())
+      {
+        q_conditions.addAll(query_generator.gen_conditions(view_instance_size, view.body, view.subgoal_name_mapping, c, pst));
+      }
+      else
+      {
+        q_conditions.addAll(conditions);
+      }
+      
+      conditions.clear();
+      
+      conditions.addAll(q_conditions);
+      
+      Query updated_view = new Query(view.name, view.head, view.body, view.lambda_term, conditions, view.subgoal_name_mapping);
+      
+      System.out.println(updated_view);
+      
+      updated_views.add(updated_view);
+    }
+    
+    return updated_views;
   }
   
   static HashMap<String, String> get_attr_types(String relation_name, Connection c, PreparedStatement pst) throws SQLException
@@ -561,7 +600,7 @@ public class view_generator {
     return args;
   }
   
-  static Query generate_view_without_predicates_partial_mappings(HashSet<String> subgoal_names, Query query, int id, int size, Vector<String> all_citable_tables, HashMap<String, String> relation_primary_key_mappings, Connection c, PreparedStatement pst) throws SQLException
+  static Query generate_view_without_predicates_partial_mappings(Vector<Conditions> conditions, HashSet<String> subgoal_names, Query query, int id, int size, Vector<String> all_citable_tables, HashMap<String, String> relation_primary_key_mappings, Connection c, PreparedStatement pst) throws SQLException
   {
     
     Vector<Argument> all_args = get_all_attributes(query);
@@ -638,7 +677,22 @@ public class view_generator {
     
     Subgoal head = new Subgoal("v" + id, head_grouping_attrs, head_agg_attrs, head_agg_functions, true);
     
-    return new Query("v" + id, head, body, new Vector<Lambda_term>(), query_generator.gen_conditions(body), maps);
+    Vector<Conditions> q_conditions = new Vector<Conditions>();
+    
+    if(conditions.isEmpty())
+    {
+      q_conditions.addAll(query_generator.gen_conditions(view_instance_size, body, maps, c, pst));
+    }
+    else
+    {
+      q_conditions.addAll(conditions);
+    }
+    
+    conditions.clear();
+    
+    conditions.addAll(q_conditions);
+    
+    return new Query("v" + id, head, body, new Vector<Lambda_term>(), q_conditions , maps);
     
 //    
 //    

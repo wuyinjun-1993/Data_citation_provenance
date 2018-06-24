@@ -58,7 +58,7 @@ public class Query_provenance {
     Class.forName("org.gprom.jdbc.driver.GProMDriver");
     Class.forName(driverURL);
     
-    PropertyConfigurator.configureDefaultConsoleLogger(Level.OFF);
+    PropertyConfigurator.configureDefaultConsoleLogger(Level.DEBUG);
     
     Properties info = new Properties();
     

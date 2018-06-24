@@ -759,7 +759,7 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
   {
     Set<String> view_grouping_value_sets = view_grouping_value_q_grouping_value_mappings.keySet();
     
-    HashSet<Head_strs> deleted_q_grouping_values = new HashSet<Head_strs>();
+//    HashSet<Head_strs> deleted_q_grouping_values = new HashSet<Head_strs>();
     
     for(String viwe_grouping_value: view_grouping_value_sets)
     {
@@ -776,7 +776,7 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
       
       if(!count1.equals(count2))
       {
-        deleted_q_grouping_values.add(q_grouping_value);
+//        deleted_q_grouping_values.add(q_grouping_value);
         
         q_head_values.remove(q_grouping_value);
         

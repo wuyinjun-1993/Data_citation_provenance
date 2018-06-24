@@ -33,6 +33,7 @@ import edu.upenn.cis.citation.Operation.op_less_equal;
 import edu.upenn.cis.citation.Operation.op_not_equal;
 import edu.upenn.cis.citation.citation_view1.citation_view;
 import edu.upenn.cis.citation.init.init;
+import edu.upenn.cis.citation.pre_processing.Query_operation;
 
 public class query_generator {
 	
@@ -76,9 +77,15 @@ public class query_generator {
 	static int view_nums = 100;
 	
 	public static int query_result_size = 500000;
+	
+	static double interval_ratio1 = 0.7;
+	
+	static double interval_ratio2 = 0.5;
 
 	
-	static HashMap<String, String> relation_primary_key_mapping = new HashMap<String, String>();
+	static HashMap<String, Vector<String>> relation_primary_key_mapping = new HashMap<String, Vector<String>>();
+	
+	static HashMap<String, Vector<String>> relation_primary_key_type_mapping = new HashMap<String, Vector<String>>();
 	
 	public static HashMap<String, Vector<Integer>> relation_primary_key_ranges = new HashMap<String, Vector<Integer>>();
 	
@@ -86,11 +93,13 @@ public class query_generator {
 	
 	public static void main(String [] args) throws SQLException, ClassNotFoundException
 	{
+	  String db_name = "genecode";
+	  
 		Connection c = null;
 	      PreparedStatement pst = null;
 		Class.forName("org.postgresql.Driver");
 	    c = DriverManager
-	        .getConnection(init.db_url, init.usr_name , init.passwd);
+	        .getConnection(init.db_url_prefix + db_name, init.usr_name , init.passwd);
 
 	    
 //	    get_joinable_relations(c, pst);
@@ -101,11 +110,15 @@ public class query_generator {
 //	    
 //	    System.out.println(query);
 	    
-	    init_parameterizable_attributes(c, pst);
-	    
-	    
-	    build_relation_primary_key_mapping(c, pst);
+//	    init_parameterizable_attributes(c, pst);
+//	    
+//	    
+//	    build_relation_primary_key_mapping(c, pst);
         
+	    
+	    
+	    generate_query(3, 3, 2, c, pst);
+	    
 //        Query query = generate_query(3, c, pst);
 	    
 	    c.close();
@@ -146,7 +159,7 @@ public class query_generator {
 				{
 					int length = r.getInt(1);
 					
-					if(length < 20)
+					if(length < 200)
 					{
 						col_num ++;
 						
@@ -344,42 +357,112 @@ public class query_generator {
 	    }
 	}
 	
+	
 	public static void build_relation_primary_key_mapping(Connection c, PreparedStatement pst) throws SQLException
 	{
-		relation_primary_key_mapping.put("family", "family_id");
-		
-		relation_primary_key_mapping.put("introduction", "family_id");
-		
-		relation_primary_key_mapping.put("object", "object_id");
-		
-		relation_primary_key_mapping.put("ligand", "ligand_id");
-		
-		relation_primary_key_mapping.put("gpcr", "object_id");
-		
-		Set<String> set = relation_primary_key_mapping.keySet();
-		
-		for(Iterator iter = set.iterator(); iter.hasNext();)
-		{
-			String relation = (String) iter.next();
-			
-			String query = "select distinct " + relation_primary_key_mapping.get(relation) + " from " + relation + " order by " + relation_primary_key_mapping.get(relation);
-			
-			pst = c.prepareStatement(query);
-			
-			ResultSet rs = pst.executeQuery();
-			
-			Vector<Integer> ids = new Vector<Integer>();
-			
-			while(rs.next())
-			{
-				ids.add(rs.getInt(1));
-			}
-			
-			relation_primary_key_ranges.put(relation, ids);
-			
-		}
+
+//	    String query = "select tc.table_name, kc.column_name "
+//	        + "from information_schema.table_constraints tc "
+//	        + "join information_schema.key_column_usage kc "
+//	        + "on kc.table_name = tc.table_name and kc.table_schema = tc.table_schema "
+//	        + " and kc.constraint_name = tc.constraint_name where tc.constraint_type = 'PRIMARY KEY' ";
+//	        + "and kc.position_in_unique_constraint is not null";
+	    
+	  String query = "select distinct tc.table_name, kc.column_name, ic.data_type from information_schema.table_constraints tc join information_schema.key_column_usage kc on kc.table_name = tc.table_name and kc.table_schema = tc.table_schema and kc.constraint_name = tc.constraint_name join information_schema.columns ic on (ic.column_name = kc.column_name) where tc.constraint_type = 'PRIMARY KEY'";
+	  
+	    pst = c.prepareStatement(query);
+	    
+	    ResultSet rs = pst.executeQuery();
+	    
+	    while(rs.next())
+	    {
+	      String table_name = rs.getString(1);
+	      
+	      String col_name = rs.getString(2);
+	      
+	      String col_type = rs.getString(3);
+	      
+	      Vector<String> col_names = relation_primary_key_mapping.get(table_name);
+	      
+	      Vector<String> col_types = relation_primary_key_type_mapping.get(table_name);
+	      
+	      if(col_names == null)
+	      {
+	        col_names = new Vector<String>();
+	        
+	        col_types = new Vector<String>();
+	        
+	        col_names.add(col_name);
+	        
+	        col_types.add(col_type);
+	        
+	        relation_primary_key_mapping.put(table_name, col_names);
+	        
+	        relation_primary_key_type_mapping.put(table_name, col_types);
+	      }
+	      else
+	      {
+	        relation_primary_key_mapping.get(table_name).add(col_name);
+	        
+	        relation_primary_key_type_mapping.get(table_name).add(col_type);
+	      }
+	    }
+	    
+	    gen_citable_relations();
 	}
 	
+	static void gen_citable_relations()
+	{
+	  Set<String> relations = relation_primary_key_mapping.keySet();
+	  
+	  citatable_tables = new String[relations.size()];
+	  
+	  int num = 0;
+	  
+	  for(String relation : relations)
+	  {
+	    System.out.println(relation);
+	    
+	    citatable_tables[num ++] = relation;
+	  }
+	}
+	
+//	public static void build_relation_primary_key_mapping(Connection c, PreparedStatement pst) throws SQLException
+//	{
+//		relation_primary_key_mapping.put("family", "family_id");
+//		
+//		relation_primary_key_mapping.put("introduction", "family_id");
+//		
+//		relation_primary_key_mapping.put("object", "object_id");
+//		
+//		relation_primary_key_mapping.put("ligand", "ligand_id");
+//		
+//		relation_primary_key_mapping.put("gpcr", "object_id");
+//		
+//		Set<String> set = relation_primary_key_mapping.keySet();
+//		
+//		for(Iterator iter = set.iterator(); iter.hasNext();)
+//		{
+//			String relation = (String) iter.next();
+//			
+//			String query = "select distinct " + relation_primary_key_mapping.get(relation) + " from " + relation + " order by " + relation_primary_key_mapping.get(relation);
+//			
+//			pst = c.prepareStatement(query);
+//			
+//			ResultSet rs = pst.executeQuery();
+//			
+//			Vector<Integer> ids = new Vector<Integer>();
+//			
+//			while(rs.next())
+//			{
+//				ids.add(rs.getInt(1));
+//			}
+//			
+//			relation_primary_key_ranges.put(relation, ids);
+//			
+//		}
+//	}
+//	
 //	public static Query gen_query(int size, Connection c, PreparedStatement pst) throws SQLException
 //	{		
 //		
@@ -420,6 +503,43 @@ public class query_generator {
         return args;
         
     }
+	
+	public static Query update_instance_size(Query query, Connection c, PreparedStatement pst) throws SQLException
+	  {
+	    return new Query(query.name, query.head, query.body, query.lambda_term, query_generator.gen_conditions(query_result_size, query.body, query.subgoal_name_mapping, c, pst), query.subgoal_name_mapping);
+	  
+//	    Vector<Query> updated_views = new Vector<Query>();
+//	    
+//	    Vector<Conditions> conditions = new Vector<Conditions>();
+//	    
+//	    for(int i = 0; i<views.size(); i++)
+//	    {
+//	      Query view = views.get(i);
+//	      
+//	      Vector<Conditions> q_conditions = new Vector<Conditions>();
+//	      
+//	      if(conditions.isEmpty())
+//	      {
+//	        q_conditions.addAll(query_generator.gen_conditions(query_result_size, view.body, view.subgoal_name_mapping, c, pst));
+//	      }
+//	      else
+//	      {
+//	        q_conditions.addAll(conditions);
+//	      }
+//	      
+//	      conditions.clear();
+//	      
+//	      conditions.addAll(q_conditions);
+//	      
+//	      Query updated_view = new Query(view.name, view.head, view.body, view.lambda_term, conditions, view.subgoal_name_mapping);
+//	      
+//	      System.out.println(updated_view);
+//	      
+//	      updated_views.add(updated_view);
+//	    }
+//	    
+//	    return updated_views;
+	  }
 	
 	public static Query generate_query(int size, int grouping_attr_num, int agg_attr_num, Connection c, PreparedStatement pst) throws SQLException
 	{
@@ -543,11 +663,11 @@ public class query_generator {
 		  head_agg_var_arrs.add(curr_head_args);
 		}
 		
-		String[] query_local_predicate = gen_local_predicates_with_fixed_size(maps, relation_names, c, pst);
+//		String[] query_local_predicate = gen_local_predicates_with_fixed_size(maps, relation_names, c, pst);
 		
 		String name = "Q";
 				
-		Vector<Conditions> predicates = gen_conditions(body);
+		Vector<Conditions> predicates = gen_conditions(query_result_size, body, maps, c, pst);
 		
 //		lambda_terms1.add(new Lambda_term(query_local_predicate[0]));
 //		
@@ -558,20 +678,64 @@ public class query_generator {
 		Query query = new Query(name, new Subgoal(name, head_grouping_vars, head_agg_var_arrs, head_agg_functions, true), body, lambda_terms2, predicates, maps);
 		
 //		queries[1] = new Query(name, new Subgoal(name, heads), body, lambda_terms2, predicates, maps);
+		System.out.println(query);
 		
 		return query;
 	}
 	
 	
-	static Vector<Conditions> gen_conditions(Vector<Subgoal> subgoals)
+	static int update_size(int instance_size, Vector<Integer> size, int k)
 	{
-	  int size = (int) Math.pow(query_result_size, 1.0/subgoals.size());
+	  int num = 1;
+	  
+	  for(int p = 0; p < size.size(); p ++)
+	  {
+	    num *= size.get(p);
+	  }
+	  
+	  int result_size = instance_size/num;
+	  
+	  return (int) Math.pow(result_size, 1.0/k);
+	}
+	
+	static int get_primary_key_id(String relation_origin_name)
+	{
+	  Vector<String> keys = relation_primary_key_mapping.get(relation_origin_name);
+	  
+	  for(int i = 0 ; i<keys.size(); i++)
+	  {
+	    if(keys.get(i).endsWith("id"))
+	      return i;
+	  }
+	  
+	  return 0;
+	}
+	
+	static Vector<Conditions> gen_conditions(int instance_size, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
+	{
+	  int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
 	  Vector<Conditions> conditions = new Vector<Conditions>();
+	  Vector<Integer> sizes = new Vector<Integer>();
+	  
 	  for(int i = 0; i<subgoals.size(); i++)
 	  {
+	    
+	    String relation_origin_name = subgoal_name_mappings.get(subgoals.get(i).name);
+	    
+	    System.out.println(subgoals.get(i).name + ":::::::::::" + relation_primary_key_mapping.get(relation_origin_name).get(0));
+	    
+	    int pid_id = get_primary_key_id(relation_origin_name);
+	    
+	    String const_val = get_proper_constants_in_condition(size, sizes, relation_origin_name, relation_primary_key_mapping.get(relation_origin_name).get(pid_id), relation_primary_key_type_mapping.get(relation_origin_name).get(pid_id), c, pst);
+	    
+	    size = update_size(instance_size, sizes, subgoals.size() - i - 1);
+	    
 //	    Argument arg = (Argument) subgoals.get(i).args.get(0);
-	    Argument arg_const = new Argument("'" + size + "'");
-	    Argument arg = new Argument(subgoals.get(i).name + init.separator + relation_primary_key_mapping.get(subgoals.get(i).name), subgoals.get(i).name);
+	    Argument arg_const = new Argument("'" + const_val + "'");
+	    
+	    
+	    
+	    Argument arg = new Argument(subgoals.get(i).name + init.separator + relation_primary_key_mapping.get(relation_origin_name).get(pid_id), subgoals.get(i).name);
 	    
 	    Vector<Argument> args1 = new Vector<Argument>();
 	    
@@ -592,8 +756,149 @@ public class query_generator {
 	    Conditions condition = new Conditions(args1, subgoals1, new op_less_equal(), args2, subgoals2, null, null);
 	    conditions.add(condition);
 	  }
+	  
+	  int tuple_num = 1;
+	  
+	  for(int k = 0; k<sizes.size(); k++)
+	  {
+	    tuple_num *= sizes.get(k);
+	  }
+	  
+	  System.out.println("final_size::" + tuple_num);
+	  
+	  
 	  return conditions;
 	}
+	
+	
+	static String get_proper_constants_in_condition(int est_size, Vector<Integer> sizes, String relation, String arg_name, String type, Connection c, PreparedStatement pst) throws SQLException
+	{
+	  System.out.println("est_size::" + est_size);
+	  
+	  Vector all_values = null;
+	  
+	  HashSet<String> comparable_types = new HashSet<String>();
+      
+      comparable_types.addAll(Arrays.asList(comparable_data_type));
+	  
+	  if(comparable_types.contains(type))
+	  {
+	    all_values = get_range_double(relation, arg_name, c, pst);
+	  }
+	  else
+	  {
+	    all_values = get_range_string(relation, arg_name, c, pst);
+	  }
+
+	  int id = all_values.size() - 1;
+	  
+	  String const_val = String.valueOf(all_values.get(all_values.size() - 1));
+	  
+	  int size = get_result_size(relation, arg_name, const_val, c, pst);
+	  
+	  System.out.println(const_val + "::" + size);
+	  
+	  int old_id = id;
+	  
+	  while(!close2est(est_size, size))
+	  {
+	    if(size > est_size)
+	    {
+	      id = (id-1)/2;
+	    }
+	    else
+	    {
+	      id = (id + all_values.size())/2;
+	    }
+	    
+	    if(old_id == id)
+	      break;
+	    
+	    const_val = String.valueOf(all_values.get(id));
+	    
+	    size = get_result_size(relation, arg_name, const_val, c, pst);
+	    
+	    System.out.println(const_val + "::" + size);
+	    
+	    old_id = id;
+	  }
+	  
+	  sizes.add(size);
+	  
+	  return const_val;
+	}
+	
+	static boolean close2est(int est_size, int size)
+	{
+	  int upper_bound = (int) (est_size + interval_ratio1*est_size);
+	  
+	  int lower_bound = (int) (est_size - interval_ratio2*est_size);
+	  
+	  if(size <= upper_bound && size >= lower_bound)
+	    return true;
+	  
+	  return false;
+	}
+	
+	static int get_result_size(String relation, String arg_name, String const_val, Connection c, PreparedStatement pst) throws SQLException
+	{
+	  String query = "select count(*) from " + relation + " where " + arg_name + " <= '" + const_val + "'";;
+	  
+	  pst = c.prepareStatement(query);
+	  
+	  ResultSet rs = pst.executeQuery();
+	  
+	  int size = 0;
+	  
+	  if(rs.next())
+	  {
+	    size = rs.getInt(1);
+	  }
+	  
+	  return size;
+	}
+	
+	static Vector<String> get_range_string(String relation, String arg_name, Connection c, PreparedStatement pst) throws SQLException
+	{
+	  String query = "select distinct " + arg_name + " from " + relation;
+	  
+	  System.out.println(query);
+	  
+	  pst = c.prepareStatement(query);
+	  
+	  ResultSet rs = pst.executeQuery();
+	  
+	  Vector<String> values = new Vector<String>();
+	  
+	  while(rs.next())
+	  {
+	    values.add(rs.getString(1));
+	  }
+	  
+	  Collections.sort(values);
+	  
+	  return values;
+	}
+	
+	static Vector<Double> get_range_double(String relation, String arg_name, Connection c, PreparedStatement pst) throws SQLException
+    {
+      String query = "select distinct " + arg_name + " from" + relation;
+      
+      pst = c.prepareStatement(query);
+      
+      ResultSet rs = pst.executeQuery();
+      
+      Vector<Double> values = new Vector<Double>();
+      
+      while(rs.next())
+      {
+        values.add((double)rs.getObject(1));
+      }
+      
+      Collections.sort(values);
+      
+      return values;
+    }
 	
 	static void gen_shuffled_head_args(Vector<Argument> head_args)
 	{
@@ -795,31 +1100,34 @@ public class query_generator {
 		{
 			int index = r.nextInt(attr_list.size());
 			
-			if(parameterizable_attri.get(relation).contains(attr_list.get(index)) && !relation_primary_key_mapping.get(relation_name).contains(attr_list.get(index)))
-			{
-			  if(!is_agg_attrs)
-				id_set.add(index);
-			  else
-			  {
-			    if(is_agg_attrs && aggregated_attributes.contains(parameterizable_attri_type.get(relation).get(attr_list.get(index))))
-			    {
-//			      System.out.println(parameterizable_attri_type.get(relation).get(attr_list.get(index)));
-			      
-			      id_set.add(index);
-			    }
-			    else
-			    {
-			      i--;
-			      continue;
-			    }
-			  }
-			}
-			else
-			{
-				i--;
-				
-				continue;
-			}
+			if(!id_set.contains(index))
+			  id_set.add(index);
+			
+//			if(parameterizable_attri.get(relation).contains(attr_list.get(index)) && !relation_primary_key_mapping.get(relation_name).contains(attr_list.get(index)))
+//			{
+//			  if(!is_agg_attrs)
+//				id_set.add(index);
+//			  else
+//			  {
+//			    if(is_agg_attrs && aggregated_attributes.contains(parameterizable_attri_type.get(relation).get(attr_list.get(index))))
+//			    {
+////			      System.out.println(parameterizable_attri_type.get(relation).get(attr_list.get(index)));
+//			      
+//			      id_set.add(index);
+//			    }
+//			    else
+//			    {
+//			      i--;
+//			      continue;
+//			    }
+//			  }
+//			}
+//			else
+//			{
+//				i--;
+//				
+//				continue;
+//			}
 //			
 		}
 		

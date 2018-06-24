@@ -303,7 +303,7 @@ public class provenance_citation {
     
     boolean sortcluster = false;//Boolean.valueOf(args[1]);
     
-    int thread_num = 2;//Integer.valueOf(args[1]);
+    int thread_num = 5;//Integer.valueOf(args[1]);
     
     String db_name = args[3];
     

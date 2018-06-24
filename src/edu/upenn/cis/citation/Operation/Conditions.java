@@ -91,22 +91,42 @@ public class Conditions {
 	  
 	  if(agg_function1 != null)
 	  {
-	    string += agg_function1 + "(" + arg1 + ")";
+	    string += agg_function1 + "(";
+	    
+	    for(int i = 0; i<arg1.size(); i++)
+	    {
+	      if(i >= 1)
+	        string += "#";
+	      
+	      string += arg1.get(i);
+	    }
+	    
+	    string += ")";
 	  }
 	  else
 	  {
-	    string += arg1;
+	    string += arg1.get(0);
 	  }
 	  
 	  string += op;
 	  
 	  if(agg_function2 != null)
       {
-        string += agg_function2 + "(" + arg2 + ")";
+        string += agg_function2 + "(";
+        
+        for(int i = 0; i<arg2.size(); i++)
+        {
+          if(i >= 1)
+            string += "#";
+          
+          string += arg2.get(i);
+        }
+        
+        string += ")";
       }
       else
       {
-        string += arg2;
+        string += arg2.get(0);
       }
 	  
 	  return string;

@@ -288,14 +288,17 @@ public class Single_view {
       
       String subgoal1 = conditions.get(j).subgoal1.get(0);
       
-      String subgoal2 = conditions.get(j).subgoal2.get(0);
+//      String subgoal2 = conditions.get(j).subgoal2.get(0);
       
       int id1 = subgoal_name_id_mappings.get(subgoal1);
       
       int id2 = -1;
       
-      if(subgoal2 != null && !subgoal2.isEmpty())
-        id2 = subgoal_name_id_mappings.get(subgoal2);
+      if(conditions.get(j).subgoal2.size() > 0)
+        id2 = subgoal_name_id_mappings.get(conditions.get(j).subgoal2.get(0));
+      
+//      if(subgoal2 != null && !subgoal2.isEmpty())
+//        id2 = subgoal_name_id_mappings.get(subgoal2);
       
       
       int i = 0;

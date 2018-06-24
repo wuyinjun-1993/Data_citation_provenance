@@ -15,65 +15,98 @@ import edu.upenn.cis.citation.views.Query_converter;
 
 public class Query_view_generator {
   
+  static String query_file = "synthetic_example/query";
+  
+  static String view_file = "synthetic_example/views";
+  
   public static void main(String [] args) throws ClassNotFoundException, SQLException
   {
     Connection c = null;
     PreparedStatement pst = null;
     
+  String db = args[0];
+
   Class.forName("org.postgresql.Driver");
   c = DriverManager
-      .getConnection(init.db_url, init.usr_name , init.passwd);
-    
-  boolean new_query = Boolean.valueOf(args[0]);
+      .getConnection(init.db_url_prefix + db, init.usr_name , init.passwd);
   
-  int query_size = Integer.valueOf(args[1]);
+  boolean new_query = Boolean.valueOf(args[1]);
   
-  int query_grouping_attr_num = Integer.valueOf(args[2]);
+  int query_subgoal_num = Integer.valueOf(args[2]);
   
-  int query_agg_attr_num = Integer.valueOf(args[3]);
+  int query_grouping_attr_num = Integer.valueOf(args[3]);
   
-  int view_num = Integer.valueOf(args[4]);
+  int query_agg_attr_num = Integer.valueOf(args[4]);
   
-  int view_offset = Integer.valueOf(args[5]);
+  int view_num = Integer.valueOf(args[5]);
   
-  int instance_size = 500000;//Integer.valueOf(args[6]);
+  int view_offset = Integer.valueOf(args[6]);
+  
+  int instance_size = Integer.valueOf(args[7]);
+  
+  int view_instance_size = Integer.valueOf(args[8]);
   
   query_generator.query_result_size = instance_size;
   
+  view_generator.view_instance_size = view_instance_size;
+  
   if(new_query)
   {
-    Query query = query_generator.generate_query(query_size, query_grouping_attr_num, query_agg_attr_num, c, pst);
+    Query query = query_generator.generate_query(query_subgoal_num, query_grouping_attr_num, query_agg_attr_num, c, pst);
     String string = Query_converter.datalog2sql(query, false);
-    print_query_result(string, c, pst);
+//    print_query_result(string, c, pst);
     Vector<Query> queries = new Vector<Query>();
     queries.add(query);
     
     Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
-    Load_views_and_citation_queries.write2files("query", query_strings);
+    Load_views_and_citation_queries.write2files(query_file, query_strings);
     Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
-    view_generator.store_views_with_citation_queries(views);
+    view_generator.store_views_with_citation_queries(views, view_file);
     
   }
   else
   {
-    Query query = query_generator.generate_query(3, query_grouping_attr_num, query_agg_attr_num, c, pst);
+    query_generator.build_relation_primary_key_mapping(c, pst);
     
-//  Vector<Query> queries = new Vector<Query>();
-//  queries.add(query);
-//  
-//  Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
-//Load_views_and_citation_queries.write2files("query", query_strings);
-  query = Load_views_and_citation_queries.get_query_test_case("query", c, pst).get(0);
-  
-//  Vector<String> parameters = new Vector<String>();
-//  parameters.add(query.lambda_term.get(0).toString());
-//  Load_views_and_citation_queries.write2files("user_query_subsets", parameters);
-  Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
-//  view_generator.store_views_with_citation_queries(views);
-  view_generator.append_views_with_citation_queries(views, view_offset);
-  System.out.println(query);
-
+    query_generator.init_parameterizable_attributes(c, pst);
+   
+    Query query = Load_views_and_citation_queries.get_query_test_case(query_file, c, pst).get(0);
+    
+    query = query_generator.update_instance_size(query, c, pst);
+    
+    Vector<Query> queries = new Vector<Query>();
+    queries.add(query);
+    
+    Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
+    
+    Load_views_and_citation_queries.write2files(query_file, query_strings);
+    
+    Vector<Query> views = Load_views_and_citation_queries.get_query_test_case(view_file, c, pst);
+    
+    Vector<Query> updated_views = view_generator.update_instance_size(views, c, pst);
+    
+    view_generator.store_views_with_citation_queries(updated_views, view_file);
   }
+//  else
+//  {
+//    Query query = query_generator.generate_query(3, query_grouping_attr_num, query_agg_attr_num, c, pst);
+//    
+////  Vector<Query> queries = new Vector<Query>();
+////  queries.add(query);
+////  
+////  Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
+////Load_views_and_citation_queries.write2files("query", query_strings);
+//  query = Load_views_and_citation_queries.get_query_test_case(query_file, c, pst).get(0);
+//  
+////  Vector<String> parameters = new Vector<String>();
+////  parameters.add(query.lambda_term.get(0).toString());
+////  Load_views_and_citation_queries.write2files("user_query_subsets", parameters);
+//  Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
+////  view_generator.store_views_with_citation_queries(views);
+//  view_generator.append_views_with_citation_queries(views, view_offset);
+//  System.out.println(query);
+//
+//  }
   
   c.close();
 }

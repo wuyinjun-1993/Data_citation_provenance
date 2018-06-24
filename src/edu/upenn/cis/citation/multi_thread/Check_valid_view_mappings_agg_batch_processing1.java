@@ -494,7 +494,7 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
         curr_condition_string += view_grouping_attr_name;
       }
       
-      grouping_value_condition_string += "md5(" + curr_condition_string + ")";
+      grouping_value_condition_string += "md5( cast (" + curr_condition_string + " as text))";
       count ++;
     }
     
