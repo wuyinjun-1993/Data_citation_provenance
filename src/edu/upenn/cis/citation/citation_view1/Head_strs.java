@@ -8,6 +8,8 @@ public class Head_strs {
 	
 	public Vector<String> head_vals;
 	
+	 static String parser = "####";
+	
 	public Head_strs(Vector<String> vec_str)
 	{
 		
@@ -67,7 +69,7 @@ public class Head_strs {
 		for(int i = 0; i<head_vals.size(); i++)
 		{
 			if(i >= 1)
-				output += " ";
+				output += parser;
 			
 			output += head_vals.get(i);
 		}

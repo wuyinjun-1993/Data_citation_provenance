@@ -54,6 +54,8 @@ public class query_generator {
 	
 	static String [] available_data_type = {"integer", "text", "boolean", "character varying", "double precision", "real", "character varying", "bigint"};
 	
+	static String [] integet_type = {"integer", "bigint"};
+	
 	static Vector<String> available_data_type_vec = new Vector<String>();
 	
 	static Vector<String> comparable_data_type_vec = new Vector<String>();
@@ -78,9 +80,9 @@ public class query_generator {
 	
 	public static int query_result_size = 500000;
 	
-	static double interval_ratio1 = 0.7;
+	static double interval_ratio1 = 0.1;
 	
-	static double interval_ratio2 = 0.5;
+	static double interval_ratio2 = 0.1;
 
 	
 	static HashMap<String, Vector<String>> relation_primary_key_mapping = new HashMap<String, Vector<String>>();
@@ -93,7 +95,7 @@ public class query_generator {
 	
 	public static void main(String [] args) throws SQLException, ClassNotFoundException
 	{
-	  String db_name = "genecode";
+	  String db_name = "dblp2";
 	  
 		Connection c = null;
 	      PreparedStatement pst = null;
@@ -101,7 +103,9 @@ public class query_generator {
 	    c = DriverManager
 	        .getConnection(init.db_url_prefix + db_name, init.usr_name , init.passwd);
 
+	    Vector<Integer> sizes = new Vector<Integer>();
 	    
+	    get_proper_constants_in_condition(27, sizes, "grants_institution", "name", "text", c, pst);
 //	    get_joinable_relations(c, pst);
 //	    
 //	    int size = 10;
@@ -506,7 +510,7 @@ public class query_generator {
 	
 	public static Query update_instance_size(Query query, Connection c, PreparedStatement pst) throws SQLException
 	  {
-	    return new Query(query.name, query.head, query.body, query.lambda_term, query_generator.gen_conditions(query_result_size, query.body, query.subgoal_name_mapping, c, pst), query.subgoal_name_mapping);
+	    return new Query(query.name, query.head, query.body, query.lambda_term, query_generator.gen_conditions(true, query_result_size, query.body, query.subgoal_name_mapping, c, pst), query.subgoal_name_mapping);
 	  
 //	    Vector<Query> updated_views = new Vector<Query>();
 //	    
@@ -547,7 +551,7 @@ public class query_generator {
 	  
 	  init_parameterizable_attributes(c, pst);
 	  
-		Random r = new Random();
+		Random r = new Random(System.currentTimeMillis());
 		
 		HashSet<String> relation_names = new HashSet<String>();
 				
@@ -667,7 +671,7 @@ public class query_generator {
 		
 		String name = "Q";
 				
-		Vector<Conditions> predicates = gen_conditions(query_result_size, body, maps, c, pst);
+		Vector<Conditions> predicates = gen_conditions(true, query_result_size, body, maps, c, pst);
 		
 //		lambda_terms1.add(new Lambda_term(query_local_predicate[0]));
 //		
@@ -711,9 +715,14 @@ public class query_generator {
 	  return 0;
 	}
 	
-	static Vector<Conditions> gen_conditions(int instance_size, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
+	static Vector<Conditions> gen_conditions(boolean is_query, int instance_size, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
 	{
-	  int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
+	  
+	  Random r = new Random(System.currentTimeMillis());
+	  
+//	  int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
+	  int size = r.nextInt((int) Math.pow(instance_size, 1.0/subgoals.size()));
+	  
 	  Vector<Conditions> conditions = new Vector<Conditions>();
 	  Vector<Integer> sizes = new Vector<Integer>();
 	  
@@ -764,11 +773,157 @@ public class query_generator {
 	    tuple_num *= sizes.get(k);
 	  }
 	  
-	  System.out.println("final_size::" + tuple_num);
+	  
+	  if(is_query)
+	    System.out.println("query_final_size::" + tuple_num);
+	  else
+	    System.out.println("view_final_size::" + tuple_num);
 	  
 	  
 	  return conditions;
 	}
+	
+	static String[] get_comparable_type(String relation, Connection c, PreparedStatement pst) throws SQLException
+	{
+	  String query = "select column_name, data_type from information_schema.columns where table_name = '" + relation + "'";
+	  
+	  pst = c.prepareStatement(query);
+	  
+	  pst.executeQuery();
+	  
+	  ResultSet rs = pst.executeQuery();
+	  
+      HashSet<String> comparable_types = new HashSet<String>();
+      
+      comparable_types.addAll(Arrays.asList(comparable_data_type));
+	  
+      String[] col_data_type = null;
+      
+	  while(rs.next())
+	  {
+	    String col_name = rs.getString(1);
+	    
+	    String data_type = rs.getString(2);
+	    
+	    if(col_name.equals("award_title"))
+	      continue;
+	    
+	    if(comparable_types.contains(data_type))
+	    {
+	      col_data_type = new String[2];
+	      
+	      col_data_type[0] = col_name;
+	      
+	      col_data_type[1] = data_type;
+	      
+	      return col_data_type;
+	    }
+	    else
+	    {
+	      if(data_type.equals("text") || data_type.equals("character varying"))
+	      {
+	        col_data_type = new String[2];
+	          
+	          col_data_type[0] = col_name;
+	          
+	          col_data_type[1] = data_type;
+	          
+	          return col_data_type;
+	      }
+	    }
+	  }
+	  
+	  return col_data_type;
+	}
+	
+	static Vector<Conditions> gen_conditions_random(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
+    {
+	  
+      Vector<Conditions> conditions = new Vector<Conditions>();
+      HashSet<String> comparable_types = new HashSet<String>();
+      
+      comparable_types.addAll(Arrays.asList(comparable_data_type));
+      
+      Random r = new Random();
+      
+//      for(int i = 0; i<subgoals.size(); i++)
+      {
+        int i = r.nextInt(subgoals.size());
+        
+        String relation_origin_name = subgoal_name_mappings.get(subgoals.get(i).name);
+        
+//        System.out.println(subgoals.get(i).name + ":::::::::::" + relation_primary_key_mapping.get(relation_origin_name).get(0));
+        
+        
+        String[] col_data_type = get_comparable_type(relation_origin_name, c, pst);
+        
+        if(col_data_type != null)
+        {
+          String value = null; 
+          
+          if(comparable_types.contains(col_data_type[1]))
+          {
+            Vector<Double> values = get_range_double(relation_origin_name, col_data_type[0], c, pst);
+            
+            int id = r.nextInt(values.size());
+            
+            int curr_value = (int)(double)values.get(id);
+            
+            value = String.valueOf(curr_value);
+//            Argument arg2 = new Argument(values.get(id));
+          }
+          else
+          {
+            Vector<String> values = get_range_string(relation_origin_name, col_data_type[0], c, pst);
+            
+            int id = r.nextInt(values.size());
+            
+            value = values.get(id);
+          }
+          
+          Argument arg1 = new Argument(relation_origin_name+ init.separator + col_data_type[0], relation_origin_name);
+          
+          Argument arg2 = new Argument("'" + value + "'");
+          
+          Vector<Argument> arg_vec1 = new Vector<Argument>();
+          
+          arg_vec1.add(arg1);
+          
+          Vector<Argument> arg_vec2 = new Vector<Argument>();
+          
+          arg_vec2.add(arg2);
+          
+          Operation op = new op_less();
+          
+          boolean b = r.nextBoolean();
+          
+          String agg_string = null;
+          
+//          if(b)
+            agg_string = "max";
+          
+          Conditions condition = new Conditions(arg1, subgoals.get(i).name, op, arg2, null, agg_string, null);
+          
+          conditions.add(condition);
+        }
+      }
+      
+//      int tuple_num = 1;
+//      
+//      for(int k = 0; k<sizes.size(); k++)
+//      {
+//        tuple_num *= sizes.get(k);
+//      }
+//      
+//      
+//      if(is_query)
+//        System.out.println("query_final_size::" + tuple_num);
+//      else
+//        System.out.println("view_final_size::" + tuple_num);
+//      
+//      
+      return conditions;
+    }
 	
 	
 	static String get_proper_constants_in_condition(int est_size, Vector<Integer> sizes, String relation, String arg_name, String type, Connection c, PreparedStatement pst) throws SQLException
@@ -794,36 +949,62 @@ public class query_generator {
 	  
 	  String const_val = String.valueOf(all_values.get(all_values.size() - 1));
 	  
-	  int size = get_result_size(relation, arg_name, const_val, c, pst);
+	  int size = get_result_size(relation, arg_name, const_val, comparable_types.contains(type), c, pst);
 	  
 	  System.out.println(const_val + "::" + size);
 	  
 	  int old_id = id;
 	  
+	  int max_id = all_values.size() - 1;
+	  
+	  int min_id = 0;
+	  
+	  id = max_id;
+	  
 	  while(!close2est(est_size, size))
 	  {
 	    if(size > est_size)
 	    {
-	      id = (id-1)/2;
+	      max_id = id - 1;
 	    }
 	    else
 	    {
-	      id = (id + all_values.size())/2;
+	      min_id = id;
+	      
+//	      id = (id + all_values.size())/2;
 	    }
+
+	    id = (max_id + min_id)/2;
 	    
 	    if(old_id == id)
 	      break;
 	    
 	    const_val = String.valueOf(all_values.get(id));
 	    
-	    size = get_result_size(relation, arg_name, const_val, c, pst);
+	     const_val = const_val.replaceAll("'", "''");
 	    
-	    System.out.println(const_val + "::" + size);
+	    size = get_result_size(relation, arg_name, const_val, comparable_types.contains(type), c, pst);
+	    
+	    System.out.println(const_val + "::" + size + "::" + id);
 	    
 	    old_id = id;
 	  }
 	  
 	  sizes.add(size);
+	  
+	  HashSet<String> integer_type_vec = new HashSet<String>();
+	  
+	  integer_type_vec.addAll(Arrays.asList(integet_type));
+	  
+	  if(integer_type_vec.contains(type))
+	  {
+	    double vl = Double.valueOf(const_val);
+	    
+	    int updated_v = (int) vl;
+	    
+	    const_val = String.valueOf(updated_v);
+	  }
+	  
 	  
 	  return const_val;
 	}
@@ -840,11 +1021,20 @@ public class query_generator {
 	  return false;
 	}
 	
-	static int get_result_size(String relation, String arg_name, String const_val, Connection c, PreparedStatement pst) throws SQLException
+	static int get_result_size(String relation, String arg_name, String const_val, boolean is_quantifiable, Connection c, PreparedStatement pst) throws SQLException
 	{
-	  String query = "select count(*) from " + relation + " where " + arg_name + " <= '" + const_val + "'";;
+	  String query = null;
+	  
+	  if(!is_quantifiable)
+	    query = "select count(*) from " + relation + " where " + arg_name + " <= '" + const_val + "'";
+	  else
+	    query = "select count(*) from " + relation + " where " + arg_name + " <= " + const_val;
+	  
+	  System.out.println(query);
 	  
 	  pst = c.prepareStatement(query);
+	  
+//	  System.out.println(query);
 	  
 	  ResultSet rs = pst.executeQuery();
 	  
@@ -860,9 +1050,9 @@ public class query_generator {
 	
 	static Vector<String> get_range_string(String relation, String arg_name, Connection c, PreparedStatement pst) throws SQLException
 	{
-	  String query = "select distinct " + arg_name + " from " + relation;
+	  String query = "select distinct " + arg_name + " from " + relation + " order by " + arg_name;
 	  
-	  System.out.println(query);
+//	  System.out.println(query);
 	  
 	  pst = c.prepareStatement(query);
 	  
@@ -882,9 +1072,11 @@ public class query_generator {
 	
 	static Vector<Double> get_range_double(String relation, String arg_name, Connection c, PreparedStatement pst) throws SQLException
     {
-      String query = "select distinct " + arg_name + " from" + relation;
+      String query = "select distinct cast(" + arg_name + " as double precision) from " + relation + " order by " + arg_name;
       
       pst = c.prepareStatement(query);
+      
+//      System.out.println(query);
       
       ResultSet rs = pst.executeQuery();
       
@@ -892,7 +1084,9 @@ public class query_generator {
       
       while(rs.next())
       {
-        values.add((double)rs.getObject(1));
+        double value = rs.getDouble(1);
+        
+        values.add(value);
       }
       
       Collections.sort(values);

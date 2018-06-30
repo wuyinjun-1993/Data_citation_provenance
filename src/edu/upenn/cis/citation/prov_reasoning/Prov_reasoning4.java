@@ -17,6 +17,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1079,8 +1080,30 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     get_valid_view_mappings_per_group(user_query.head.has_agg);
     
+//    output(group_view_mappings);
+    
     return tuple_ids;
   }
+  
+  static void output(ConcurrentHashMap<String, ConcurrentHashMap<Tuple, Integer>> group_view_mappings)
+  {
+    Set<String> group_ids = group_view_mappings.keySet();
+    
+    for(String group_id : group_ids)
+    {
+      System.out.println(group_id);
+      
+      Set<Tuple> view_mappings = group_view_mappings.get(group_id).keySet();
+      
+      for(Tuple view_mapping: view_mappings)
+      {
+        System.out.print(view_mapping.getName() + "    ");
+      }
+      
+      System.out.println();
+    }
+  }
+  
   
   static void get_valid_view_mappings_per_group(boolean query_has_agg)
   {
@@ -1114,11 +1137,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         {
           if(rid_sets.get(j).contains(head_value))
           {
-            signiture += "," + head_value;
+            signiture += "," + j;
             
             tuple_ids.add(j);
+            
           }
         }
+        
         
         if(group_ids.get(signiture) == null)
         {
@@ -1136,6 +1161,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           }
           
           group_view_mappings.put(signiture, curr_view_mappings);
+          
         }
         else
         {
@@ -1983,6 +2009,12 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
     }
     
+    
+//    System.out.println(tuple_why_prov_mappings);
+//    
+//    System.out.println(group_ids);
+//    
+//    System.out.println(group_covering_sets);
   }
   
   public static HashSet<String> gen_citations(ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashSet<Covering_set> covering_sets, Connection c, PreparedStatement pst) throws SQLException, JSONException

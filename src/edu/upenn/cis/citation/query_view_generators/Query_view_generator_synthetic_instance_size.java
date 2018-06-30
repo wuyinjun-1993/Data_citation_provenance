@@ -13,11 +13,15 @@ import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.views.Query_converter;
 
-public class Query_view_generator {
+public class Query_view_generator_synthetic_instance_size {
+
+  static String directory = "synthetic_example/";
   
-  static String query_file = "synthetic_example/query";
+//  static String directory = "./";
   
-  static String view_file = "synthetic_example/views";
+  static String query_file = directory + "query";
+  
+  static String view_file = directory + "views";
   
   public static void main(String [] args) throws ClassNotFoundException, SQLException
   {
@@ -60,7 +64,7 @@ public class Query_view_generator {
     
     Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
     Load_views_and_citation_queries.write2files(query_file, query_strings);
-    Vector<Query> views = view_generator.gen_views(gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
+    Vector<Query> views = view_generator.gen_views(true, gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
     view_generator.store_views_with_citation_queries(views, view_file);
     
   }

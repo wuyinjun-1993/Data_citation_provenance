@@ -188,16 +188,19 @@ public class provenance_citation {
     
     System.out.println("Covering_set_size::" + covering_sets.size());
     
-    if(iscluster)
-      write2file(path + "covering_sets3", covering_sets);
+    if(is_materialized)
+      write2file(path + "covering_sets1", covering_sets);
     else
-      write2file(path + "covering_sets4", covering_sets);
+      write2file(path + "covering_sets2", covering_sets);
     
     HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
     write2file(path + "citation2", formatted_citations);
     
-    write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    if(is_materialized)
+      write2file(path + "covering_sets_per_group1", Prov_reasoning4.group_covering_sets);
+    else
+      write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
     
   }
   
@@ -335,6 +338,13 @@ public class provenance_citation {
       reasoning_without_covering_set_opt(query, iscluster, thread_num, sortcluster, is_materialized, c, pst);
     }
     
+    if(is_materialized)
+    {
+      String view_instance_size_mappings = get_materialized_view_size(c, pst);
+      
+      System.out.println("view_instance_size_mappings::" + view_instance_size_mappings);
+    }
+    
     c.close();
   }
   
@@ -437,6 +447,36 @@ public class provenance_citation {
     
     
     
+  }
+  
+  
+  static String get_materialized_view_size(Connection c, PreparedStatement pst) throws SQLException
+  {
+      String query = "SELECT relname AS objectname "
+//          + ", relkind AS objecttype"
+//          + ", reltuples AS entries"
+          + ", pg_size_pretty(pg_table_size(oid)) "
+          + "AS size FROM pg_class"
+          + " WHERE  relkind IN ('m') ORDER  BY pg_table_size(oid) DESC";
+      
+      pst = c.prepareStatement(query);
+      
+      ResultSet rs = pst.executeQuery();
+      
+      String result = new String();
+      
+      int num = 0;
+      
+      while(rs.next())
+      {
+        if(num >= 1)
+          result += ",";
+        
+        result += rs.getString(1) + "::" + rs.getString(2);
+        
+      }
+      
+      return result;
   }
   
   static void use_reasoning3(String [] args, Query query) throws ClassNotFoundException, SQLException, IOException, InterruptedException, JSONException

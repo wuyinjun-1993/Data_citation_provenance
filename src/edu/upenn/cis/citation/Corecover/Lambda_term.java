@@ -24,7 +24,7 @@ public class Lambda_term {
 	  
 	  arg_name = arg.name;
 	  
-	  table_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+	  table_name = arg.relation_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
 	}
 	
 	public Lambda_term(String name)

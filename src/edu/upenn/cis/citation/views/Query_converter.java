@@ -66,9 +66,7 @@ public class Query_converter {
       return sql;
   }
   
-  
-  
-  static void get_view_subgoal_primary_keys(Vector<String> indexed_attributes, Vector<Subgoal> subgoals, HashMap<String, String> relation_name_mappings, HashMap<String, Vector<Integer>> relation_primary_key_mappings, Vector<String> relation_attr_pairs, Vector<String> relation_attr_name)
+  static void get_view_subgoal_primary_keys(Vector<String> provenance_attr_strings, Vector<String> indexed_attributes, Vector<Subgoal> subgoals, HashMap<String, String> relation_name_mappings, HashMap<String, Vector<Integer>> relation_primary_key_mappings, Vector<String> relation_attr_pairs, Vector<String> relation_attr_name)
   {
     for(int k = 0; k<subgoals.size(); k++)
     {
@@ -84,11 +82,14 @@ public class Query_converter {
         
         indexed_attributes.add(curr_rel_attr_name);
         
+        provenance_attr_strings.add(curr_rel_attr_name);
+        
         if(!relation_attr_name.contains(curr_rel_attr_name))
         {
           relation_attr_name.add(curr_rel_attr_name);
           
           relation_attr_pairs.add(curr_rel_attr_pair);
+          
         }
         
       }
@@ -138,7 +139,7 @@ public class Query_converter {
     }
   }
   
-  static String get_view_sel_items(Single_view view, Vector<String> indexed_cols)
+  static String get_view_sel_items(Single_view view, Vector<String> indexed_cols, Vector<String> grouping_attrs_strings, Vector<String> provenance_attrs_strings)
   {
     Vector<String> relation_attr_pairs = new Vector<String>();
     
@@ -151,11 +152,13 @@ public class Query_converter {
       relation_attr_pairs.add(arg.relation_name + "." + arg.attribute_name);
       
       relation_attr_name.add(arg.relation_name + "_" + arg.attribute_name);
+      
+      grouping_attrs_strings.add(arg.relation_name + "_" + arg.attribute_name);
     }
     
-    get_view_subgoal_primary_keys(indexed_cols, view.subgoals, view.subgoal_name_mappings, Single_view.relation_primary_key_mappings, relation_attr_pairs, relation_attr_name);
+    get_view_subgoal_primary_keys(provenance_attrs_strings, indexed_cols, view.subgoals, view.subgoal_name_mappings, Single_view.relation_primary_key_mappings, relation_attr_pairs, relation_attr_name);
     
-    get_view_having_clause_args(view.conditions, relation_attr_pairs, relation_attr_name);
+//    get_view_having_clause_args(view.conditions, relation_attr_pairs, relation_attr_name);
     
     String string = new String();
     
@@ -171,11 +174,13 @@ public class Query_converter {
   }
   
   
-  public static String datalog2sql_view_conjunction(Single_view view, Vector<String> indexed_cols)
+  public static String datalog2sql_view_conjunction(Single_view view, Vector<String> indexed_cols, Vector<String> grouping_attrs_strings, Vector<String> provenance_attrs_strings)
   {
-    String sql = new String();
+    String with_clause = datalog2sql(view, false);
+    
+    String sql = "with temp_" + view.view_name + " as (" + with_clause + ") ";
 
-    String sel_item = get_view_sel_items(view, indexed_cols);
+    String sel_item = get_view_sel_items(view, indexed_cols, grouping_attrs_strings, provenance_attrs_strings);
     
 //    String sel_agg_item = get_agg_item_in_select_clause(view.head, isPro_query);
     
@@ -185,14 +190,63 @@ public class Query_converter {
     
     String condition = get_condition(view.conditions, false);
            
-    sql = "select " + sel_item;
+    sql += "select " + sel_item;
     
-    sql += " from " + citation_table;
+    sql += " from " + citation_table + ", temp_" + view.view_name;
     
     if(condition != null && !condition.isEmpty())
-        sql += " where " + condition;
+        sql += " where " + condition + " and " + gen_join_condition_connecting_with_clause(view);
+    else
+      sql += " where " + gen_join_condition_connecting_with_clause(view);
     return sql;
 
+  }
+  
+  public static String datalog2sql_view_conjunction_virtual(Single_view view, Vector<String> indexed_cols, Vector<String> grouping_attrs_strings, Vector<String> provenance_attrs_strings)
+  {
+    String with_clause = datalog2sql(view, false);
+    
+    String sql = "with temp_" + view.view_name + " as (" + with_clause + ") ";
+
+    String sel_item = get_view_sel_items(view, indexed_cols, grouping_attrs_strings, provenance_attrs_strings);
+    
+//    String sel_agg_item = get_agg_item_in_select_clause(view.head, isPro_query);
+    
+//    String having_clause = get_having_clauses(view.conditions, isPro_query);
+    
+    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, false);
+    
+    String condition = get_condition(view.conditions, false);
+           
+    sql += ", " + view.view_name + " as (select " + sel_item;
+    
+    sql += " from " + citation_table + ", temp_" + view.view_name;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " where " + condition + " and " + gen_join_condition_connecting_with_clause(view);
+    else
+      sql += " where " + gen_join_condition_connecting_with_clause(view);
+    
+    sql += ")";
+    return sql;
+
+  }
+  
+  static String gen_join_condition_connecting_with_clause(Single_view view)
+  {
+    String string = new String();
+    
+    for(int i = 0; i<view.head.args.size(); i++)
+    {
+      if(i >= 1)
+        string += " and ";
+      
+      Argument arg = (Argument) view.head.args.get(i);
+      
+      string += arg.relation_name + "." + arg.attribute_name + " = " + "temp_" + view.view_name + "." + arg.relation_name + "_" + arg.attribute_name;
+    }
+    
+    return string;
   }
   
   public static String datalog2sql(Single_view view, boolean isPro_query)
@@ -1608,12 +1662,10 @@ public class Query_converter {
   {
     String string = new String();
     
-    for(int i = 0; i<agg_attributes.size(); i++)
+    
+    if(agg_attributes.size() <= 1)
     {
-      if(i >= 1)
-        string += "||";
-      
-      Argument arg = (Argument) agg_attributes.get(i);
+      Argument arg = (Argument) agg_attributes.get(0);      
       
       String attr_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
       
@@ -1621,6 +1673,25 @@ public class Query_converter {
         string += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
       else
         string += arg.relation_name + "." + attr_name;
+    }
+    else
+    {
+      string += "'' ||";
+      
+      for(int i = 0; i<agg_attributes.size(); i++)
+      {
+        if(i >= 1)
+          string += "||";
+        
+        Argument arg = (Argument) agg_attributes.get(i);
+        
+        String attr_name = arg.attribute_name;//.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+        
+        if(isProv_query)
+          string += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
+        else
+          string += arg.relation_name + "." + attr_name;
+      }
     }
     return string;
   }
@@ -1893,7 +1964,17 @@ public class Query_converter {
   
   static String convert_condition_arg2string_as_single_arg(Vector<Argument> args, String parser, boolean isProv_query)
   {
-    String string = "''||";
+
+    String string = null;
+    
+    if(args.size() <= 1)
+    {
+      string = new String();
+    }
+    else
+    {
+      string = "''||";
+    }
     
     for(int i = 0; i<args.size(); i++)
     {

@@ -308,7 +308,9 @@ public class Load_views_and_citation_queries {
         		
 		Vector<Conditions> predicate_subgoal = split_predicates(predicates, name_arg_mappings);
 		
-		Vector<Lambda_term> l_terms = split_lambda_terms(lambda_term_str);
+		Vector<Lambda_term> l_terms = split_lambda_terms(lambda_term_str, name_arg_mappings);
+		
+		System.out.println(view_name);
 		
 		return new Query(view_name, head_subgoal, relational_subgoals, l_terms, predicate_subgoal, relation_mapping);
 		
@@ -350,7 +352,7 @@ public class Load_views_and_citation_queries {
         
     }
 	
-	static Vector<Lambda_term> split_lambda_terms(String lambda_term_str)
+	static Vector<Lambda_term> split_lambda_terms(String lambda_term_str, HashMap<String, Argument> name_arg_mappings)
 	{
 		
 		if(lambda_term_str.isEmpty())
@@ -366,8 +368,9 @@ public class Load_views_and_citation_queries {
 		{
 			String [] relation_arg = lambda_strs[i].trim().split("\\" + ".");
 			
+			String arg_name = relation_arg[0].trim() + init.separator + relation_arg[1].trim();
 			
-			l_terms.add(new Lambda_term(relation_arg[0].trim() + init.separator + relation_arg[1].trim(), relation_arg[0].trim()));
+			l_terms.add(new Lambda_term(name_arg_mappings.get(arg_name)));
 		}
 		
 		return l_terms;

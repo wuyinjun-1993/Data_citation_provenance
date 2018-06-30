@@ -237,22 +237,22 @@ public class view_generator {
     
   }
   
-  public static void append_views_with_citation_queries(Vector<Query> views, int offset)
+  public static void append_views_with_citation_queries(Vector<Query> views, int offset, String view_file_name)
   {
     Vector<String> view_strings = Load_views_and_citation_queries.views2text_strings(views);
     Load_views_and_citation_queries.append2files(view_file_name, view_strings);
-    Vector<Query> citation_queries = new Vector<Query>();
-    Vector<String> view_citation_query_mappings = new Vector<String>();
-    for(int i = 0; i<views.size(); i++)
-    {
-      int id = i + offset;
-      Query query = store_citation_queries(views.get(i), id, "q" + id);
-      citation_queries.add(query);
-      view_citation_query_mappings.add(views.get(i).name + "|" + query.name + "|" + "Contributor");
-    }
-    Vector<String> citation_query_strings = Load_views_and_citation_queries.views2text_strings(citation_queries);
-    Load_views_and_citation_queries.append2files(citation_query_file_name, citation_query_strings);
-    Load_views_and_citation_queries.append2files(view_citation_query_mapping_file_name, view_citation_query_mappings);
+//    Vector<Query> citation_queries = new Vector<Query>();
+//    Vector<String> view_citation_query_mappings = new Vector<String>();
+//    for(int i = 0; i<views.size(); i++)
+//    {
+//      int id = i + offset;
+//      Query query = store_citation_queries(views.get(i), id, "q" + id);
+//      citation_queries.add(query);
+//      view_citation_query_mappings.add(views.get(i).name + "|" + query.name + "|" + "Contributor");
+//    }
+//    Vector<String> citation_query_strings = Load_views_and_citation_queries.views2text_strings(citation_queries);
+//    Load_views_and_citation_queries.append2files(citation_query_file_name, citation_query_strings);
+//    Load_views_and_citation_queries.append2files(view_citation_query_mapping_file_name, view_citation_query_mappings);
     
     
   }
@@ -366,7 +366,7 @@ public class view_generator {
     
   }
   
-  public static Vector<Query> gen_views(HashSet<String> subgoal_names, Query query, int num_views, int sizeofquety, int offset, Connection c, PreparedStatement pst) throws SQLException
+  public static Vector<Query> gen_views(boolean has_agg, HashSet<String> subgoal_names, Query query, int num_views, int sizeofquety, int offset, Connection c, PreparedStatement pst) throws SQLException
   {
     initial();
     
@@ -394,7 +394,52 @@ public class view_generator {
           
           int size = sizes.get(num);
              
-          Query view = generate_view_without_predicates_partial_mappings(conditions, subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, c, pst);
+          Query view = generate_view_without_predicates_partial_mappings(conditions, subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, has_agg, c, pst);
+                      
+//      if(!queries.contains(query))
+          {
+              queries.add(view);
+              
+              System.out.println(view.lambda_term + "," + view.toString());
+              
+              num ++;
+          }
+          
+          
+      }
+      
+      return queries;
+  }
+  
+  public static Vector<Query> gen_views_random(boolean has_agg, HashSet<String> subgoal_names, Query query, int num_views, int sizeofquety, int offset, Connection c, PreparedStatement pst) throws SQLException
+  {
+    initial();
+    
+      Vector<Integer> sizes = generator_random_numbers(num_views, sizeofquety);
+      
+      Vector<String> all_citable_tables = new Vector<String>();
+      
+      all_citable_tables.addAll(Arrays.asList(citatable_tables));
+      
+//    all_citable_tables.removeAll(subgoal_names);
+      
+      HashMap<String, String> relation_primary_key_mappings = set_up_relation_primary_keys();
+      
+      Vector<Query> queries = new Vector<Query>();
+      
+      int num = 0;
+      
+      if(!sizes.contains(1))
+          sizes.set(0, 1);
+      
+      Vector<Conditions> conditions = new Vector<Conditions>();
+      
+      while(queries.size() < sizes.size())
+      {
+          
+          int size = sizes.get(num);
+             
+          Query view = generate_view_without_predicates_partial_mappings_random(conditions, subgoal_names, query, num + offset, sizeofquety, all_citable_tables, relation_primary_key_mappings, has_agg, c, pst);
                       
 //      if(!queries.contains(query))
           {
@@ -425,7 +470,7 @@ public class view_generator {
       
       if(conditions.isEmpty())
       {
-        q_conditions.addAll(query_generator.gen_conditions(view_instance_size, view.body, view.subgoal_name_mapping, c, pst));
+        q_conditions.addAll(query_generator.gen_conditions(false, view_instance_size, view.body, view.subgoal_name_mapping, c, pst));
       }
       else
       {
@@ -600,7 +645,7 @@ public class view_generator {
     return args;
   }
   
-  static Query generate_view_without_predicates_partial_mappings(Vector<Conditions> conditions, HashSet<String> subgoal_names, Query query, int id, int size, Vector<String> all_citable_tables, HashMap<String, String> relation_primary_key_mappings, Connection c, PreparedStatement pst) throws SQLException
+  static Query generate_view_without_predicates_partial_mappings(Vector<Conditions> conditions, HashSet<String> subgoal_names, Query query, int id, int size, Vector<String> all_citable_tables, HashMap<String, String> relation_primary_key_mappings, boolean has_agg, Connection c, PreparedStatement pst) throws SQLException
   {
     
     Vector<Argument> all_args = get_all_attributes(query);
@@ -621,38 +666,66 @@ public class view_generator {
     Random r = new Random();
 
     HashMap<String, String> maps = new HashMap<String, String>();
-    for(int i = 0; i<query.head.agg_args.size(); i++)
+    
+    if(has_agg)
     {
-      Argument head_grouping_arg = (Argument) query.head.agg_args.get(i).get(0);
-      String rel_name = head_grouping_arg.relation_name;//.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
-      String origin_rel_name = query.subgoal_name_mapping.get(rel_name);
-      String arg_name = head_grouping_arg.attribute_name;//.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
+      for(int i = 0; i<query.head.agg_args.size(); i++)
+      {
+        Argument head_grouping_arg = (Argument) query.head.agg_args.get(i).get(0);
+        String rel_name = head_grouping_arg.relation_name;//.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
+        String origin_rel_name = query.subgoal_name_mapping.get(rel_name);
+        String arg_name = head_grouping_arg.attribute_name;//.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
+        
+        if(query_generator.parameterizable_attri.get(origin_rel_name).contains(arg_name))
+        {
+          Boolean b = r.nextBoolean();
+          
+          if(b)
+          {
+            Vector<Argument> curr_head_arr = new Vector<Argument>();
+            
+            curr_head_arr.add((Argument) query.head.agg_args.get(i).get(0));
+            
+            head_agg_attrs.add(curr_head_arr);
+            head_agg_functions.add((String) query.head.agg_function.get(i));
+          }
+        }
+      }
       
-      if(query_generator.parameterizable_attri.get(origin_rel_name).contains(arg_name))
+      if(head_agg_attrs.isEmpty())
+      {
+        Vector<Argument> curr_head_arr = new Vector<Argument>();
+        
+        curr_head_arr.add((Argument) query.head.agg_args.get(0).get(0));
+        
+        head_agg_attrs.add(curr_head_arr);
+        head_agg_functions.add((String) query.head.agg_function.get(0));
+      }
+    }
+    else
+    {
+      for(int i = 0; i<query.head.agg_args.size(); i++)
       {
         Boolean b = r.nextBoolean();
         
         if(b)
         {
-          Vector<Argument> curr_head_arr = new Vector<Argument>();
+          Vector<Argument> args = query.head.agg_args.get(i);
           
-          curr_head_arr.add((Argument) query.head.agg_args.get(i).get(0));
-          
-          head_agg_attrs.add(curr_head_arr);
-          head_agg_functions.add((String) query.head.agg_function.get(i));
+          for(int k = 0; k<args.size(); k++)
+          {
+            Argument arg = args.get(k);
+            
+            if(!head_grouping_attrs.contains(arg))
+            {
+              head_grouping_attrs.add(arg);
+            }
+          }
         }
       }
     }
     
-    if(head_agg_attrs.isEmpty())
-    {
-      Vector<Argument> curr_head_arr = new Vector<Argument>();
-      
-      curr_head_arr.add((Argument) query.head.agg_args.get(0).get(0));
-      
-      head_agg_attrs.add(curr_head_arr);
-      head_agg_functions.add((String) query.head.agg_function.get(0));
-    }
+
     maps.putAll(query.subgoal_name_mapping);
     
     for(int i = 0; i<all_args.size(); i++)
@@ -666,7 +739,7 @@ public class view_generator {
       {
         Boolean b = r.nextBoolean();
         
-        if(b)
+        if(b && !head_grouping_attrs.contains(all_args.get(i)))
         {
           head_grouping_attrs.add(all_args.get(i));
           break;
@@ -679,305 +752,158 @@ public class view_generator {
     
     Vector<Conditions> q_conditions = new Vector<Conditions>();
     
-    if(conditions.isEmpty())
+    if(has_agg)
     {
-      q_conditions.addAll(query_generator.gen_conditions(view_instance_size, body, maps, c, pst));
+      if(conditions.isEmpty())
+      {
+        q_conditions.addAll(query_generator.gen_conditions(false, view_instance_size, body, maps, c, pst));
+      }
+      else
+      {
+        q_conditions.addAll(conditions);
+      }
+      
+      conditions.clear();
+      
+      conditions.addAll(q_conditions);
+    }
+    
+    return new Query("v" + id, head, body, new Vector<Lambda_term>(), q_conditions , maps);
+
+  }
+  
+  static Query generate_view_without_predicates_partial_mappings_random(Vector<Conditions> conditions, HashSet<String> subgoal_names, Query query, int id, int size, Vector<String> all_citable_tables, HashMap<String, String> relation_primary_key_mappings, boolean has_agg, Connection c, PreparedStatement pst) throws SQLException
+  {
+    
+    Vector<Argument> all_args = get_all_attributes(query);
+    all_args.removeAll(query.head.args);
+    
+    Vector<Subgoal> body = new Vector<Subgoal>();
+    
+    body.addAll(query.body);
+    
+    Vector<Argument> head_grouping_attrs = new Vector<Argument>();
+    
+    head_grouping_attrs.addAll(query.head.args);
+    
+    Vector<Vector<Argument>> head_agg_attrs = new Vector<Vector<Argument>>();
+
+    Vector<String> head_agg_functions = new Vector<String>();
+    
+    Random r = new Random();
+
+    HashMap<String, String> maps = new HashMap<String, String>();
+    
+    if(has_agg)
+    {
+      for(int i = 0; i<query.head.agg_args.size(); i++)
+      {
+        Argument head_grouping_arg = (Argument) query.head.agg_args.get(i).get(0);
+        String rel_name = head_grouping_arg.relation_name;//.name.substring(0, head_grouping_arg.name.indexOf(init.separator));
+        String origin_rel_name = query.subgoal_name_mapping.get(rel_name);
+        String arg_name = head_grouping_arg.attribute_name;//.name.substring(head_grouping_arg.name.indexOf(init.separator) + 1, head_grouping_arg.name.length());
+        
+        if(query_generator.parameterizable_attri.get(origin_rel_name).contains(arg_name))
+        {
+          Boolean b = r.nextBoolean();
+          
+          if(b)
+          {
+            Vector<Argument> curr_head_arr = new Vector<Argument>();
+            
+            curr_head_arr.add((Argument) query.head.agg_args.get(i).get(0));
+            
+            head_agg_attrs.add(curr_head_arr);
+            head_agg_functions.add((String) query.head.agg_function.get(i));
+          }
+        }
+      }
+      
+      if(head_agg_attrs.isEmpty())
+      {
+        Vector<Argument> curr_head_arr = new Vector<Argument>();
+        
+        curr_head_arr.add((Argument) query.head.agg_args.get(0).get(0));
+        
+        head_agg_attrs.add(curr_head_arr);
+        head_agg_functions.add((String) query.head.agg_function.get(0));
+      }
     }
     else
     {
-      q_conditions.addAll(conditions);
+      for(int i = 0; i<query.head.agg_args.size(); i++)
+      {
+        Boolean b = r.nextBoolean();
+        
+        if(b)
+        {
+          Vector<Argument> args = query.head.agg_args.get(i);
+          
+          for(int k = 0; k<args.size(); k++)
+          {
+            Argument arg = args.get(k);
+            
+            if(!head_grouping_attrs.contains(arg))
+            {
+              head_grouping_attrs.add(arg);
+            }
+          }
+        }
+      }
     }
     
-    conditions.clear();
+
+    maps.putAll(query.subgoal_name_mapping);
     
-    conditions.addAll(q_conditions);
+    for(int i = 0; i<all_args.size(); i++)
+    {
+      Argument arg = all_args.get(i);
+      
+      String arg_relation = arg.relation_name;
+      String arg_name = arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+      
+      if(query_generator.parameterizable_attri.get(arg_relation).contains(arg_name) && !query_generator.relation_primary_key_mapping.get(arg_relation).contains(arg_name))
+      {
+        Boolean b = r.nextBoolean();
+        
+        if(b && !head_grouping_attrs.contains(all_args.get(i)))
+        {
+          head_grouping_attrs.add(all_args.get(i));
+          break;
+        }
+      }
+
+    }
+    
+    Subgoal head = new Subgoal("v" + id, head_grouping_attrs, head_agg_attrs, head_agg_functions, true);
+    
+    Vector<Conditions> q_conditions = new Vector<Conditions>();
+    
+    if(has_agg)
+    {
+//      if(conditions.isEmpty())
+//      {
+//          q_conditions.addAll(query_generator.gen_conditions(false, view_instance_size, body, maps, c, pst));
+//      }
+//      else
+//      {
+//        q_conditions.addAll(conditions);
+//      }
+//      
+//      conditions.clear();
+//      
+//      conditions.addAll(q_conditions);
+      
+      q_conditions.addAll(query_generator.gen_conditions(false, view_instance_size, body, maps, c, pst));
+      
+      boolean b = r.nextBoolean();
+      
+      if(b)      
+        q_conditions.addAll(query_generator.gen_conditions_random(body, maps, c, pst));
+    }
     
     return new Query("v" + id, head, body, new Vector<Lambda_term>(), q_conditions , maps);
-    
-//    
-//    
-//      HashSet<String> relation_names = new HashSet<String>();
-//      
-//      Vector<Argument> heads = new Vector<Argument>();
-//      
-//      Vector<Lambda_term> lambda_terms = new Vector<Lambda_term>();
-//      
-//      Vector<Conditions> local_predicates = new Vector<Conditions>();
-//      
-//      
-//      
-//      
-////      int rel_subgoal_id = 0;
-////      
-////      for(int i = 0; i<size/2; i++)
-////      {
-////          int index = r.nextInt((int) (subgoal_names.size()));
-////          
-////          String relation = subgoal_names.get(index);
-////          
-////          String relation_name = relation + rel_subgoal_id;
-////          
-////          rel_subgoal_id ++;
-////          
-////          relation_names.add(relation);
-////          
-////          maps.put(relation_name, relation);
-////          
-//////          if(relation_names.contains(relation))
-//////          {
-//////              relation_names.add(relation + i);
-//////              
-//////              maps.put(relation + i, relation);
-//////              
-//////          }
-//////          else
-//////          {
-//////              
-//////          }
-////          
-////          HashMap<String, String> attr_types = get_attr_types(relation, c, pst);
-////          
-////          
-////          Set<String> attr_names = attr_types.keySet();
-////          
-////          Vector<String> attr_list = query_generator.parameterizable_attri.get(relation);
-////          
-//////        attr_list.addAll(attr_names);
-////          
-////          Random rand = new Random();
-////          
-////          int selection_size = rand.nextInt((int)(attr_list.size() * local_predicates_rate + 1));
-////          
-////          String [] primary_key_type = get_primary_key(relation, c, pst);
-////          
-//////        Vector<Conditions> conditions = gen_local_predicates(selection_size, attr_types, attr_list, relation, primary_key_type, c, pst);
-////                  
-//////        local_predicates.addAll(conditions);
-////          
-////          int head_size = (int)(attr_list.size() * head_var_rate);
-////          
-////          if(head_size <= 0) head_size = 1;
-////                                  
-//////        Vector<Argument> head_vars = gen_default_head_vars(relation, attr_list, c, pst);//gen_head_vars(relation, attr_list, head_size, c, pst);
-////          
-//////        Vector<Argument> head_vars = gen_all_head_vars(relation, attr_list, c, pst);//(relation, attr_list, c, pst);//gen_head_vars(relation, attr_list, head_size, c, pst);
-////          
-////          Vector<Argument> head_vars = gen_head_vars(relation, relation_name, attr_list, head_size, c, pst);
-////          
-//////        Vector<Lambda_term> l_terms = gen_lambda_terms(head_vars, relation, c, pst);
-////          
-////          heads.addAll(head_vars);
-////                      
-//////        lambda_terms.add(new Lambda_term(relation + populate_db.separator + primary_key_type[0], relation));
-////          
-//////        lambda_terms.addAll(l_terms);
-////          
-////          Vector<Argument> args = new Vector<Argument>();
-////          
-////          body.add(new Subgoal(relation_name, args));
-////      }
-//      
-//      int partial_mapping_relation_size = 3;//r.nextInt(all_citable_tables.size());
-//      
-//      int parital_mapping_num = 0;
-//      
-//      int rel_subgoal_id = body.size();
-//      
-//      Vector<Subgoal> partial_mapping_subgoals = new Vector<Subgoal>();
-//      
-//      Vector<Conditions> partial_mapping_conditions = new Vector<Conditions>();
-//      
-//      Vector<Conditions> non_mapping_conditions = new Vector<Conditions>();
-//      
-//      for(int i = 0; i<partial_mapping_relation_size; i++)
-//      {
-//          int index = r.nextInt((int) (all_citable_tables.size()));
-//          
-//          String relation = all_citable_tables.get(index);
-//
-//          if(subgoal_names.contains(relation))
-//          {
-//            i--;
-//            
-//            continue;
-//          }
-//          
-//          String relation_name = relation + rel_subgoal_id;
-//          
-//          rel_subgoal_id ++;
-//          
-//          
-//          maps.put(relation_name, relation);
-//          
-////          if(relation_names.contains(relation))
-////          {
-////              relation_names.add(relation + i);
-////              
-////              relation_name = relation + i;
-////              
-////              maps.put(relation_name, relation);
-////              
-////          }
-////          else
-////          {
-////              relation_names.add(relation);
-////              
-////              maps.put(relation, relation);
-////          }
-//          
-//          HashMap<String, String> attr_types = get_attr_types(relation, c, pst);
-//          
-//          
-//          Set<String> attr_names = attr_types.keySet();
-//          
-//          Vector<String> attr_list = query_generator.parameterizable_attri.get(relation);
-//          
-////        attr_list.addAll(attr_names);
-//          
-//          Random rand = new Random();
-//          
-//          int selection_size = rand.nextInt((int)(attr_list.size() * local_predicates_rate + 1));
-//          
-//          String [] primary_key_type = get_primary_key(relation, c, pst);
-//          
-////        Vector<Conditions> conditions = gen_local_predicates(selection_size, attr_types, attr_list, relation, primary_key_type, c, pst);
-//                  
-////        local_predicates.addAll(conditions);
-//          
-//          int head_size = (int)(attr_list.size() * head_var_rate);
-//          
-//          if(head_size <= 0) head_size = 1;
-//                                  
-////        Vector<Argument> head_vars = gen_default_head_vars(relation, attr_list, c, pst);//gen_head_vars(relation, attr_list, head_size, c, pst);
-//          
-////        Vector<Argument> head_vars = gen_all_head_vars(relation, attr_list, c, pst);//(relation, attr_list, c, pst);//gen_head_vars(relation, attr_list, head_size, c, pst);
-//          
-//          Vector<Argument> head_vars = gen_head_vars(relation, relation_name, attr_list, head_size, c, pst);
-//          
-////        Vector<Lambda_term> l_terms = gen_lambda_terms(head_vars, relation, c, pst);
-//          
-//          heads.addAll(head_vars);
-//                      
-////        lambda_terms.add(new Lambda_term(relation + populate_db.separator + primary_key_type[0], relation));
-//          
-////        lambda_terms.addAll(l_terms);
-//          
-//          Vector<Argument> args = new Vector<Argument>();
-//          
-//          partial_mapping_subgoals.add(new Subgoal(relation_name, args));
-//          
-////          boolean partial_mapping_join_condition = r.nextBoolean();
-////          
-////          if(partial_mapping_join_condition)
-//          
-//          int partial_mapping_size = r.nextInt(relation_names.size()) + 1;
-//          
-////          int partial_mapping_size = relation_names.size();
-//          
-//          for(int l = 0; l < partial_mapping_size; l++)
-//          {
-//            int subgoal_id = r.nextInt(body.size());
-//            
-//            while(maps.get(body.get(subgoal_id).name).equals(relation))
-//            {
-//              subgoal_id = r.nextInt(body.size());          
-//            }
-//            
-//            String pk1 = relation_primary_key_mappings.get(maps.get(body.get(subgoal_id).name));
-//            
-//            String pk2 = relation_primary_key_mappings.get(relation);
-//            
-////            Conditions curr_partial_mapping_condition = new Conditions(new Argument(body.get(subgoal_id).name + populate_db.separator + pk1, body.get(subgoal_id).name), body.get(subgoal_id).name, new op_equal(), new Argument(relation_name + populate_db.separator + pk2,relation_name), relation_name);
-//            
-//            Conditions curr_partial_mapping_condition = new Conditions(new Argument(pk1, body.get(subgoal_id).name), body.get(subgoal_id).name, new op_equal(), new Argument(pk2,relation_name), relation_name, pk2, pk2);
-//            
-//            partial_mapping_conditions.add(curr_partial_mapping_condition);
-//            
-//          }
-//      }
-//      
-////      for(String single_partial_citable_table: all_citable_tables)
-////      {
-////        Vector<Argument> args = new Vector<Argument>();
-////        
-////        String curr_relation_name = single_partial_citable_table;
-////        
-//////        if(relation_names.contains(single_partial_citable_table))
-//////        {
-//////          relation_names
-//////        }
-////        
-////        if(!r.nextBoolean())
-////          continue;
-////        
-////        Subgoal subgoal = new Subgoal(single_partial_citable_table, args);
-////        
-////        parital_mapping_num++;
-////        
-////        partial_mapping_subgoals.add(subgoal);
-////        
-////        if(parital_mapping_num >= partial_mapping_relation_size)
-////          break;
-////        
-////        boolean partial_mapping_join_condition = r.nextBoolean();
-////        
-////        if(partial_mapping_join_condition)
-////        {
-////          int subgoal_id = r.nextInt(body.size());
-////          
-////          while(body.get(subgoal_id).name.equals(subgoal.name))
-////          {
-////            subgoal_id = r.nextInt(body.size());          
-////          }
-////          
-////          String pk1 = relation_primary_key_mappings.get(body.get(subgoal_id));
-////          
-////          String pk2 = relation_primary_key_mappings.get(single_partial_citable_table);
-////          
-////          Conditions curr_partial_mapping_condition = new Conditions(new Argument(body.get(subgoal_id).name + populate_db.separator + pk1, body.get(subgoal_id).name), body.get(subgoal_id).name, new op_equal(), new Argument(single_partial_citable_table + populate_db.separator + pk2,single_partial_citable_table), single_partial_citable_table);
-////          
-////          partial_mapping_conditions.add(curr_partial_mapping_condition);
-////          
-////        }
-////        
-////      }
-//      
-//      
-//      for(int j = 0; j<partial_mapping_subgoals.size() - 1; j++)
-//      {
-////        if(r.nextBoolean())
-//        {
-//          int join_subgoal_id = r.nextInt(partial_mapping_subgoals.size() - j - 1) + 1;
-//          
-//          join_subgoal_id += j;
-//          
-//          if(maps.get(partial_mapping_subgoals.get(join_subgoal_id).name).equals(maps.get(partial_mapping_subgoals.get(j).name)))
-//            continue;
-//
-//          Conditions curr_no_mapping_condition = new Conditions(new Argument(relation_primary_key_mappings.get(maps.get(partial_mapping_subgoals.get(j).name)), partial_mapping_subgoals.get(j).name), partial_mapping_subgoals.get(j).name, new op_equal(), new Argument(relation_primary_key_mappings.get(maps.get(partial_mapping_subgoals.get(join_subgoal_id).name)), partial_mapping_subgoals.get(join_subgoal_id).name), partial_mapping_subgoals.get(join_subgoal_id).name, null, null);
-//          
-//          non_mapping_conditions.add(curr_no_mapping_condition);
-//        }
-//      }
-//      
-//      
-//      String name = "v" + id;
-//      
-////    Vector<Conditions> global_predicates = gen_global_conditions(body);
-//      
-//      Vector<Conditions> predicates = new Vector<Conditions>();
-//      
-////    predicates.addAll(global_predicates);
-//      
-//      predicates.addAll(local_predicates);
-//      
-//      predicates.addAll(partial_mapping_conditions);
-//      
-//      predicates.addAll(non_mapping_conditions);
-//      
-//      body.addAll(partial_mapping_subgoals);
-//      
-//      return new Query(name, new Subgoal(name, heads), body, lambda_terms, predicates, maps);
+
   }
   
 

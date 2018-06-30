@@ -142,6 +142,27 @@ public class Single_view {
 //  }
 //  
   
+  public static void build_index(Vector<String> arguments, String view_name, Connection c, PreparedStatement pst) throws SQLException
+  {
+    String query = "create index on " + view_name + "(";
+    
+    for(int i = 0; i<arguments.size(); i++)
+    {
+      if(i >= 1)
+        query += ",";
+      
+      query += arguments.get(i);
+    }
+    
+    query += ")";
+    
+    pst = c.prepareStatement(query);
+    
+    pst.execute();
+    
+  }
+  
+  
   static Vector<String> get_relation_columns(String table, Connection c, PreparedStatement pst) throws SQLException
   {
     String query = "select column_name from information_schema.columns where table_name = '" + table + "'";
@@ -239,7 +260,11 @@ public class Single_view {
     
     Vector<String> indexed_cols = new Vector<String>();
     
-    String sql = Query_converter.datalog2sql_view_conjunction(view, indexed_cols);
+    Vector<String> grouping_attrs_strings = new Vector<String>();
+    
+    Vector<String> provenance_attrs_strings = new Vector<String>();
+    
+    String sql = Query_converter.datalog2sql_view_conjunction(view, indexed_cols, grouping_attrs_strings, provenance_attrs_strings);
     
     System.out.println(indexed_cols);
     
@@ -251,19 +276,100 @@ public class Single_view {
     
     pst.execute();
     
-//    build_index_on_materilized_views(view, indexed_cols, c, pst);
+//    build_index(provenance_attrs_strings, view.view_name, c, pst);
+//    build_index_on_materilized_views_for_grouping_attributes(view, c, pst);
+//    
+    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
   }
   
-  static void build_index_on_materilized_views(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
+  public static void materilization2(Single_view view, Connection c, PreparedStatement pst) throws SQLException
   {
+    if(!view.head.has_agg)
+      return;
+    
+    Vector<String> indexed_cols = new Vector<String>();
+    
+    Vector<String> grouping_attrs_strings = new Vector<String>();
+    
+    Vector<String> provenance_attrs_strings = new Vector<String>();
+    
+    String sql = Query_converter.datalog2sql(view, false);
+    
+    System.out.println(indexed_cols);
+    
+    String view_query = "create MATERIALIZED view " + view.view_name + " as (" + sql + ")";
+    
+    System.out.println(view_query);
+    
+    pst = c.prepareStatement(view_query);
+    
+    pst.execute();
+    
+//    build_index(provenance_attrs_strings, view.view_name, c, pst);
+//    build_index_on_materilized_views_for_grouping_attributes(view, c, pst);
+//    
+    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
+  }
+  
+//  static void build_index_on_materilized_views(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
+//  {
+//    for(int i = 0; i < indexed_cols.size(); i++)
+//    {
+//      String sql = "create UNIQUE index " + view.view_name + "_" + indexed_cols.get(i) + " on " + view.view_name + "(" + indexed_cols.get(i) + ")";
+//      
+//      pst = c.prepareStatement(sql);
+//      
+//      pst.execute();
+//    }
+//  }
+  static void build_index_on_materilized_views_for_grouping_attributes(Single_view view, Connection c, PreparedStatement pst) throws SQLException
+  {
+    String sql = "create index on " + view.view_name + "(";
+    
+    for(int i = 0; i<view.head.args.size(); i++)
+    {
+      if(i >= 1)
+        sql += ",";
+      
+      Argument arg = (Argument) view.head.args.get(i);
+      
+      sql += arg.relation_name + "_" + arg.attribute_name;
+    }
+    
+    sql += ")";
+    
+    System.out.println(sql);
+    
+    pst = c.prepareStatement(sql);
+    
+    pst.execute();
+  }
+  
+  
+  static void build_index_on_materilized_views_for_provenance_cols(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
+  {
+    String sql = "create UNIQUE index " + view.view_name + "_index" + " on " + view.view_name + "(";
+    
     for(int i = 0; i < indexed_cols.size(); i++)
     {
-      String sql = "create index " + view.view_name + "_" + indexed_cols.get(i) + " on " + view.view_name + "(" + indexed_cols.get(i) + ")";
+      if(i >= 1)
+        sql += ",";
       
-      pst = c.prepareStatement(sql);
       
-      pst.execute();
+      sql += indexed_cols.get(i);
+      
+//      String sql = "create UNIQUE index " + view.view_name + "_" + indexed_cols.get(i) + " on " + view.view_name + "(" + indexed_cols.get(i) + ")";
+      
+      
     }
+    
+    sql += ")";
+    
+    System.out.println(sql);
+    
+    pst = c.prepareStatement(sql);
+    
+    pst.execute();
   }
   
   public void load_citation_queries(HashMap<String, String> view_citation_query_mappings, HashMap<String, Query> name_citation_query_mappings)
@@ -539,7 +645,7 @@ public class Single_view {
       Object rel_name_in_query = tuple.mapSubgoals_str.get(rel_name);
       
       if(rel_name_in_query == null)
-        return false;
+        continue;
       
       int subgoal_id = subgoal_id_mappings.get((String)rel_name_in_query);
       

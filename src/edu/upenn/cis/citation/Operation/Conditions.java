@@ -243,7 +243,7 @@ public class Conditions {
 		this.unique_string = cal_unique_string();
 	}
 	
-public Conditions(Argument argument, String string, op_equal op2, Argument argument2,
+public Conditions(Argument argument, String string, Operation op2, Argument argument2,
       String string2, String agg_function12, String agg_function22) {
   
     this.arg1.add(argument);
@@ -259,6 +259,28 @@ public Conditions(Argument argument, String string, op_equal op2, Argument argum
     this.agg_function1 = agg_function12;
     
     this.agg_function2 = agg_function22;
+    
+    this.unique_string = cal_unique_string();
+    // TODO Auto-generated constructor stub
+  }
+
+
+  public Conditions(Argument argument, String string, Operation op2, Argument argument2,
+      String string2) {
+  
+    this.arg1.add(argument);
+    
+    this.arg2.add(argument2);
+    
+    this.subgoal1.add(string);
+    
+    this.subgoal2.add(string2);
+    
+    this.op = op2;
+    
+//    this.agg_function1 = agg_function12;
+//    
+//    this.agg_function2 = agg_function22;
     
     this.unique_string = cal_unique_string();
     // TODO Auto-generated constructor stub

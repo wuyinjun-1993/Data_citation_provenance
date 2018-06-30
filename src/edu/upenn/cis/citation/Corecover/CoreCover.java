@@ -569,14 +569,14 @@ public class CoreCover {
     {
       String subgoal1 = condition.subgoal1.get(0);
       
-      String subgoal2 = condition.subgoal2.get(0);
+//      String subgoal2 = condition.subgoal2.get(0);
       
       int id1 = view.subgoal_name_id_mappings.get(subgoal1);
       
       int id2 = -1;
       
-      if(!(subgoal2 == null) && !subgoal2.isEmpty())
-        id2 = view.subgoal_name_id_mappings.get(subgoal2);
+      if(condition.subgoal2.size() >= 1)
+        id2 = view.subgoal_name_id_mappings.get(condition.subgoal2.get(0));
       
       
       int i = 0;
