@@ -720,8 +720,8 @@ public class query_generator {
 	  
 	  Random r = new Random(System.currentTimeMillis());
 	  
-//	  int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
-	  int size = r.nextInt((int) Math.pow(instance_size, 1.0/subgoals.size()));
+	  int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
+//	  int size = r.nextInt((int) Math.pow(instance_size, 1.0/subgoals.size()));
 	  
 	  Vector<Conditions> conditions = new Vector<Conditions>();
 	  Vector<Integer> sizes = new Vector<Integer>();
@@ -782,6 +782,75 @@ public class query_generator {
 	  
 	  return conditions;
 	}
+	
+	static Vector<Conditions> gen_conditions_random(boolean is_query, int instance_size, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
+    {
+      
+      Random r = new Random(System.currentTimeMillis());
+      
+//    int size = (int) Math.pow(instance_size, 1.0/subgoals.size());
+      int size = r.nextInt((int) Math.pow(instance_size, 1.0/subgoals.size()));
+      
+      Vector<Conditions> conditions = new Vector<Conditions>();
+      Vector<Integer> sizes = new Vector<Integer>();
+      
+      for(int i = 0; i<subgoals.size(); i++)
+      {
+        
+        String relation_origin_name = subgoal_name_mappings.get(subgoals.get(i).name);
+        
+        System.out.println(subgoals.get(i).name + ":::::::::::" + relation_primary_key_mapping.get(relation_origin_name).get(0));
+        
+        int pid_id = get_primary_key_id(relation_origin_name);
+        
+        String const_val = get_proper_constants_in_condition(size, sizes, relation_origin_name, relation_primary_key_mapping.get(relation_origin_name).get(pid_id), relation_primary_key_type_mapping.get(relation_origin_name).get(pid_id), c, pst);
+        
+        size = update_size(instance_size, sizes, subgoals.size() - i - 1);
+        
+//      Argument arg = (Argument) subgoals.get(i).args.get(0);
+        Argument arg_const = new Argument("'" + const_val + "'");
+        
+        
+        
+        Argument arg = new Argument(subgoals.get(i).name + init.separator + relation_primary_key_mapping.get(relation_origin_name).get(pid_id), subgoals.get(i).name);
+        
+        Vector<Argument> args1 = new Vector<Argument>();
+        
+        args1.add(arg);
+        
+        Vector<Argument> args2 = new Vector<Argument>();
+        
+        args2.add(arg_const);
+        
+        Vector<String> subgoals1 = new Vector<String>();
+        
+        subgoals1.add(arg.relation_name);
+        
+        Vector<String> subgoals2 = new Vector<String>();
+        
+        subgoals2.add(new String());
+        
+        Conditions condition = new Conditions(args1, subgoals1, new op_less_equal(), args2, subgoals2, null, null);
+        conditions.add(condition);
+      }
+      
+      int tuple_num = 1;
+      
+      for(int k = 0; k<sizes.size(); k++)
+      {
+        tuple_num *= sizes.get(k);
+      }
+      
+      
+      if(is_query)
+        System.out.println("query_final_size::" + tuple_num);
+      else
+        System.out.println("view_final_size::" + tuple_num);
+      
+      
+      return conditions;
+    }
+    
 	
 	static String[] get_comparable_type(String relation, Connection c, PreparedStatement pst) throws SQLException
 	{

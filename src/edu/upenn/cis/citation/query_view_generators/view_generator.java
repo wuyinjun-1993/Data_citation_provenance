@@ -879,6 +879,8 @@ public class view_generator {
     
     Vector<Conditions> q_conditions = new Vector<Conditions>();
     
+    q_conditions.addAll(query_generator.gen_conditions_random(false, view_instance_size, body, maps, c, pst));
+    
     if(has_agg)
     {
 //      if(conditions.isEmpty())
@@ -893,8 +895,6 @@ public class view_generator {
 //      conditions.clear();
 //      
 //      conditions.addAll(q_conditions);
-      
-      q_conditions.addAll(query_generator.gen_conditions(false, view_instance_size, body, maps, c, pst));
       
       boolean b = r.nextBoolean();
       

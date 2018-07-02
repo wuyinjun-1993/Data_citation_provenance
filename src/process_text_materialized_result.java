@@ -136,9 +136,9 @@ public class process_text_materialized_result {
         
         String instance_size = view_instance_size_mappings.get(view_instance_size);
         
-        remove_outlier(curr_time_sets);
+//        remove_outlier(curr_time_sets);
         
-        remove_outlier(curr_time_sets2);
+//        remove_outlier(curr_time_sets2);
         
         
         double avg1 = 0.0;

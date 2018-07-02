@@ -1,11 +1,13 @@
 package edu.upenn.cis.citation.multi_thread;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -549,8 +551,8 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
           curr_condition_string += "||'" + init.separator + "'||";
         Argument view_grouping_attr = (Argument) curr_args.get(i);
 //      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
-//        String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
-        String view_grouping_attr_name = view_grouping_attr.relation_name + "_" + view_grouping_attr.attribute_name;
+        String view_grouping_attr_name = view_grouping_attr.relation_name + "." + view_grouping_attr.attribute_name;//.name.replace(init.separator, ".");
+//        String view_grouping_attr_name = view_grouping_attr.relation_name + "_" + view_grouping_attr.attribute_name;
         curr_condition_string += view_grouping_attr_name;
       }
       
@@ -2073,6 +2075,53 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
   }
   
   
+  public static HashMap<String, Integer> retrieve_provenance_values(ResultSet rs, int i) throws SQLException
+  {
+    Array citation_vec = rs.getArray(i + 1);
+    
+//    citation_vec.
+//    
+//    String citation_vec_string = citation_vec.toString();
+//    
+////    System.out.println(citation_vec_string);
+//    
+//    String[] citation_vec_arr = citation_vec_string.substring(1, citation_vec_string.length() - 1).split(",");
+    
+    String[] citation_vec_arr = (String[]) citation_vec.getArray();
+    
+    int k = 0;
+    
+    HashMap<String, Integer> provenance_value_count_mappings = new HashMap<String, Integer>();
+    
+    for(k = 0; k<citation_vec_arr.length; k++)
+    {
+      String provenance_value = citation_vec_arr[k];
+      
+      String[] provenance_value_arr = provenance_value.split(Query_provenance.separator_input);
+      
+      Vector<String> provenance_value_vec = new Vector<String>();
+      
+      provenance_value_vec.addAll(Arrays.asList(provenance_value_arr));
+      
+      Head_strs provenance_value_head_strs = new Head_strs(provenance_value_vec);
+      
+      String provenance_value_encoding = convert2md5(provenance_value_head_strs);
+      
+      if(provenance_value_count_mappings.get(provenance_value_encoding) == null)
+      {
+        provenance_value_count_mappings.put(provenance_value_encoding, 1);
+      }
+      else
+      {
+        int count = provenance_value_count_mappings.get(provenance_value_encoding);
+        
+        provenance_value_count_mappings.put(provenance_value_encoding, count + 1);
+      }
+    }
+    
+    return provenance_value_count_mappings;
+  }
+  
   HashMap<String, HashMap<String, Integer>> get_view_provenance_num(HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings, HashSet<Head_strs> query_grouping_values, Single_view view, Tuple view_mapping, Connection c, PreparedStatement pst) throws SQLException
   {
     int[] view_head_var_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(view_mapping);
@@ -2085,7 +2134,7 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
     
     String grouping_value_condition_value_string = gen_query_agg_value_expression(query_grouping_values, view_mapping, relation_seqs);
     
-    String query = Virtual_view_query_generator.gen_query_for_retrieving_materialized_views(view, view_head_var_ids, view_why_prov_token_ids, grouping_value_condition_string, grouping_value_condition_value_string);
+    String query = Virtual_view_query_generator.gen_query_for_retrieving_materialized_views2(view, view_head_var_ids, view_why_prov_token_ids, grouping_value_condition_string, grouping_value_condition_value_string);
     
     pst = c.prepareStatement(query);
     
@@ -2121,8 +2170,8 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
       Head_strs query_grouping_value = new Head_strs(query_grouping_value_vec);
       
       String converted_query_grouping_value = convert2md5(query_grouping_value);
-//      if(!query_grouping_values.contains(query_grouping_value))
-//        continue;
+      if(!query_grouping_values.contains(query_grouping_value))
+        continue;
       
       for(int i = 0; i<view.head.args.size(); i++)
       {
@@ -2146,39 +2195,40 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
         query_grouping_value_view_grouping_value_mappings.get(converted_query_grouping_value).add(converted_view_grouping_value);
       }
       
+      grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, retrieve_provenance_values(rs, view.head.args.size()));
       
-      Vector<String> prov_vec = new Vector<String>();
-      
-      for(int k = view.head.args.size(); k<col_num; k++)
-      {
-        prov_vec.add(rs.getString(k + 1));
-      }
-      
-      Head_strs prov_value = new Head_strs(prov_vec);
-      
-      String converted_prov_value = convert2md5(prov_value);
-      
-      if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value) == null)
-      {
-        HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
-        
-        prov_value_count_mappings.put(converted_prov_value, 1);
-        
-        grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, prov_value_count_mappings);
-      }
-      else
-      {
-        if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value) == null)
-        {
-          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, 1);
-        }
-        else
-        {
-          int count = grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value);
-          
-          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, count + 1);
-        }
-      }
+//      Vector<String> prov_vec = new Vector<String>();
+//      
+//      for(int k = view.head.args.size(); k<col_num; k++)
+//      {
+//        prov_vec.add(rs.getString(k + 1));
+//      }
+//      
+//      Head_strs prov_value = new Head_strs(prov_vec);
+//      
+//      String converted_prov_value = convert2md5(prov_value);
+//      
+//      if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value) == null)
+//      {
+//        HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
+//        
+//        prov_value_count_mappings.put(converted_prov_value, 1);
+//        
+//        grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, prov_value_count_mappings);
+//      }
+//      else
+//      {
+//        if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value) == null)
+//        {
+//          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, 1);
+//        }
+//        else
+//        {
+//          int count = grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value);
+//          
+//          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, count + 1);
+//        }
+//      }
       
     }
     

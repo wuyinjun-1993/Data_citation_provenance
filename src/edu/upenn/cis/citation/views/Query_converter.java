@@ -16,6 +16,7 @@ import edu.upenn.cis.citation.Operation.Conditions;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
+import edu.upenn.cis.citation.query.Query_provenance;
 import edu.upenn.cis.citation.query_view_generators.query_generator;
 
 public class Query_converter {
@@ -292,6 +293,89 @@ public class Query_converter {
       return sql;
   }
   
+  
+  static String get_provenance_agg(Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, HashMap<String, Vector<Integer>> relation_primary_key_mappings)
+  {
+    int count = 0;
+    
+    String sql = "array_agg(";
+    
+    for(int i = 0; i<subgoals.size(); i++)
+    {
+      Subgoal subgoal = subgoals.get(i);
+      
+      String origin_name = subgoal_name_mappings.get(subgoal.name);
+      
+      Vector<Integer> arg_ids = relation_primary_key_mappings.get(origin_name);
+      
+      for(int k = 0; k<arg_ids.size(); k++)
+      {
+        if(count >= 1)
+          sql += "||'" + Query_provenance.separator_input + "'||";
+        
+        Argument arg = (Argument) subgoal.args.get(arg_ids.get(k));
+        
+        sql += subgoal.name + "." + arg.attribute_name;
+        
+        count ++;
+      }
+    }
+    
+    sql += ")" + " as provenance";
+    
+    return sql;
+  }
+  
+  public static String datalog2sql_materializations(Single_view view, HashMap<String, Vector<Integer>> relation_primary_key_mappings, boolean isPro_query)
+  {
+      
+      String sql = new String();
+
+      String[] sel_item = get_sel_item(view.head);
+      
+//      String sel_agg_item = get_agg_item_in_select_clause(view.head, isPro_query);
+      
+      String sel_agg_prov = get_provenance_agg(view.subgoals, view.subgoal_name_mappings, relation_primary_key_mappings);
+      
+      String having_clause = get_having_clauses(view.conditions, isPro_query);
+      
+      String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, isPro_query);
+      
+      String condition = get_condition(view.conditions, isPro_query);
+             
+      if(!sel_item[0].isEmpty())
+      {
+        sql = "select " + sel_item[0] + "," + sel_agg_prov;
+//        if(!sel_agg_item.isEmpty())
+//          sql += "," + sel_agg_item;
+      }
+      else
+      {
+        sql += sel_agg_prov;
+      }
+//      else
+//      {
+//        if(!sel_agg_item.isEmpty())
+//          sql += sel_agg_item;
+//      }
+      
+      
+      sql += " from " + citation_table;
+      
+      if(condition != null && !condition.isEmpty())
+          sql += " where " + condition;
+      
+      
+      if(!sel_item[0].isEmpty())
+        sql += " group by " + sel_item[1];
+      
+      if(!having_clause.isEmpty())
+        sql += " having " + having_clause;
+      
+      return sql;
+  }
+  
+  
   public static String data2sql_with_token_columns(Query query)
   {
     String sql = new String();
@@ -354,7 +438,7 @@ public class Query_converter {
     return "PROVENANCE OF (" + sql + ")";
   }
   
-  static String get_having_clauses(Vector<Conditions> conditions, boolean isProv_query)
+  public static String get_having_clauses(Vector<Conditions> conditions, boolean isProv_query)
   {
     String string = new String();
     

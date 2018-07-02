@@ -4,15 +4,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Vector;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
+import edu.upenn.cis.citation.query.Query_provenance;
 
 public class Virtual_view_query_generator {
   
-  static String gen_query_for_retrieving_materialized_for_grouping_vars(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids)
+  static String gen_query_for_retrieving_materialized_for_grouping_vars(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids, String separater)
   {
     String string = new String();
     
@@ -24,7 +26,7 @@ public class Virtual_view_query_generator {
       if(i >= 1)
         string += ",";
       
-      string += arg.relation_name + "_" + arg.attribute_name;
+      string += arg.relation_name + separater + arg.attribute_name;
       
     }
     
@@ -59,9 +61,40 @@ public class Virtual_view_query_generator {
     return string;
   }
   
+  static String gen_query_for_retrieving_materialized_views_for_provenance_attrs2(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids)
+  {
+    String string = "array_agg(";
+    
+    int num = 0;
+    
+    for(int i = 0; i<provenance_table_ids.size(); i++)
+    {
+      Subgoal subgoal = view.subgoals.get(provenance_table_ids.get(i));
+      
+      Vector<Integer> attr_ids = Single_view.relation_primary_key_mappings.get(view.subgoal_name_mappings.get(subgoal.name));
+      
+      for(int j = 0; j<attr_ids.size(); j++)
+      {
+        if(num >= 1)
+          string += "||'" + Query_provenance.separator_input + "'||";
+        
+        Argument arg = (Argument) subgoal.args.get(attr_ids.get(j));
+        
+        string += subgoal.name + "." + arg.attribute_name;
+        
+        num++;
+      }
+    }
+    
+    
+    string += ")";
+    
+    return string;
+  }
+  
   public static String gen_query_for_retrieving_materialized_views(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids, String grouping_value_arg_expression, String grouping_value_expression)
   {
-    String sel_item = gen_query_for_retrieving_materialized_for_grouping_vars(view, head_var_ids, provenance_table_ids);
+    String sel_item = gen_query_for_retrieving_materialized_for_grouping_vars(view, head_var_ids, provenance_table_ids, "_");
     
     
     
@@ -77,6 +110,69 @@ public class Virtual_view_query_generator {
     String query = "select " + sel_item + " from " + view.view_name + " where " + grouping_value_arg_expression + "=ANY(VALUES" + grouping_value_expression + ")";
     
     return materilization(view) + " " + query;
+  }
+  
+  
+  public static String gen_query_for_retrieving_materialized_views2(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids, String grouping_value_arg_expression, String grouping_value_expression)
+  {
+    String sel_item = gen_query_for_retrieving_materialized_for_grouping_vars(view, head_var_ids, provenance_table_ids, ".");
+    
+    String all_sel_item = sel_item;
+    
+    if(sel_item.isEmpty())
+    {
+      all_sel_item += gen_query_for_retrieving_materialized_views_for_provenance_attrs2(view, head_var_ids, provenance_table_ids);
+    }
+    else
+    {
+      all_sel_item += "," + gen_query_for_retrieving_materialized_views_for_provenance_attrs2(view, head_var_ids, provenance_table_ids);
+    }
+    
+    String query = "select " + all_sel_item + " from ";
+    
+    HashMap<String, String> subgoal_name_mappings = view.subgoal_name_mappings;
+    
+    for(int i = 0; i<view.subgoals.size(); i++)
+    {
+      if(i >= 1)
+        query += ",";
+      
+      String subgoal_name = view.subgoals.get(i).name; 
+      
+      query += subgoal_name_mappings.get(subgoal_name) + " " + subgoal_name;
+    }
+    
+    String condition = Query_converter.get_condition(view, false);
+    
+    if(!condition.isEmpty())
+    {
+      query += " where " + condition;// + " and " + grouping_value_arg_expression + "=ANY(VALUES" + grouping_value_expression + ")";
+    }
+//    else
+//    {
+//      query += " where " + grouping_value_arg_expression + "=ANY(VALUES" + grouping_value_expression + ")";
+//    }
+    
+//    view.view_name + " where " + 
+    
+    if(!sel_item.isEmpty())
+    {
+      query += " group by " + sel_item;  
+    }
+    
+    String having_clause = Query_converter.get_having_clauses(view, false);
+    
+    if(!having_clause.isEmpty())
+      query += " having " + having_clause;
+    
+//    if(query.length() > 10000)
+//      System.out.println(query.substring(0, 10000));
+//    else
+//      System.out.println(query);
+//    
+//    System.out.println(query.substring(query.length() - 1000, query.length()));
+    
+    return query;
   }
   
   

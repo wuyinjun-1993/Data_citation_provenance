@@ -293,7 +293,7 @@ public class Single_view {
     
     Vector<String> provenance_attrs_strings = new Vector<String>();
     
-    String sql = Query_converter.datalog2sql(view, false);
+    String sql = Query_converter.datalog2sql_materializations(view, relation_primary_key_mappings, false);
     
     System.out.println(indexed_cols);
     
@@ -308,7 +308,7 @@ public class Single_view {
 //    build_index(provenance_attrs_strings, view.view_name, c, pst);
 //    build_index_on_materilized_views_for_grouping_attributes(view, c, pst);
 //    
-    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
+//    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
   }
   
 //  static void build_index_on_materilized_views(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
@@ -1075,7 +1075,7 @@ public class Single_view {
         
         Argument arg1 = (Argument) subgoals.get(v_why_column_ids.get(subgoal_id1)).args.get(ids[0][1]);
         
-        arg1.set_value(curr_values.head_vals.get(ids[0][1]));
+        arg1.set_value(curr_values.head_vals.get(ids[0][1]).toLowerCase());
       }
       
       if(subgoal_id2 >= 0)
@@ -1084,7 +1084,7 @@ public class Single_view {
         
         Argument arg2 = (Argument) subgoals.get(v_why_column_ids.get(subgoal_id2)).args.get(ids[1][1]);
         
-        arg2.set_value(curr_values.head_vals.get(ids[1][1]));
+        arg2.set_value(curr_values.head_vals.get(ids[1][1]).toLowerCase());
       }
     }
     
@@ -1427,22 +1427,22 @@ public class Single_view {
         return true;
       }
       
-      if(value1.compareTo(value2) > 0 && (op.get_op_name().equals(">")))
+      if(value1.compareToIgnoreCase(value2) > 0 && (op.get_op_name().equals(">")))
       {
         return true;
       }
       
-      if(value1.compareTo(value2) < 0 && (op.get_op_name().equals("<")))
+      if(value1.compareToIgnoreCase(value2) < 0 && (op.get_op_name().equals("<")))
       {
         return true;
       }
       
-      if(value1.compareTo(value2) <= 0 && (op.get_op_name().equals("<=")))
+      if(value1.compareToIgnoreCase(value2) <= 0 && (op.get_op_name().equals("<=")))
       {
         return true;
       }
       
-      if(value1.compareTo(value2) >= 0 && (op.get_op_name().equals(">=")))
+      if(value1.compareToIgnoreCase(value2) >= 0 && (op.get_op_name().equals(">=")))
       {
         return true;
       }

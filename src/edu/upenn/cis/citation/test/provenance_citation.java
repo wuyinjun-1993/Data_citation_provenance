@@ -182,9 +182,12 @@ public class provenance_citation {
     
     Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
     
-    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
+    if(is_materialized)
+      write2file_view_mappings(path + "view_mapping_rows1", Prov_reasoning4.tuple_valid_rows);
+    else
+      write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
 
-    System.out.println(covering_sets);
+//    System.out.println(covering_sets);
     
     System.out.println("Covering_set_size::" + covering_sets.size());
     
@@ -195,7 +198,10 @@ public class provenance_citation {
     
     HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
-    write2file(path + "citation2", formatted_citations);
+    if(is_materialized)
+      write2file(path + "citation1", formatted_citations);
+    else    
+      write2file(path + "citation2", formatted_citations);
     
     if(is_materialized)
       write2file(path + "covering_sets_per_group1", Prov_reasoning4.group_covering_sets);

@@ -56,7 +56,7 @@ public class Materialized_view_query_generator {
     return string;
   }
   
-  public static String gen_query_for_retrieving_materialized_views(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids, String grouping_value_arg_expression, String grouping_value_expression)
+  public static String gen_query_for_retrieving_materialized_views1(Single_view view, int[] head_var_ids, Vector<Integer> provenance_table_ids)
   {
     String sel_item = gen_query_for_retrieving_materialized_for_grouping_vars(view, head_var_ids, provenance_table_ids);
     
@@ -84,11 +84,14 @@ public class Materialized_view_query_generator {
     
     if(sel_item.isEmpty())
     {
-      sel_item += gen_query_for_retrieving_materialized_views_for_provenance_attrs(view, head_var_ids, provenance_table_ids);
+      sel_item += "provenance";
+//      sel_item += gen_query_for_retrieving_materialized_views_for_provenance_attrs(view, head_var_ids, provenance_table_ids);
     }
     else
     {
-      sel_item += "," + gen_query_for_retrieving_materialized_views_for_provenance_attrs(view, head_var_ids, provenance_table_ids);
+      
+      sel_item += ", provenance";
+//      sel_item += "," + gen_query_for_retrieving_materialized_views_for_provenance_attrs(view, head_var_ids, provenance_table_ids);
     }
     
     String query = "select " + sel_item + " from " + view.view_name;// + " where " + grouping_value_arg_expression + "=ANY(VALUES" + grouping_value_expression + ")";

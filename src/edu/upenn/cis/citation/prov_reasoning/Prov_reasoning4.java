@@ -50,6 +50,7 @@ import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1_materialized;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1_materialized2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing3;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
@@ -212,7 +213,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       Single_view view_obj = new Single_view(view, view.name, c, pst);
       
       if(is_materialized)
-        Single_view.materilization(view_obj, c, pst);
+        Single_view.materilization2(view_obj, c, pst);
       
       
       view_objs.add(view_obj);
@@ -938,7 +939,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           if(!is_materialized)
             check_thread = new Check_valid_view_mappings_agg_batch_processing1(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
           else
-            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized2(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
         } catch (ClassNotFoundException | SQLException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
