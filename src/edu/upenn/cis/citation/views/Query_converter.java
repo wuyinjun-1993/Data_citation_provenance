@@ -48,7 +48,7 @@ public class Query_converter {
       else
       {
         if(!sel_agg_item.isEmpty())
-          sql += sel_agg_item;
+          sql += "select " + sel_agg_item;
       }
       
       
@@ -59,7 +59,10 @@ public class Query_converter {
       
       
       if(!sel_agg_item.isEmpty())
-        sql += " group by " + sel_item[1];
+      {
+        if(!sel_item[0].isEmpty())
+          sql += " group by " + sel_item[1];
+      }
       
       if(!having_clause.isEmpty())
         sql += " having " + having_clause;
@@ -315,7 +318,7 @@ public class Query_converter {
         
         Argument arg = (Argument) subgoal.args.get(arg_ids.get(k));
         
-        sql += subgoal.name + "." + arg.attribute_name;
+        sql += "cast (" + subgoal.name + "." + arg.attribute_name + " as text)";
         
         count ++;
       }

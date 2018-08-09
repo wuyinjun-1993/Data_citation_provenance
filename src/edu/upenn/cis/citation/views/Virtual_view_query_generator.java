@@ -80,7 +80,7 @@ public class Virtual_view_query_generator {
         
         Argument arg = (Argument) subgoal.args.get(attr_ids.get(j));
         
-        string += subgoal.name + "." + arg.attribute_name;
+        string += "cast (" + subgoal.name + "." + arg.attribute_name + " as text)";
         
         num++;
       }

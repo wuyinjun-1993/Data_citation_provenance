@@ -12,13 +12,13 @@ import java.util.Set;
 import java.util.Vector;
 import org.apache.commons.lang3.StringUtils;
 
-public class process_text_materialized_result {
+public class process_text_view_num {
   
-  static String synthetic_result_path = "synthetic_example/instance_size_result/";
+  static String synthetic_result_path = "synthetic_example/view_num/";
   
-  static String input_file = synthetic_result_path + "stress_test_instance_size.txt";
+  static String input_file = synthetic_result_path + "stress_test_view_num.txt";
   
-  static String output_file = synthetic_result_path + "stress_test_instance_size.csv";
+  static String output_file = synthetic_result_path + "stress_test_view_num.csv";
   
   static String[] prefixes = {"query_final_size::", "view_final_size::", "materialized::false", "materialized::true"};
   
@@ -33,35 +33,11 @@ public class process_text_materialized_result {
     write(output_file, results);
   }
   
-  static void process_result(int query_instance_size, int view_instance_size, Vector<Double> time, HashMap<Integer, HashMap<Integer, Vector<Double>>> results)
+  static void process_result(int query_instance_size, int view_instance_size, Vector<Double> time, Vector<Vector<Double>> results)
   {
-    if(results.get(query_instance_size) == null)
-    {
-      HashMap<Integer, Vector<Double>> curr_res = new HashMap<Integer, Vector<Double>>();
-      
-      Vector<Double> time_vec = new Vector<Double>();
-      
-      time_vec.addAll(time);
-      
-      curr_res.put(view_instance_size, time_vec);
-      
-      results.put(query_instance_size, curr_res);
-    }
-    else
-    {
-      if(results.get(query_instance_size).get(view_instance_size) == null)
-      {
-        Vector<Double> time_vec = new Vector<Double>();
-        
-        time_vec.addAll(time);
-        
-        results.get(query_instance_size).put(view_instance_size, time_vec);
-      }
-      else
-      {
-        results.get(query_instance_size).get(view_instance_size).addAll(time);
-      }
-    }
+    Vector<Double> time_copy = (Vector<Double>) time.clone();
+    
+    results.add(time_copy);
   }
   
   static void process_result(int query_instance_size, int view_instance_size, String time, HashMap<Integer, HashMap<Integer, String>> results)
@@ -91,54 +67,54 @@ public class process_text_materialized_result {
     }
   }
   
-  static String compose_string(int query_instance_size, int view_instance_size, double time1, double time2, String instance_size)
+  static String compose_string(double time1, double time2)
   {
     String curr_res = new String();
   
-    curr_res = String.valueOf(query_instance_size) + "," + String.valueOf(view_instance_size) + "," + String.valueOf(time1) + "," + String.valueOf(time2) + "," + instance_size;
+    curr_res = String.valueOf(time1) + "," + String.valueOf(time2);
     
     return curr_res;
     //  
 //  results.add(curr_res);
   }
   
-  static void cal_average(HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_results, HashMap<Integer, HashMap<Integer, String>> materialized_view_size_results, Vector<String> results)
-  {
-    Set<Integer> query_instance_size_sets = materialized_results.keySet();
-    
-    Vector<Integer> query_instance_size_vec = new Vector<Integer>();
-    
-    query_instance_size_vec.addAll(query_instance_size_sets);
-    
-    Collections.sort(query_instance_size_vec);
-    
-    for(Integer query_instance_size : query_instance_size_vec)
-    {
-      HashMap<Integer, Vector<Double>> view_instance_size_res1 = materialized_results.get(query_instance_size);
+  static void cal_average(Vector<Vector<Double>> materialized_results, Vector<Vector<Double>> non_materialized_results, Vector<String> results){
+//  {
+//    Set<Integer> query_instance_size_sets = materialized_results.keySet();
+//    
+//    Vector<Integer> query_instance_size_vec = new Vector<Integer>();
+//    
+//    query_instance_size_vec.addAll(query_instance_size_sets);
+//    
+//    Collections.sort(query_instance_size_vec);
+//    
+//    for(Integer query_instance_size : query_instance_size_vec)
+//    {
+//      HashMap<Integer, Vector<Double>> view_instance_size_res1 = materialized_results.get(query_instance_size);
+//      
+//      HashMap<Integer, Vector<Double>> view_instance_size_res2 = non_materialized_results.get(query_instance_size);
+//      
+////      HashMap<Integer, String> view_instance_size_mappings = materialized_view_size_results.get(query_instance_size);
+//      
+//      Set<Integer> view_instance_size_sets = view_instance_size_res1.keySet();
+//      
+//      Vector<Integer> view_instance_size_vec = new Vector<Integer>();
+//      
+//      view_instance_size_vec.addAll(view_instance_size_sets);
+//      
+//      Collections.sort(view_instance_size_vec);
       
-      HashMap<Integer, Vector<Double>> view_instance_size_res2 = non_materialized_results.get(query_instance_size);
-      
-      HashMap<Integer, String> view_instance_size_mappings = materialized_view_size_results.get(query_instance_size);
-      
-      Set<Integer> view_instance_size_sets = view_instance_size_res1.keySet();
-      
-      Vector<Integer> view_instance_size_vec = new Vector<Integer>();
-      
-      view_instance_size_vec.addAll(view_instance_size_sets);
-      
-      Collections.sort(view_instance_size_vec);
-      
-      for(Integer view_instance_size: view_instance_size_vec)
+      for(int i = 0; i<materialized_results.size(); i++)
       {
-        Vector<Double> curr_time_sets = view_instance_size_res1.get(view_instance_size);
+        Vector<Double> curr_time_sets = materialized_results.get(i);
         
-        Vector<Double> curr_time_sets2 = view_instance_size_res2.get(view_instance_size);
+        Vector<Double> curr_time_sets2 = non_materialized_results.get(i);
         
-        String instance_size = view_instance_size_mappings.get(view_instance_size);
+//        String instance_size = view_instance_size_mappings.get(view_instance_size);
         
-//        remove_outlier(curr_time_sets);
+        remove_outlier(curr_time_sets);
         
-//        remove_outlier(curr_time_sets2);
+        remove_outlier(curr_time_sets2);
         
         
         double avg1 = 0.0;
@@ -159,10 +135,10 @@ public class process_text_materialized_result {
         
         avg2 = avg2/curr_time_sets2.size();
         
-        results.add(compose_string(query_instance_size, view_instance_size, avg1, avg2, instance_size));
+        results.add(compose_string(avg1, avg2));
       }
       
-    }
+//    }
   }
   
   static void remove_outlier(Vector<Double> values)
@@ -209,7 +185,7 @@ public class process_text_materialized_result {
     try (BufferedReader br = new BufferedReader(new FileReader(file))) {
       String line;
 
-      String query_instance_size_prefix = "query_final_size::";
+      String start_prefix = "provenance_based_approach::";
       
       String view_instance_size_prefix = "view_final_size::";
       
@@ -217,7 +193,11 @@ public class process_text_materialized_result {
       
       String materialized_true = "materialized::true";
       
-      String prefix_prov = "reasoning time 3:";
+      String provenance_time_prefix = "reasoning time 3:";
+      
+      String SSLA_time_prefix = "SSLA_agg_time::";
+      
+      String TLA_time_prefix = "TLA_agg_time::";
       
       String view_size_prefix = "view_instance_size_mappings::";
       
@@ -227,9 +207,11 @@ public class process_text_materialized_result {
       
       int view_instance_size = -1;
 
-      Vector<Double> non_materialized_time = new Vector<Double>();
+      Vector<Double> provenance_time_vec = new Vector<Double>();
       
-      Vector<Double> materialized_time = new Vector<Double>();
+      Vector<Double> SSLA_time_vec = new Vector<Double>();
+      
+//      Vector<Double> materialized_time = new Vector<Double>();
       
       double time_prov_1 = 0.0;
       
@@ -245,11 +227,11 @@ public class process_text_materialized_result {
       
       String curr_view_size_result = new String();
       
-      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      Vector<Vector<Double>> SSLA_results = new Vector<Vector<Double>>();
       
-      HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      Vector<Vector<Double>> provenance_based_results = new Vector<Vector<Double>>();
       
-      HashMap<Integer, HashMap<Integer, String>> materialized_view_size_results = new HashMap<Integer, HashMap<Integer, String>>();
+      Vector<Vector<Double>> materialized_view_size_results = new Vector<Vector<Double>>();
       
       while ((line = br.readLine()) != null) {
          // process the line.
@@ -258,179 +240,89 @@ public class process_text_materialized_result {
         {
           case 0:
           {
-            if(line.startsWith(query_instance_size_prefix))
+            if(line.startsWith(start_prefix))
             {
-                query_instance_size = (int)get_value(query_instance_size_prefix, line);
-                
-                System.out.println("query_instance_size::" + query_instance_size);
+//                query_instance_size = (int)get_value(query_instance_size_prefix, line);
+//                
+//                System.out.println("query_instance_size::" + query_instance_size);
                 
                 state = 1;
                 
             }
             break;
           }
-          
           case 1:
           {
-            if(line.startsWith(view_instance_size_prefix))
+            if(line.startsWith(provenance_time_prefix))
             {
-                view_instance_size = (int) get_value(view_instance_size_prefix, line);
-                
-                System.out.println("view_instance_size::" + view_instance_size);
-                
-                state = 2;
-                
+              double time = get_value(provenance_time_prefix, line);
+              
+              System.out.println("provenance_time::" + time);
+              
+              state = 2;
+              
+              provenance_time_vec.add(time);
             }
+            
             break;
           }
           
           case 2:
           {
-            if(line.startsWith(materialized_false))
+            if(line.startsWith(provenance_time_prefix))
             {
-                state = 3;
+              double time = get_value(provenance_time_prefix, line);
+              
+              System.out.println("provenance_time::" + time);
+              
+              provenance_time_vec.add(time);
             }
+            else
+            {
+              if(line.startsWith(SSLA_time_prefix))
+              {
+                double time = get_value(SSLA_time_prefix, line);
+                
+                System.out.println("SSLA_time::" + time);
+                
+                SSLA_time_vec.add(time);
+                
+                state = 3;
+              }
+            }
+            
             break;
           }
+          
           case 3:
           {
-            if(line.startsWith(prefix_prov))
+            if(line.startsWith(SSLA_time_prefix))
             {
-                non_materialized_time.add(get_value(prefix_prov, line));
-                
-                System.out.println("non_materialized_time::" + non_materialized_time);
-                
-                state = 4;
-                
-            }
-            break;
-          }
-          case 4:
-          {
-            
-            if(line.startsWith(prefix_prov))
-            {
-                non_materialized_time.add(get_value(prefix_prov, line));
-                
-                System.out.println("non_materialized_time::" + non_materialized_time);
-                
-                state = 4;
-                
+              double time = get_value(SSLA_time_prefix, line);
+              
+              System.out.println("SSLA_time::" + time);
+              
+              SSLA_time_vec.add(time);
             }
             else
             {
-              if(line.startsWith(materialized_true))
+              if(line.startsWith(start_prefix))
               {
-                  state = 5;
-              }
-            }
-            break;
-          }
-          case 5:
-          {
-            if(line.startsWith(prefix_prov))
-            {
-              materialized_time.add(get_value(prefix_prov, line));
-              
-              System.out.println("materialized_time::" + materialized_time);
-              
-              state = 6;
-              
-//              String curr_res = new String();
-//              
-//              curr_res = String.valueOf(query_instance_size) + "," + String.valueOf(view_instance_size) + "," + String.valueOf(non_materialized_time) + "," + String.valueOf(materialized_time);
-//              
-//              results.add(curr_res);
-            }
-            
-            break;
-          }
-          
-          case 6:
-          {
-            
-            if(line.startsWith(prefix_prov))
-            {
-              materialized_time.add(get_value(prefix_prov, line));
-              
-              System.out.println("materialized_time::" + materialized_time);
-              
-              state = 6;
-              
-//              String curr_res = new String();
-//              
-//              curr_res = String.valueOf(query_instance_size) + "," + String.valueOf(view_instance_size) + "," + String.valueOf(non_materialized_time) + "," + String.valueOf(materialized_time);
-//              
-//              results.add(curr_res);
-            }
-            else
-            {
-              
-              if(line.startsWith(view_size_prefix))
-              {
-                curr_view_size_result = line.substring(view_size_prefix.length(), line.length());
-              }
-              else
-              {
-                if(line.startsWith(query_instance_size_prefix))
-                {
-                  temp1 = (int) get_value(query_instance_size_prefix, line);
-                  
-                  state = 7;
-                }
-                else
-                {
-                  if(line.startsWith(view_instance_size_prefix))
-                  {
-                    process_result(query_instance_size, view_instance_size, materialized_time, materialized_results);
-                    
-                    process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
-                    
-                    process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
-                    
-                    view_instance_size = (int) get_value(view_instance_size_prefix, line);
-                    
-                    state = 2;
-               
-                    materialized_time.clear();
-                    
-                    non_materialized_time.clear();
-                  }
-                }
+                process_result(query_instance_size, view_instance_size, SSLA_time_vec, SSLA_results);
+                
+                process_result(query_instance_size, view_instance_size, provenance_time_vec, provenance_based_results);
+                
+                state = 1;
+                
+                SSLA_time_vec.clear();
+                
+                provenance_time_vec.clear();
               }
             }
             
             break;
           }
           
-          case 7:
-          {
-            
-            
-            if(line.startsWith(view_instance_size_prefix))
-            {
-              temp2 = (int) get_value(view_instance_size_prefix, line);
-              
-              process_result(query_instance_size, view_instance_size, materialized_time, materialized_results);
-              
-              process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
-              
-              process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
-              
-              query_instance_size = temp1;
-              
-              view_instance_size = temp2;
-              
-              state = 2;
-              
-              materialized_time.clear();
-              
-              non_materialized_time.clear();
-              
-            }
-            
-            break;
-          }
         }
         
 //        if(query_instance_size > 0 && state == 5)
@@ -448,13 +340,13 @@ public class process_text_materialized_result {
               
       }
 
-      process_result(query_instance_size, view_instance_size, materialized_time, materialized_results);
+      process_result(query_instance_size, view_instance_size, SSLA_time_vec, SSLA_results);
       
-      process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
+      process_result(query_instance_size, view_instance_size, provenance_time_vec, provenance_based_results);
       
-      process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
+//      process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
       
-      cal_average(materialized_results, non_materialized_results, materialized_view_size_results, results);
+      cal_average(SSLA_results, provenance_based_results, results);
       
   } catch (FileNotFoundException e) {
       // TODO Auto-generated catch block

@@ -4,10 +4,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Vector;
-
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
+import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.init;
 
@@ -532,31 +532,231 @@ public Conditions(Argument argument, String string, Operation op2, Argument argu
 	}
 	
 	
-	public static boolean check_predicate_match(Conditions condition1, Conditions condition2)
+	static boolean check_operator_match(Operation op1, Operation op2)
 	{
-		if(condition1.arg2.get(0).isConst())
-		{
-			if(condition2.arg2.get(0).isConst() && condition1.subgoal1.get(0).equals(condition2.subgoal1.get(0)) && condition1.arg1.get(0).equals(condition2.arg1.get(0)))
-			{
-				return true;
-			}
-		}
-		else
-		{
-			if(!condition2.arg2.get(0).isConst() && condition1.subgoal1.get(0).equals(condition2.subgoal1.get(0)) && condition1.subgoal2.get(0).equals(condition2.subgoal2.get(0)) && condition1.arg1.get(0).equals(condition2.arg1.get(0))&& condition1.arg2.get(0).equals(condition2.arg2.get(0)))
-			{
-				return true;
-			}
-			else
-			{
-				if(!condition2.arg2.get(0).isConst() && condition2.subgoal1.get(0).equals(condition1.subgoal2.get(0)) && condition1.subgoal2.get(0).equals(condition2.subgoal1.get(0)) && condition1.arg1.get(0).equals(condition2.arg2.get(0)) && condition1.arg2.get(0).equals(condition2.arg1.get(0)))
-				{
-					return true;
-				}
-			}
-		}
-		
-		return false;
+	  String op_name1 = op1.get_op_name();
+	  
+	  String op_name2 = op2.get_op_name();
+	  
+	  
+	  if(op_name1.equals("="))
+	  {
+	    return op_name2.equals("=");
+	  }
+	  else
+	  {
+	    if(op_name1.equals(">"))
+	    {
+	      return op_name2.equals(">");
+	    }
+	    else
+	    {
+	      if(op_name1.equals(">="))
+	      {
+	        return op_name2.equals(">=") || op_name2.equals(">");
+	      }
+	      else
+	      {
+	        if(op_name1.equals("<"))
+	          return op_name2.equals("<");
+	        else
+	        {
+	          return op_name2.equals("<=") || op_name2.equals("<");
+	        }
+	      }
+	    }
+	  }
+	}
+	
+	
+	static boolean check_local_predicate_match(Argument arg1, Argument arg2, Operation op1, Operation op2, Tuple tuple)
+	{
+	  HashSet<String> types = new HashSet<String>(Arrays.asList(numberic_type));
+      
+	  String type1 = arg1.data_type;
+	  
+	  String string1 = arg1.name;
+	  
+	  String string2 = arg2.name;
+	  
+      if(types.contains(type1))
+      {
+          double value1 = Double.valueOf(string1);
+          
+          double value2 = Double.valueOf(string1);
+          
+          if(value1 < value2)
+          {
+              return check_smaller_greater_values(op1, op2);
+          }
+          else
+          {
+              if(value1 > value2)
+              {
+                  return check_greater_smaller_values(op1, op2);
+              }
+              else
+              {
+                  if(op1.equals(op2))
+                      return true;
+                  else
+                      return false;
+              }
+          }
+      }
+      else
+      {
+          if(string1.compareToIgnoreCase(string2) < 0)
+          {
+              
+              return check_smaller_greater_values(op1, op2);
+              
+          }
+          else
+          {
+              if(string1.compareToIgnoreCase(string2) > 0)
+              {
+                  return check_greater_smaller_values(op1, op2);
+              }
+              else
+              {
+                  if(op1.equals(op2))
+                      return true;
+                  else
+                      return false;
+              }
+          }
+      }
+	}
+	
+	
+	static boolean check_predicate_match_without_agg(Conditions condition1, Conditions condition2, Tuple tuple)
+	{
+	  if(condition1.arg2.size() == 1 && condition1.arg2.get(0).isConst())
+      {
+          if(condition2.arg2.get(0).isConst() && tuple.phi.apply(condition1.arg1.get(0)).equals(condition2.arg1.get(0)) && check_operator_match(condition1.op, condition2.op))
+          {
+              return check_local_predicate_match(condition1.arg2.get(0), condition2.arg2.get(0), condition1.op, condition2.op, tuple);
+          }
+      }
+      else
+      {
+          if(!condition2.arg2.get(0).isConst() && tuple.phi.apply(condition1.arg1.get(0)).equals(condition2.arg1.get(0))
+              && tuple.phi.apply(condition1.arg2.get(0)).equals(condition2.arg2.get(0)) && check_operator_match(condition1.op, condition2.op))
+          {
+              return true;
+          }
+          else
+          {
+            if(!condition2.arg2.get(0).isConst() && tuple.phi.apply(condition1.arg2.get(0)).equals(condition2.arg1.get(0))
+                && tuple.phi.apply(condition1.arg1.get(0)).equals(condition2.arg2.get(0)) && check_operator_match(condition1.op.counter_direction(), condition2.op))
+            {
+                return true;
+            }
+          }
+          
+      }
+      
+      return false;
+	}
+	
+	public static boolean check_predicate_match(Conditions condition1, Conditions condition2, Tuple tuple)
+	{
+	  
+	  if(condition1.agg_function1 == null && condition1.agg_function2 == null)
+	  {
+	    if(condition2.agg_function1 == null && condition2.agg_function2 == null)
+	    {
+	      return check_predicate_match_without_agg(condition1, condition2, tuple);
+	    }
+	    else
+	      return false;
+	  }
+	  else
+	  {
+	    if(condition1.agg_function1 != null && condition1.agg_function2 != null)
+	    {
+	      if(condition2.agg_function1 != null && condition2.agg_function2 != null)
+	      {
+	        return check_predicate_match_with_agg(condition1, condition2, tuple);
+	      }
+	    }
+	    else
+	    {
+	      if(condition1.agg_function1 != null)
+	      {
+	          if(condition2.agg_function1 != null)
+	          {
+	              return check_predicate_match_with_agg(condition1, condition2, tuple);
+	          }
+	          else
+	          {
+	            if(condition2.agg_function2 != null)
+	            {
+	                  return check_predicate_match_with_agg(condition1, condition2, tuple);
+	            }
+	          }
+	      }
+	    }
+	  }
+	  
+	  return false;
+	}
+	
+	
+	static boolean check_agg_arg_match(Vector<Argument> args1, Vector<Argument> args2, Tuple tuple)
+	{
+	  if(args1.size() != args2.size())
+	    return false;
+	  for(int i = 0; i<args1.size(); i++)
+	  {
+	    Argument arg1 = args1.get(i);
+	    
+	    if(!args2.contains(tuple.phi.apply(arg1)))
+	    {
+	      return false;
+	    }
+	  }
+	  
+	  for(int i = 0; i<args2.size(); i++)
+      {
+        Argument arg2 = args2.get(i);
+        
+        if(!args1.contains(tuple.reverse_phi.apply(arg2)))
+        {
+          return false;
+        }
+      }
+	  
+	  return true;
+	}
+	
+	static boolean check_predicate_match_with_agg(Conditions condition1, Conditions condition2, Tuple tuple)
+	{
+	  if(condition1.arg2.size() == 1 && condition1.arg2.get(0).isConst())
+      {
+          if(condition2.arg2.size() == 1 && condition2.arg2.get(0).isConst() && check_operator_match(condition1.op, condition2.op) && condition1.agg_function1.equals(condition2.agg_function1))
+          {
+             return check_agg_arg_match(condition1.arg1, condition2.arg1, tuple);
+          }
+      }
+	  else
+	  {
+	    if(check_operator_match(condition1.op, condition2.op) && condition1.agg_function1.equals(condition2.agg_function1) && condition1.agg_function2.equals(condition2.agg_function2))
+	    {
+	      return check_agg_arg_match(condition1.arg1, condition2.arg1, tuple) && check_agg_arg_match(condition1.arg2, condition2.arg2, tuple);
+	    }
+	    else
+	    {
+	      if(check_operator_match(condition1.op.counter_direction(), condition2.op) && condition1.agg_function2.equals(condition2.agg_function1) && condition1.agg_function1.equals(condition2.agg_function2))
+	      {
+	        return check_agg_arg_match(condition1.arg2, condition2.arg1, tuple) && check_agg_arg_match(condition1.arg1, condition2.arg2, tuple);
+	      }
+	    }
+	    
+	  }
+	  
+	  return false;
 	}
 	
 	static boolean check_smaller_greater_values(Operation op1, Operation op2)
@@ -586,7 +786,7 @@ public Conditions(Argument argument, String string, Operation op2, Argument argu
 	}
 	
 	//condition1: view condition;;condition2:query condition
-	public static boolean check_predicates_satisfy(Conditions condition1, Conditions condition2, Query query, HashMap<Head_strs, String> attr_type_mapping)
+	public static boolean check_predicates_satisfy(Conditions condition1, Conditions condition2, Query query)
 	{
 		if(condition1.arg2.size() == 1 && condition1.arg2.get(0).isConst())
 		{
@@ -596,27 +796,17 @@ public Conditions(Argument argument, String string, Operation op2, Argument argu
 			
 			String relation = condition1.subgoal1.get(0);
 			
+			String type1 = condition1.arg1.get(0).data_type;
+			
 			Operation op1 = condition1.op;
 			
 			Operation op2 = condition2.op;
 			
 			String arg_name = condition1.arg1.get(0).attribute_name;//.name.substring(condition1.arg1.get(0).name.indexOf(init.separator) + 1, condition1.arg1.get(0).name.length());
 			
-			String mapped_relation = query.subgoal_name_mapping.get(relation);
-			
-			Vector<String> vec_str = new Vector<String>();
-			
-			vec_str.add(mapped_relation);
-			
-			vec_str.add(arg_name);
-			
-			Head_strs head = new Head_strs(vec_str);
-			
-			String type = attr_type_mapping.get(head);
-			
 			HashSet<String> types = new HashSet<String>(Arrays.asList(numberic_type));
 			
-			if(types.contains(type))
+			if(types.contains(type1))
 			{
 				double value1 = Double.valueOf(string1);
 				
@@ -643,7 +833,7 @@ public Conditions(Argument argument, String string, Operation op2, Argument argu
 			}
 			else
 			{
-				if(string1.compareTo(string2) < 0)
+				if(string1.compareToIgnoreCase(string2) < 0)
 				{
 					
 					return check_smaller_greater_values(op1, op2);
@@ -651,7 +841,7 @@ public Conditions(Argument argument, String string, Operation op2, Argument argu
 				}
 				else
 				{
-					if(string1.compareTo(string2) > 0)
+					if(string1.compareToIgnoreCase(string2) > 0)
 					{
 						return check_greater_smaller_values(op1, op2);
 					}

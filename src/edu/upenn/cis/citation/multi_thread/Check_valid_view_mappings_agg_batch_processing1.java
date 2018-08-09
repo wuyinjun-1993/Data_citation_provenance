@@ -2142,6 +2142,8 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
 //    if(query.length() > 10000)
 //      System.out.println(query.substring(0, 10000));
     
+//    System.out.println(query);
+    
     double time1 = System.nanoTime();
     
     ResultSet rs = pst.executeQuery();

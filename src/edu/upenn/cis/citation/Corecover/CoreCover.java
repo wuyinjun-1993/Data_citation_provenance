@@ -9,6 +9,7 @@ package edu.upenn.cis.citation.Corecover;
 import java.util.*;
 import org.hamcrest.core.IsSame;
 import edu.upenn.cis.citation.Operation.Conditions;
+import edu.upenn.cis.citation.aggregate_function.Aggregate_function_rules;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.views.Single_view;
 
@@ -287,7 +288,7 @@ public class CoreCover {
       }
       
       if(k >0 && k < agg_variables.size())
-        return false;
+        continue;
       else
       {
         if(k >= agg_variables.size())
@@ -298,6 +299,27 @@ public class CoreCover {
         }
       }
     }
+    
+    for(int i = 0; i<view.head.args.size(); i++)
+    {
+      Argument variable = (Argument) view.head.args.get(i);
+      
+      Argument q_var = tuple.phi.apply(variable);
+      
+      if(q_var == null)
+        continue;
+      
+      Vector<Argument> q_vars = new Vector<Argument>();
+      
+      q_vars.add(q_var);
+      
+      tuple_agg_variables.add(q_vars);
+      
+      tuple_agg_functions.add(Aggregate_function_rules.unique_string_symbol);
+    }
+    
+    if(tuple_agg_variables.size() <= 0)
+      return false;
     
     tuple.agg_args = tuple_agg_variables;
     

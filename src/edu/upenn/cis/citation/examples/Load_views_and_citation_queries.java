@@ -318,7 +318,7 @@ public class Load_views_and_citation_queries {
 	
 	static Query get_query(String line, Connection c, PreparedStatement pst) throws SQLException
     {
-//      System.out.println(line);
+      System.out.println(line);
         
         String [] strs = line.split("\\" + split1);
         
@@ -446,11 +446,11 @@ public class Load_views_and_citation_queries {
       {
         arg_with_agg_function_strings = new String[2];
         
-        arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("("));
+        arg_with_agg_function_strings[0] = arg_with_agg_function.substring(0, arg_with_agg_function.indexOf("(")).trim();
         
 //        System.out.println(arg_with_agg_function);
         
-        arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")"));
+        arg_with_agg_function_strings[1] = arg_with_agg_function.substring(arg_with_agg_function.indexOf("(") + 1, arg_with_agg_function.indexOf(")")).trim();
         
       }
       

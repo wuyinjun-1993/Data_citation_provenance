@@ -134,6 +134,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static int batch_size = 5;
   
+  public static String db_name = "provenance";
+  
   public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException
   {
     Vector<Integer> index = new Vector<Integer>();
@@ -923,7 +925,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       else
       {
         try {
-          check_thread = new Check_valid_view_mappings_agg_batch_processing1(view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+          check_thread = new Check_valid_view_mappings_agg_batch_processing1(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
         } catch (ClassNotFoundException | SQLException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();

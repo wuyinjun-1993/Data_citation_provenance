@@ -23,6 +23,8 @@ public class Query_view_generator_synthetic_view_num {
   
   static String view_file = directory + "views";
   
+  static String new_view_file = directory + "new_views";
+  
   public static void main(String [] args) throws ClassNotFoundException, SQLException
   {
     Connection c = null;
@@ -66,6 +68,7 @@ public class Query_view_generator_synthetic_view_num {
     Load_views_and_citation_queries.write2files(query_file, query_strings);
     Vector<Query> views = view_generator.gen_views(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
     view_generator.store_views_with_citation_queries(views, view_file);
+    view_generator.store_views_with_citation_queries(views, new_view_file);
     
   }
 //  else
@@ -113,6 +116,7 @@ public class Query_view_generator_synthetic_view_num {
   Vector<Query> views = view_generator.gen_views(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
 //  view_generator.store_views_with_citation_queries(views);
   view_generator.append_views_with_citation_queries(views, view_offset, view_file);
+  view_generator.store_views_with_citation_queries(views, new_view_file);
   System.out.println(query);
 
   }

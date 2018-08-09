@@ -96,7 +96,7 @@ public class Query_provenance {
     
     rs = st.executeQuery(sql);
     
-    System.out.println(sql);
+//    System.out.println(sql);
     
     return rs;
     
