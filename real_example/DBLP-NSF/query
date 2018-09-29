@@ -1,2 +1,2 @@
-Q3|d3.state_name, sum(d1.award_amount), count(d1.award_id)|d1, d2, d3|d1.award_id = d2.award_id, d2.name = d3.name||d1:grants_awards, d2:grants_institution_awards, d3:grants_institution
 Q1|d2.affiliation, count(d1.paper_key)|d1,d2|d1.name = d2.name||d1:dblp_author,d2:dblp_author_institution
+Q3|d3.state_name, sum(d1.award_amount), count(d1.award_id)|d1, d2, d3|d1.award_id = d2.award_id, d2.name = d3.name||d1:grants_awards, d2:grants_institution_awards, d3:grants_institution
