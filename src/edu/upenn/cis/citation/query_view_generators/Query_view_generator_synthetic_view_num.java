@@ -23,7 +23,15 @@ public class Query_view_generator_synthetic_view_num {
   
   static String view_file = directory + "views";
   
+  static String citation_query_file = directory + "citation_queries";
+  
+  static String view_citation_query_mapping_file = directory + "view_citation_query_mappings";
+  
   static String new_view_file = directory + "new_views";
+  
+  static String new_citation_query_file = directory + "citation_queries";
+  
+  static String new_view_citation_query_mapping_file = directory + "view_citation_query_mappings";
   
   public static void main(String [] args) throws ClassNotFoundException, SQLException
   {
@@ -67,8 +75,8 @@ public class Query_view_generator_synthetic_view_num {
     Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
     Load_views_and_citation_queries.write2files(query_file, query_strings);
     Vector<Query> views = view_generator.gen_views(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
-    view_generator.store_views_with_citation_queries(views, view_file);
-    view_generator.store_views_with_citation_queries(views, new_view_file);
+    view_generator.store_views_with_citation_queries(views, view_file, citation_query_file, view_citation_query_mapping_file);
+    view_generator.store_views_with_citation_queries(views, new_view_file, new_citation_query_file, new_view_citation_query_mapping_file);
     
   }
 //  else
@@ -115,8 +123,8 @@ public class Query_view_generator_synthetic_view_num {
 //  Load_views_and_citation_queries.write2files("user_query_subsets", parameters);
   Vector<Query> views = view_generator.gen_views(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
 //  view_generator.store_views_with_citation_queries(views);
-  view_generator.append_views_with_citation_queries(views, view_offset, view_file);
-  view_generator.store_views_with_citation_queries(views, new_view_file);
+  view_generator.append_views_with_citation_queries(views, view_offset, view_file, citation_query_file, view_citation_query_mapping_file);
+  view_generator.store_views_with_citation_queries(views, new_view_file, new_citation_query_file, new_view_citation_query_mapping_file);
   System.out.println(query);
 
   }

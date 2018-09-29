@@ -12,13 +12,13 @@ import java.util.Set;
 import java.util.Vector;
 import org.apache.commons.lang3.StringUtils;
 
-public class process_text_view_num {
+public class process_text_predicate_num {
   
-  static String synthetic_result_path = "synthetic_example/view_num/";
+  static String synthetic_result_path = "synthetic_example/";
   
-  static String input_file = synthetic_result_path + "stress_test_view_num.txt";
+  static String input_file = synthetic_result_path + "stress_test_predicate_num.txt";
   
-  static String output_file = synthetic_result_path + "stress_test_view_num.csv";
+  static String output_file = synthetic_result_path + "stress_test_predicate_num.csv";
   
   static String[] prefixes = {"query_final_size::", "view_final_size::", "materialized::false", "materialized::true"};
   
@@ -270,7 +270,7 @@ public class process_text_view_num {
       
       String covering_set_time_prefix1 = "covering_set_time 3:";
       
-      String covering_set_time_prefix2 = "Covering_set_time::";
+      String covering_set_time_prefix2 = "Query_time::";
       
       int state = 0;
       

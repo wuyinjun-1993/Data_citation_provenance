@@ -1862,29 +1862,29 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
       
       HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings = new HashMap<String, HashSet<String>>();
       
-      double time1 = System.nanoTime();
+//      double time1 = System.nanoTime();
       
       HashMap<String, HashMap<String, Integer>> view_grouping_value_prov_value_count_mappings = get_view_provenance_num(query_grouping_value_view_grouping_value_mappings, tuple_rows.get(view_mapping), view, view_mapping, c, pst);
       
-      double time2 = System.nanoTime();
+//      double time2 = System.nanoTime();
       
       HashMap<String, Head_strs> encoding_origin_mappings = new HashMap<String, Head_strs>();
       
       HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = get_query_provenance_num(view_mapping,encoding_origin_mappings);
       
-      double time3 = System.nanoTime();
+//      double time3 = System.nanoTime();
       
       check_valid_rows(tuple_rows.get(view_mapping), encoding_origin_mappings, view_grouping_value_prov_value_count_mappings, query_grouping_value_prov_value_count_mappings, query_grouping_value_view_grouping_value_mappings);
       
-      double time4 = System.nanoTime();
+//      double time4 = System.nanoTime();
       
-      double t1 = (time2 - time1) *1.0/1000000000;
-      double t2 = (time3 - time2) *1.0/1000000000;
-      double t3 = (time4 - time3) *1.0/1000000000;
-      
-      System.out.println("t1::" + t1);
-      System.out.println("t2::" + t2);
-      System.out.println("t3::" + t3);
+//      double t1 = (time2 - time1) *1.0/1000000000;
+//      double t2 = (time3 - time2) *1.0/1000000000;
+//      double t3 = (time4 - time3) *1.0/1000000000;
+//      
+//      System.out.println("t1::" + t1);
+//      System.out.println("t2::" + t2);
+//      System.out.println("t3::" + t3);
     }
   }
   

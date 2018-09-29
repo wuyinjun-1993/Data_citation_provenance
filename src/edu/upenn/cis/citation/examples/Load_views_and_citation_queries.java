@@ -12,6 +12,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.Vector;
 
@@ -52,6 +53,68 @@ public class Load_views_and_citation_queries {
 		c.close();
 	}
 	
+	public static boolean remove_one_view(String file, String view_name, Connection c, PreparedStatement pst) throws SQLException
+    {
+      Vector<Query> views = get_views(file, c, pst);
+      
+      boolean removed = false;
+      
+      for(int i = 0; i<views.size(); i++)
+      {
+        if(views.get(i).name.equals(view_name))
+        {
+          views.remove(i);
+          
+          i--;
+          
+          removed = true;
+        }
+      }
+      
+      write2files(file, Load_views_and_citation_queries.views2text_strings(views));
+      
+      return removed;
+    }
+	
+	   public static void remove_one_view_with_citation_queries(String view_name, String view_file_name, String citation_query_file_name, String citation_query_view_mapping_file_names, Connection c, PreparedStatement pst) throws SQLException
+	    {
+	      remove_one_view(view_file_name, view_name, c, pst);
+	      
+//	      HashMap<String, HashMap<String, String>> view_citation_query_mappings = get_view_citation_query_mappings(citation_query_view_mapping_file_names);
+//
+//	      HashMap<String, String> curr_view_citation_query_mappings = view_citation_query_mappings.get(view_name);
+//	      
+//	      for(Entry<String, String> entry: curr_view_citation_query_mappings.entrySet())
+//	      {
+//	        remove_one_view(citation_query_file_name, entry.getValue(), c, pst);
+//	      }   
+//	      
+//	      view_citation_query_mappings.remove(view_name);
+//	      
+//	      store_view_citation_query_mappings(view_citation_query_mappings, citation_query_view_mapping_file_names);
+	      
+	    }
+	   static void store_view_citation_query_mappings(HashMap<String, HashMap<String, String>> view_citation_query_mappings, String file_name)
+	    {
+	      Set<String> view_names = view_citation_query_mappings.keySet();
+	      
+	      Vector<String> view_citation_query_mappings_text = new Vector<String>();
+	      
+	      for(String view_name: view_names)
+	      {
+	        HashMap<String, String> citation_queries = view_citation_query_mappings.get(view_name);
+	        
+	        Set<String> blocks = citation_queries.keySet();
+	        
+	        for(String block : blocks)
+	        {
+	          view_citation_query_mappings_text.add(view_name + "|" + citation_queries.get(block) + "|" + block);
+	        }
+	      }
+	      
+	      write2files(file_name, view_citation_query_mappings_text);
+	    }
+	   
 	public static Vector<Query> get_views(String file, Connection c, PreparedStatement pst) throws SQLException
 	{
 		Vector<Query> queries = new Vector<Query>();
@@ -310,7 +373,7 @@ public class Load_views_and_citation_queries {
 		
 		Vector<Lambda_term> l_terms = split_lambda_terms(lambda_term_str, name_arg_mappings);
 		
-		System.out.println(view_name);
+//		System.out.println(view_name);
 		
 		return new Query(view_name, head_subgoal, relational_subgoals, l_terms, predicate_subgoal, relation_mapping);
 		

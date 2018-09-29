@@ -425,7 +425,7 @@ public class query_generator {
 	  
 	  for(String relation : relations)
 	  {
-	    System.out.println(relation);
+//	    System.out.println(relation);
 	    
 	    citatable_tables[num ++] = relation;
 	  }
@@ -687,6 +687,158 @@ public class query_generator {
 		return query;
 	}
 	
+	
+	public static Query generate_query2(int size, int grouping_attr_num, int agg_attr_num, Connection c, PreparedStatement pst) throws SQLException
+    {
+      build_relation_primary_key_mapping(c, pst);
+      
+      init_parameterizable_attributes(c, pst);
+      
+        Random r = new Random(System.currentTimeMillis());
+        
+        HashSet<String> relation_names = new HashSet<String>();
+                
+        Vector<Argument> head_grouping_vars = new Vector<Argument>();
+        
+        Vector<Argument> head_agg_vars = new Vector<Argument>();
+        
+        Vector<String> head_agg_functions = new Vector<String>();
+        
+        Vector<Lambda_term> lambda_terms1 = new Vector<Lambda_term>();
+        
+        Vector<Lambda_term> lambda_terms2 = new Vector<Lambda_term>();
+        
+        Vector<Conditions> local_predicates = new Vector<Conditions>();
+        
+        HashMap<String, String> maps = new HashMap<String, String>();
+        
+        Vector<Subgoal> body = new Vector<Subgoal>();
+        
+//      String [] tables = {"object", "object", "ligand"};
+//      int[] grouping_attr_num_arr = new int[size];
+//      int[] agg_attr_num_att = new int[size];
+//      for(int i = 0; i<size; i++)
+//      {
+//        grouping_attr_num_arr[i] = 
+//      }
+        
+        for(int i = 0; i<size; i++)
+        {
+            int index = r.nextInt((int) (citatable_tables.length));
+            
+            String relation = citatable_tables[index];
+            
+            String relation_name = relation;
+            
+            if(relation_names.contains(relation))
+            {
+                i--;
+                continue;
+//              Random rand = new Random();
+//              
+//              int suffix = rand.nextInt(size + 1);
+//              
+//              relation_name = relation + suffix;
+//              
+//              while(relation_names.contains(relation_name))
+//              {
+//                  suffix = rand.nextInt(size + 1);
+//                  
+//                  relation_name = relation + suffix;
+//              }
+//              
+//              relation_names.add(relation_name);
+//              
+//              maps.put(relation_name, relation);
+                
+            }
+            else
+            {
+                relation_names.add(relation);
+                
+                maps.put(relation, relation);
+            }
+            
+            HashMap<String, String> attr_types = get_attr_types(relation, c, pst);
+            
+            
+            Set<String> attr_names = attr_types.keySet();
+            
+            HashMap<String, String> attr_list = parameterizable_attri_type.get(relation);
+            
+//          attr_list.addAll(attr_names);
+//          System.out.println(attr_list);
+            
+            Random rand = new Random();
+            
+            int selection_size = rand.nextInt((int)(attr_list.size() * local_predicates_rate + 1));
+            
+            String [] primary_key_type = get_primary_key(relation, c, pst);
+                                            
+            int head_size = rand.nextInt((int)(attr_list.size() * head_var_rate + 1)) + 1;
+                                    
+//            Vector<Argument> head_vars = gen_head_vars(false, relation, relation_name, parameterizable_attri.get(relation), grouping_attr_num, c, pst);
+            
+            Vector<Argument> agg_vars = gen_head_vars(true, relation, relation_name, parameterizable_attri.get(relation), agg_attr_num, c, pst);
+            
+//          Argument head_arg = new Argument(relation_name + init.separator + primary_key_type[0], relation_name);
+            
+//          Vector<Argument> head_vars = new Vector<Argument>();
+            
+//          head_vars.add(head_arg);
+            
+//            if(i == 0)
+//              head_grouping_vars.addAll(head_vars);
+            
+            head_agg_vars.addAll(agg_vars);
+//          Vector<Argument> args = new Vector<Argument>();
+            
+            Vector<Argument> args = get_full_schema(relation_name, relation, c, pst);
+            
+            body.add(new Subgoal(relation_name, args));
+        }
+        
+        Vector<Vector<Argument>> head_agg_var_arrs = new Vector<Vector<Argument>>();
+        
+        for(int i = 0; i<head_agg_vars.size(); i++)
+        {
+          head_agg_functions.add("max");
+          
+          Vector<Argument> curr_head_args = new Vector<Argument>();
+          
+          curr_head_args.add(head_agg_vars.get(i));
+          
+          head_agg_var_arrs.add(curr_head_args);
+        }
+        
+//      String[] query_local_predicate = gen_local_predicates_with_fixed_size(maps, relation_names, c, pst);
+        
+        String name = "Q";
+                
+        Vector<Conditions> predicates = gen_conditions(true, query_result_size, body, maps, c, pst);
+        
+        for(int i = 0; i<predicates.size(); i++)
+        {
+          Conditions condition = predicates.get(i);
+          
+          head_grouping_vars.add(condition.arg1.get(0));
+        }
+        
+        
+//      lambda_terms1.add(new Lambda_term(query_local_predicate[0]));
+//      
+//      lambda_terms2.add(new Lambda_term(query_local_predicate[1]));
+                        
+        gen_shuffled_head_args(head_grouping_vars);
+        
+        Query query = new Query(name, new Subgoal(name, head_grouping_vars, head_agg_var_arrs, head_agg_functions, true), body, lambda_terms2, predicates, maps);
+        
+//      queries[1] = new Query(name, new Subgoal(name, heads), body, lambda_terms2, predicates, maps);
+        System.out.println(query);
+        
+        return query;
+    }
+    
 	
 	static int update_size(int instance_size, Vector<Integer> size, int k)
 	{

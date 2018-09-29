@@ -172,8 +172,15 @@ public class Query_provenance {
     
     String db_name = args[3];
     
+    int qid = 0;
+    
     if(args.length > 4)
+    {
       sql_result_file = args[4];
+      
+      if(args.length > 5)
+        qid = Integer.valueOf(args[5]);
+    }
     
     Class.forName("org.postgresql.Driver");
     Connection c = DriverManager
@@ -181,7 +188,7 @@ public class Query_provenance {
     
     PreparedStatement pst = null;
     
-    Query query = Load_views_and_citation_queries.get_query_test_case(query_file, c, pst).get(0);
+    Query query = Load_views_and_citation_queries.get_query_test_case(query_file, c, pst).get(qid);
 
     System.out.println(query.toString());
     

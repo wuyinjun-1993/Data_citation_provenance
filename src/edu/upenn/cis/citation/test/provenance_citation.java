@@ -184,6 +184,10 @@ public class provenance_citation {
     
     Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
     
+    
+    System.out.println("view_mapping_num::" + view_mappings.size());
+    
+    
     if(is_materialized)
       write2file_view_mappings(path + "view_mapping_rows1", Prov_reasoning4.tuple_valid_rows);
     else
@@ -192,6 +196,40 @@ public class provenance_citation {
 //    System.out.println(covering_sets);
     
     System.out.println("Covering_set_size::" + covering_sets.size());
+    
+//    System.out.println("Covering_set::" + covering_sets);
+    
+    System.out.println("Group_num::" + Prov_reasoning4.group_view_mappings.size());
+    
+    Set<String> group_ids = Prov_reasoning4.group_covering_sets.keySet();
+    
+    for(String group_id: group_ids)
+    {
+      ConcurrentHashMap<Tuple, Integer> view_mapping_ids = Prov_reasoning4.group_view_mappings.get(group_id);
+      
+      Set<Tuple> curr_view_mappings = view_mapping_ids.keySet();
+      
+      Vector<String> view_mapping_strings = new Vector<String>();
+      
+      for(Tuple view_mapping: curr_view_mappings)
+      {
+        view_mapping_strings.add(view_mapping.name);
+        
+//      System.out.print(view_mapping.name + "   ");
+      }
+      
+      Collections.sort(view_mapping_strings);
+
+      System.out.println(view_mapping_strings.size());
+      
+      for(String view_mapping: view_mapping_strings)
+      {
+        System.out.print(view_mapping + "   ");
+      }
+      
+      System.out.println();
+    }
+    
     
     if(is_materialized)
       write2file(path + "covering_sets1", covering_sets);
@@ -316,6 +354,8 @@ public class provenance_citation {
     
     int thread_num = 5;//Integer.valueOf(args[1]);
     
+    int qid = 0;
+    
     String db_name = args[3];
     
     Prov_reasoning4.db_name = db_name;
@@ -333,9 +373,12 @@ public class provenance_citation {
       Query_provenance.view_file = args[5];
       
       Query_provenance.sql_result_file = args[6];
+      
+      if(args.length > 7)
+        qid = Integer.valueOf(args[7]);
     }
     
-    Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(0);
+    Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(qid);
     
     System.out.println(query);
     
@@ -497,7 +540,7 @@ public class provenance_citation {
     
     boolean sortcluster = false;//Boolean.valueOf(args[1]);
     
-    int factor = 2;//Integer.valueOf(args[1]);
+//    int factor = 2;//Integer.valueOf(args[1]);
     
     Query_provenance.connect(init.db_prov_url, init.usr_name, init.passwd);
     
@@ -517,7 +560,7 @@ public class provenance_citation {
   c = DriverManager
       .getConnection(init.db_url, init.usr_name , init.passwd);
   
-    Prov_reasoning4.factor = factor;
+//    Prov_reasoning4.factor = factor;
     
     Prov_reasoning4.sort_cluster = sortcluster;
     

@@ -78,6 +78,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //  
 //  public static String citation_query_file_name = Query_provenance.directory+"citation_queries";
   
+  
+//  public static HashMap<String, ResultSet> view_name_resultset_mappings = new HashMap<String, ResultSet>();
+  
   public static String db_name = "provenance";
   
   public static String view_citation_query_mapping_file_name = Query_provenance.directory+"view_citation_query_mappings";
@@ -192,6 +195,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     reliable_agg_functions.put("AVG", r_agg_funs1);
     
+//    view_name_resultset_mappings.clear();
+    
     Single_view.get_relation_primary_key(c, pst);
     
     Single_view.clear_views_in_database(c, pst);
@@ -213,12 +218,15 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     {
       Query view = views.get(i);
       
-//      System.out.println(view);
+      System.out.println(view);
       
       Single_view view_obj = new Single_view(view, view.name, c, pst);
       
       if(is_materialized)
         Single_view.materilization2(view_obj, c, pst);
+      
+//      if(is_materialized)
+//        view_name_resultset_mappings.put(view_obj.view_name, Single_view.materilization3(view_obj, c, pst));
       
       
       view_objs.add(view_obj);
@@ -954,7 +962,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           if(!is_materialized)
             check_thread = new Check_valid_view_mappings_agg_batch_processing1(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
           else
-            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized2(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
         } catch (ClassNotFoundException | SQLException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
@@ -2044,7 +2052,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   {
     HashSet<String> formatted_citations = new HashSet<String>();
     
-    //Gen_citation.gen_citation_entire_query(all_possible_view_mappings_copy, covering_sets, tuple_valid_rows, all_why_tokens, max_num, c, pst);
+//    Gen_citation.gen_citation_entire_query(all_possible_view_mappings_copy, covering_sets, tuple_valid_rows, all_why_tokens, max_num, c, pst);
     
     return formatted_citations;
   }
@@ -2627,8 +2635,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
 //    System.out.println(apro.getExemplarSet().size());
     
-    double start = System.nanoTime();
-
     
     ConcurrentHashMap<Integer, Vector<Integer>> clusters = new ConcurrentHashMap<Integer, Vector<Integer>>();
     
@@ -2650,11 +2656,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
     }
 
-
-    double end_time = System.nanoTime();
-    
-    double time = (end_time - start)/1000000000;
-    
+        
     HashSet<Covering_set> resulting_covering_sets = null;
     
     Set<Integer> ids = clusters.keySet();
@@ -2682,7 +2684,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       
       
+//      System.out.println(sorted_ids);
       
+//      double t1 = System.nanoTime();
       
       for(Integer id : sorted_ids)
       {
@@ -2712,6 +2716,14 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //          resulting_covering_sets = join_operation(resulting_covering_sets, curr_covering_sets);
 //        }
       }
+      
+//      double t2 = System.nanoTime();
+      
+//      double time = (t2 - t1)*1.0/1000000000;
+//      
+//      System.out.println("time::" + time);
+      
+      
     }
     else
     {
@@ -2947,73 +2959,35 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static HashSet<Covering_set> join_operation(HashSet<Covering_set> c_combinations, HashSet<Covering_set> insert_citations)
   {
-/*      if(i == 0)
-      {
-
-          c_combinations.addAll(insert_citations);
-          
-          return c_combinations;
-      }
-      else*/
-    
     if(insert_citations.isEmpty())
       return c_combinations;
     
     if(c_combinations.isEmpty())
       return insert_citations;
     
+      HashSet<Covering_set> updated_c_combinations = new HashSet<Covering_set>();
+      
+      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
       {
+          Covering_set curr_combination1 = (Covering_set) iter.next();
           
-          HashSet<Covering_set> updated_c_combinations = new HashSet<Covering_set>();
-          
-          for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
+          HashSet<Covering_set> iterated_covering_sets = new HashSet<Covering_set>();
+                          
+          for(Iterator it = insert_citations.iterator(); it.hasNext();)
           {
+              Covering_set curr_combination2 = (Covering_set)it.next(); 
               
-              Covering_set curr_combination1 = (Covering_set) iter.next();
+              iterated_covering_sets.add(curr_combination2);
               
-              HashSet<Covering_set> iterated_covering_sets = new HashSet<Covering_set>();
-                              
-              for(Iterator it = insert_citations.iterator(); it.hasNext();)
-              {
-                  
-                  Covering_set curr_combination2 = (Covering_set)it.next(); 
-                  
-                  iterated_covering_sets.add(curr_combination2);
-                  
-                  Covering_set new_citation_vec = curr_combination2.clone();
-                  
-//                  if(new_citation_vec.c_vec.size() == 1)
-//                  {
-//                    for(citation_view c :new_citation_vec.c_vec)
-//                    {
-//                      if(c.get_name().equals("v8"))
-//                      {
-//                        System.out.println(c.get_table_name_string() + "::" + c.get_view_tuple());
-//                      }
-//                    }
-//                  }
-                  
-                  Covering_set new_covering_set = curr_combination1.merge(new_citation_vec);
-                  
-//                  if(curr_combination1.toString().equals("v14*v15*v29*v4"))
-//                  {
-//                    System.out.println("merge_covering_sets::" + new_covering_set.toString() + "::tables::" + new_covering_set.table_names + "::attributes::" + new_covering_set.head_variables);
-//                  }
-//                  
-//                  if(new_covering_set.toString().equals("v14*v15*v29*v4*v8"))
-//                  {
-//                    System.out.println("merge_covering_sets::" + new_covering_set.toString() + "::tables::" + new_covering_set.table_names + "::attributes::" + new_covering_set.head_variables);
-//                  }
-                  
-                  remove_duplicate(updated_c_combinations, new_covering_set);
-                  
-//                  System.out.println(new_covering_set + "|||||" + updated_c_combinations);
-              }
+              Covering_set new_citation_vec = curr_combination2.clone();
+              
+              Covering_set new_covering_set = curr_combination1.merge(new_citation_vec);
+              
+              remove_duplicate(updated_c_combinations, new_covering_set);
           }
-          
-          return updated_c_combinations;
-          
       }
+      
+      return updated_c_combinations;
   }
   
 //  public static HashSet<citation_view_vector> join_views_curr_relation(HashSet<Tuple> tuples, HashSet<citation_view_vector> curr_view_com, Vector<Argument> args, ConcurrentHashMap<Tuple, Integer> tuple_ids)
@@ -3157,8 +3131,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static HashSet<Covering_set> remove_duplicate(HashSet<Covering_set> c_combinations, Covering_set c_view)
   {
-      int i = 0;
-      
       if(c_combinations.contains(c_view))
       {
         return c_combinations;
@@ -3168,41 +3140,25 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
       for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
       {
-//        String str = (String) iter.next();
-                      
           Covering_set c_combination = (Covering_set) iter.next();
           
-//        if(c_combination.toString().equals("v11*v20*v4*v8"))
-//        {
-//            int y = 0;
-//            
-//            y++;
-//        }
+          Covering_set curr_combination = c_view;
+          
+          if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
           {
-              {
-                  Covering_set curr_combination = c_view;
-                  
-                  if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
-                  {
-                      iter.remove();   
-                      
-                      
-                      
-                  }
-                  
-//                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
-                  if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
-                  {
-                    
-                    removed = true;
-                    
-                      break;
-                  }
-              }
+              iter.remove();   
               
           }
           
-          i++;
+//                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
+          if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
+          {
+            
+            removed = true;
+            
+              break;
+          }
+          
       }
       
       if(!removed)

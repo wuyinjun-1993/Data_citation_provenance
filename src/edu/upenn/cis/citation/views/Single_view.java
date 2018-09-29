@@ -311,6 +311,38 @@ public class Single_view {
 //    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
   }
   
+  
+  public static ResultSet materilization3(Single_view view, Connection c, PreparedStatement pst) throws SQLException
+  {
+    if(!view.head.has_agg)
+      return null;
+    
+    Vector<String> indexed_cols = new Vector<String>();
+    
+    Vector<String> grouping_attrs_strings = new Vector<String>();
+    
+    Vector<String> provenance_attrs_strings = new Vector<String>();
+    
+    String sql = Query_converter.datalog2sql_materializations(view, relation_primary_key_mappings, false);
+    
+//    System.out.println(indexed_cols);
+    
+//    String view_query = "create MATERIALIZED view " + view.view_name + " as (" + sql + ")";
+    
+//    System.out.println(sql);
+    
+    pst = c.prepareStatement(sql);
+    
+    ResultSet rs = pst.executeQuery();
+    
+    return rs;
+    
+//    build_index(provenance_attrs_strings, view.view_name, c, pst);
+//    build_index_on_materilized_views_for_grouping_attributes(view, c, pst);
+//    
+//    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
+  }
+  
 //  static void build_index_on_materilized_views(Single_view view, Vector<String> indexed_cols, Connection c, PreparedStatement pst) throws SQLException
 //  {
 //    for(int i = 0; i < indexed_cols.size(); i++)

@@ -2321,7 +2321,7 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized2 imple
     
     double time1 = System.nanoTime();
     
-    ResultSet rs = pst.executeQuery();
+    ResultSet rs = Prov_reasoning4.view_name_resultset_mappings.get(view.view_name);
     
     double time2 = System.nanoTime();
     

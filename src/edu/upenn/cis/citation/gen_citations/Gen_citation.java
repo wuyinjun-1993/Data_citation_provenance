@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,12 +32,12 @@ public class Gen_citation {
   
   public static String db_name = "IUPHAR/BPS Guide to PHARMACOLOGY";
   
-  public static HashSet<String> gen_citation_entire_query(HashMap<Single_view, HashSet<Tuple>> valid_view_mappings, HashSet<Covering_set> covering_sets, HashMap<Tuple, HashSet<Integer>> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, HashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
+  public static HashSet<String> gen_citation_entire_query(ConcurrentHashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashSet<Covering_set> covering_sets, ConcurrentHashMap<Tuple, HashSet> tuple_valid_rows, ArrayList<Vector<Head_strs>> all_why_tokens, ConcurrentHashMap<String, Integer> max_num, Connection c, PreparedStatement pst) throws SQLException, JSONException
   {
     
     HashMap<Tuple, HashSet<Head_strs>> view_mapping_lambda_values_mappings = new HashMap<Tuple, HashSet<Head_strs>>();
     
-    Set<Single_view> views = valid_view_mappings.keySet();
+    Set<Single_view> views = all_possible_view_mappings_copy.keySet();
     
 //    HashMap<Single_view, HashMap<String, Query>> view_citation_queries_mappings = new HashMap<Single_view, HashMap<String, Query>>();
     
@@ -46,7 +47,7 @@ public class Gen_citation {
     {
       Single_view view = (Single_view) iter.next();
       
-      HashSet<Tuple> tuples = valid_view_mappings.get(view);
+      HashSet<Tuple> tuples = all_possible_view_mappings_copy.get(view);
       
       for(Tuple tuple: tuples)
       {
@@ -102,7 +103,7 @@ public class Gen_citation {
       return gen_citations(full_citations, max_num);
   }
   
-  static HashSet<String> gen_citations(ArrayList<HashMap<String, HashSet<String>>> author_lists, HashMap<String, Integer> max_num) throws JSONException
+  static HashSet<String> gen_citations(ArrayList<HashMap<String, HashSet<String>>> author_lists, ConcurrentHashMap<String, Integer> max_num) throws JSONException
   {
       HashSet<String> json_string = new HashSet<String>();
           
