@@ -10,17 +10,16 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
-import edu.upenn.cis.citation.bit_operation.Bit_operation;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
+import edu.upenn.cis.citation.util.Bit_operation;
 import edu.upenn.cis.citation.views.Single_view;
 
 public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappings {
@@ -33,19 +32,19 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
   
   public ArrayList<Vector<Head_strs>> values_from_why_tokens;
   
-//  public ConcurrentHashMap<Tuple, long[]> tuple_rows_bit_index = new ConcurrentHashMap<Tuple, long[]>();
+//  public HashMap<Tuple, long[]> tuple_rows_bit_index = new HashMap<Tuple, long[]>();
   
-  public ConcurrentHashMap<Tuple, HashSet<Integer>> tuple_rows = new ConcurrentHashMap<Tuple, HashSet<Integer>>();
+  public HashMap<Tuple, HashSet<Integer>> tuple_rows = new HashMap<Tuple, HashSet<Integer>>();
 
   public Connection c;
   
   public PreparedStatement pst;
   
-  public ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings;
+  public HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings;
   
-//  ConcurrentHashMap<String, String> subgoal_name_mappings;
+//  HashMap<String, String> subgoal_name_mappings;
   
-  public Check_valid_view_mappings_non_agg( String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings, Connection c, PreparedStatement pst) {
+  public Check_valid_view_mappings_non_agg( String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, Connection c, PreparedStatement pst) {
      threadName = name;
 
      this.view = view;
@@ -94,9 +93,9 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
       
       //each table -> related table -> arg_list
       
-      ConcurrentHashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new ConcurrentHashMap<String, ArrayList<Conditions>>();
+      HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new HashMap<String, ArrayList<Conditions>>();
       
-      ConcurrentHashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new ConcurrentHashMap<String, ArrayList<ArrayList<String>>>();
+      HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new HashMap<String, ArrayList<ArrayList<String>>>();
       
       long [] bit_sequence = Bit_operation.init(values_from_why_tokens.size());
       
@@ -163,9 +162,9 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
       
       Conditions dst_condition = tuple.phi.apply(condition);
       
-      Argument arg2 = condition.arg2;
+      Argument arg2 = condition.arg2.get(0);
       
-      Argument arg1 = condition.arg1;
+      Argument arg1 = condition.arg1.get(0);
       
       if(dst_condition.get_mapping2)
       {
@@ -255,13 +254,13 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
       {
         Conditions condition = conditions.get(id);
         
-        Argument arg1 = condition.arg1;
+        Argument arg1 = condition.arg1.get(0);
         
-        Argument arg2 = condition.arg2;
+        Argument arg2 = condition.arg2.get(0);
         
-        String subgoal_name1 = condition.subgoal1;
+        String subgoal_name1 = condition.subgoal1.get(0);
         
-        String subgoal_name2 = condition.subgoal2;
+        String subgoal_name2 = condition.subgoal2.get(0);
         
 //        subgoal_names.add(condition.subgoal1);
 //        
@@ -313,9 +312,9 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
       {
         Conditions condition = conditions.get(id);
         
-        Argument arg1 = condition.arg1;
+        Argument arg1 = condition.arg1.get(0);
         
-        Argument arg2 = condition.arg2;
+        Argument arg2 = condition.arg2.get(0);
         
         if(join_condition_count >= 1)
           join_condition += " and ";
@@ -468,7 +467,7 @@ public class Check_valid_view_mappings_non_agg implements Check_valid_view_mappi
   }
 
   @Override
-  public ConcurrentHashMap<Tuple, HashSet<Integer>> get_tuple_rows() {
+  public HashMap<Tuple, HashSet<Integer>> get_tuple_rows() {
     // TODO Auto-generated method stub
     return tuple_rows;
   }

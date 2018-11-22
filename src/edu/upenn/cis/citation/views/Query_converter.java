@@ -399,6 +399,274 @@ public class Query_converter {
     return sql;
   }
   
+  static String get_prov_cols(Vector<Subgoal> subgoals, boolean isAgg)
+  {
+    String str = new String();
+    
+    if(isAgg)    
+      str = "array_agg(array[";
+    else
+      str = "array[";
+    
+    for(int i = 0; i<subgoals.size(); i++)
+    {
+      if(i >= 1)
+        str += ",";
+      
+      Subgoal subgoal = subgoals.get(i);
+      
+//      if(!isAgg)      
+        str += subgoal.name + "." + init.prov_col;
+//      else
+//        str += "array_agg(" + subgoal.name + "." + init.prov_col + ")";
+    }
+    
+    str += "]) as " + init.prov_col;
+    
+    return str;
+  }
+  
+  public static String data2sql_with_provenance_col(Query query)
+  {
+    String sql = new String();
+
+    String[] sel_item = get_sel_item_with_why_token_columns2(query.head.args, true);
+        
+    String prov_cols = get_prov_cols(query.body, query.head.has_agg);
+    
+    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, true);
+    
+    String condition = get_condition(query.conditions, true);
+            
+    sql = "select " + sel_item[0];
+    
+    if(query.head.size() > 0)
+      sql += "," + prov_cols;
+    else
+      sql += prov_cols;
+    
+    
+    if(query.head.has_agg)
+    {
+//      if(query.head.args.size() > 0)
+//        sql += ",";
+      sql += "," + get_agg_item_in_select_clause(query.head, true);
+    }
+    
+    sql += " from " + citation_table;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " where " + condition;
+    
+    
+    if(query.head.has_agg && query.head.args.size() > 0)
+    {
+      sql += " group by " + sel_item[1];
+      
+      String having_clause = get_having_clauses(query.conditions, true);
+      
+      if(!having_clause.isEmpty())
+      {
+        sql += " having " + having_clause;
+      }
+      
+    }
+    
+    return sql;
+  }
+  
+  public static String data2sql_with_provenance_col(Single_view view)
+  {
+    String sql = new String();
+
+    String[] sel_item = get_sel_item_with_why_token_columns2(view.head.args, true);
+        
+    String prov_cols = get_prov_cols(view.subgoals, view.head.has_agg);
+    
+    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, true);
+    
+    String condition = get_condition(view.conditions, true);
+            
+    sql = "select " + sel_item[0];
+    
+    if(view.head.size() > 0)
+      sql += "," + prov_cols;
+    else
+      sql += prov_cols;
+    
+    
+//    if(view.head.has_agg)
+//    {
+////      if(query.head.args.size() > 0)
+////        sql += ",";
+//      sql += "," + get_agg_item_in_select_clause(view.head, true);
+//    }
+    
+    sql += " from " + citation_table;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " where " + condition;
+    
+    
+    if(view.head.has_agg && view.head.args.size() > 0)
+    {
+      sql += " group by " + sel_item[1];
+      
+      String having_clause = get_having_clauses(view.conditions, true);
+      
+      if(!having_clause.isEmpty())
+      {
+        sql += " having " + having_clause;
+      }
+      
+    }
+    
+    return sql;
+  }
+  
+  
+  public static String data2sql_with_provenance_col_create_materialized(Single_view view)
+  {
+    String sql = new String();
+
+    String[] sel_item = get_sel_item_with_why_token_columns2(view.head.args, true);
+        
+    String prov_cols = get_prov_cols(view.subgoals, view.head.has_agg);
+    
+    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, true);
+    
+    String condition = get_condition(view.conditions, true);
+            
+    sql = "select " + sel_item[0];
+    
+    if(view.head.size() > 0)
+      sql += "," + prov_cols;
+    else
+      sql += prov_cols;
+    
+    
+//    if(view.head.has_agg)
+//    {
+////      if(query.head.args.size() > 0)
+////        sql += ",";
+//      sql += "," + get_agg_item_in_select_clause(view.head, true);
+//    }
+    
+    sql += " from " + citation_table;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " where " + condition;
+    
+    
+    if(view.head.has_agg && view.head.args.size() > 0)
+    {
+      sql += " group by " + sel_item[1];
+      
+      String having_clause = get_having_clauses(view.conditions, true);
+      
+      if(!having_clause.isEmpty())
+      {
+        sql += " having " + having_clause;
+      }
+      
+    }
+    
+    return sql;
+  }
+  
+  public static String construct_query_base_relations(StringBuilder sb, Set<String> query_prov_sets, Subgoal subgoal, String relation_name)
+  {
+    sb.append("select *");
+    
+//    for(int i = 0; i < subgoal.args.size(); i++)
+//    {
+//      if(i > 0)
+//        sb.append(",");
+//      
+//      Argument arg = (Argument) subgoal.args.get(i);
+//      
+//      sb.append(arg.attribute_name);
+//    }
+    
+    sb.append(" from ");
+    
+    sb.append(relation_name);
+    
+//    sb.append(" where ");
+//    
+//    sb.append(init.prov_col);
+//    
+//    sb.append(" in (");
+//    
+//    int count = 0;
+//    
+//    for(String query_prov: query_prov_sets)
+//    {
+//      if(count > 0)
+//        sb.append(",");
+//      
+//      sb.append("('" + query_prov + "')");
+//      
+//      count++;
+//    }
+//    
+//    sb.append(")");
+    
+    String sql = sb.toString();
+    
+    return sql;
+  }
+  
+  public static String data2sql_with_provenance_col_materialized(Single_view view)
+  {
+    String sql = new String();
+
+    String sel_item = get_sel_item_with_why_token_columns(view.view_name, view.head.args);
+        
+//    String prov_cols = get_prov_cols(view.subgoals, view.head.has_agg);
+//    
+//    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, true);
+//    
+//    String condition = get_condition(view.conditions, true);
+            
+    sql = "select " + sel_item;
+    
+    if(view.head.size() > 0)
+      sql += "," + view.view_name + "." + init.prov_col;
+    else
+      sql += view.view_name + "." + init.prov_col;
+    
+    
+//    if(view.head.has_agg)
+//    {
+////      if(query.head.args.size() > 0)
+////        sql += ",";
+//      sql += "," + get_agg_item_in_select_clause(view.head, true);
+//    }
+    
+    sql += " from " + view.view_name;
+    
+//    if(condition != null && !condition.isEmpty())
+//        sql += " where " + condition;
+//    
+//    
+//    if(view.head.has_agg && view.head.args.size() > 0)
+//    {
+//      sql += " group by " + sel_item[1];
+//      
+//      String having_clause = get_having_clauses(view.conditions, true);
+//      
+//      if(!having_clause.isEmpty())
+//      {
+//        sql += " having " + having_clause;
+//      }
+//      
+//    }
+    
+    return sql;
+  }
+  
+  
   public static String data2sql_with_why_token_columns(Query query)
   {
     String sql = new String();
@@ -485,6 +753,84 @@ public class Query_converter {
     }
     
     return string;
+  }
+  
+  public static String data2sql_with_provenance_col_test(Query query)
+  {
+    String sql = new String();
+
+    String[] sel_item = get_sel_item_with_why_token_columns2(query.head.args, true);
+    
+    String prov_cols = get_prov_cols(query.body, query.head.has_agg);
+    
+    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, true);
+    
+    String condition = get_condition(query.conditions, true);
+            
+    sql = "select " + sel_item[0];
+    
+    if(query.head.size() > 0)
+      sql += "," + prov_cols;
+    else
+      sql += prov_cols;
+    
+    
+    if(query.head.has_agg)
+    {
+//      if(query.head.args.size() > 0)
+//        sql += ",";
+      sql += "," + get_agg_item_in_select_clause(query.head, true);
+    }
+    
+//    String sel_item = get_sel_item_with_why_token_columns(query.head.args, true);
+//        
+//    String citation_table = get_relations_without_citation_table(query.body, query.subgoal_name_mapping, true);
+//    
+//    String condition = get_condition(query.conditions, true);
+//            
+//    sql = "select " + sel_item;
+//    
+//    if(query.head.has_agg)
+//    {
+//      if(query.head.args.size() > 0)
+//        sql += ",";
+//      sql += get_agg_item_in_select_clause(query.head, true);
+//    }
+//    
+    sql += " from " + citation_table;
+    
+    String condition_str = new String();
+    
+    if(condition != null && !condition.isEmpty())
+    {
+      condition_str += " where " + condition;
+    }
+
+    if(!condition_str.isEmpty())
+    {
+      condition_str += " and (" + query.lambda_term.get(0).arg_name + ")";
+    }
+    else
+    {
+      condition_str += " where " + query.lambda_term.get(0).arg_name;
+    }
+    
+    sql += condition_str;
+    
+    if(query.head.has_agg && query.head.args.size() > 0)
+    {
+      sql += " group by " + sel_item[1];
+      
+      String having_clause = get_having_clauses(query.conditions, true);
+      
+      if(!having_clause.isEmpty())
+      {
+        sql += " having " + having_clause;
+      }
+      
+    }
+    
+    return sql;
   }
   
   public static String data2sql_with_why_token_columns_test(Query query)
@@ -1432,6 +1778,88 @@ public class Query_converter {
       return strings;
   }
   
+  static String[] get_sel_item_with_why_token_columns2(Vector<Argument> args, boolean isProv_query)
+  {
+      String[] str = new String[2];
+      
+      str[0] = new String();
+      
+      str[1] = new String();
+      
+//    System.out.println("head::" + q.head);
+      
+      for(int i = 0; i<args.size(); i++)
+      {
+          Argument arg = (Argument) args.get(i);
+          
+          if(i >= 1)
+          {
+            str[0] += ",";
+            str[1] += ",";
+          }
+          
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          
+//          str += arg.relation_name + "." + attr_name;
+          
+          if(isProv_query)
+          {
+            str[0] += "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + " as " + arg.relation_name + "_" + attr_name;
+            str[1] += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
+          }
+          else
+          {
+            str[0] += arg.relation_name + "." + attr_name  + " as " + arg.relation_name + "_" + attr_name;
+            str[1] += arg.relation_name + "." + attr_name;
+          }
+          
+      }
+      
+//      for(int i = 0; i<q.body.size(); i++)
+//      {
+//        str += ",";
+//        
+//        Subgoal subgoal = (Subgoal) q.body.get(i);
+//        
+//        str += subgoal.name + ".\"c" + init.separator + MD5.get_MD5_encoding(q.subgoal_name_mapping.get(subgoal.name)) + init.provenance_column_suffix + "\""; 
+//      }
+      
+//      for(int i = 0; i<q.lambda_term.size(); i++)
+//      {
+//        Lambda_term l_term = q.lambda_term.get(i);
+//        
+//        str += "," + l_term.table_name + "." + l_term.name;
+//        
+//      }
+      
+      return str;
+  }
+  
+  static String get_sel_item_with_why_token_columns(String view_name, Vector<Argument> args)
+  {
+      String str = new String();
+      
+//    System.out.println("head::" + q.head);
+      
+      for(int i = 0; i<args.size(); i++)
+      {
+          Argument arg = (Argument) args.get(i);
+          
+          if(i >= 1)
+          {
+            str += ",";
+          }
+          
+          String attr_name = arg.attribute_name;//arg.name.substring(arg.name.indexOf(init.separator) + 1, arg.name.length());
+          
+          str += view_name + "." + arg.relation_name + "_" + attr_name;
+          
+      }
+      
+      return str;
+  }
+  
+  
   static String get_sel_item_with_why_token_columns(Vector<Argument> args, boolean isProv_query)
   {
       String str = new String();
@@ -1450,9 +1878,9 @@ public class Query_converter {
 //          str += arg.relation_name + "." + attr_name;
           
           if(isProv_query)
-            str += "\"" + arg.relation_name + "\".\"" + attr_name + "\"";
+            str += "\"" + arg.relation_name + "\".\"" + attr_name + "\"" + " as " + arg.relation_name + "_" + attr_name;
           else
-            str += arg.relation_name + "." + attr_name;
+            str += arg.relation_name + "." + attr_name  + " as " + arg.relation_name + "_" + attr_name;
           
       }
       

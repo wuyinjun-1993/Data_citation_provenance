@@ -12,19 +12,18 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
-import edu.upenn.cis.citation.bit_operation.Bit_operation;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.query.Query_provenance;
+import edu.upenn.cis.citation.util.Bit_operation;
 import edu.upenn.cis.citation.views.Materialized_view_query_generator;
 import edu.upenn.cis.citation.views.Query_converter2;
 import edu.upenn.cis.citation.views.Single_view;
@@ -39,12 +38,12 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
   
   public ArrayList<Vector<Head_strs>> values_from_why_tokens;
   
-//  public ConcurrentHashMap<Tuple, long[]> tuple_rows_bit_index = new ConcurrentHashMap<Tuple, long[]>();
-  public ConcurrentHashMap<Head_strs, Head_strs> query_grouping_value_agg_value_mapping;
+//  public HashMap<Tuple, long[]> tuple_rows_bit_index = new HashMap<Tuple, long[]>();
+  public HashMap<Head_strs, Head_strs> query_grouping_value_agg_value_mapping;
   
-  public ConcurrentHashMap<Tuple, HashSet<Head_strs>> tuple_rows = new ConcurrentHashMap<Tuple, HashSet<Head_strs>>();
+  public HashMap<Tuple, HashSet<Head_strs>> tuple_rows = new HashMap<Tuple, HashSet<Head_strs>>();
   
-  public ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings = new ConcurrentHashMap<Head_strs, ArrayList<Integer>>();
+  public HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings = new HashMap<Head_strs, ArrayList<Integer>>();
 
   public Query query = null;
   
@@ -52,11 +51,11 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
   
   public PreparedStatement pst;
   
-  public ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings;
+  public HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings;
   
-//  ConcurrentHashMap<String, String> subgoal_name_mappings;
+//  HashMap<String, String> subgoal_name_mappings;
   
-  public Check_valid_view_mappings_agg_batch_processing1_materialized(String db_name, String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, ConcurrentHashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<Integer>>> rel_attr_value_mappings, ConcurrentHashMap<Head_strs, Head_strs> grouping_value_agg_value_mapping, Query query, Connection c, PreparedStatement pst) throws ClassNotFoundException, SQLException {
+  public Check_valid_view_mappings_agg_batch_processing1_materialized(String db_name, String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, HashMap<Head_strs, Head_strs> grouping_value_agg_value_mapping, Query query, Connection c, PreparedStatement pst) throws ClassNotFoundException, SQLException {
      threadName = name;
 
      this.view = view;
@@ -1798,9 +1797,9 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
       
       //each table -> related table -> arg_list
       
-      ConcurrentHashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new ConcurrentHashMap<String, ArrayList<Conditions>>();
+      HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new HashMap<String, ArrayList<Conditions>>();
       
-      ConcurrentHashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new ConcurrentHashMap<String, ArrayList<ArrayList<String>>>();
+      HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new HashMap<String, ArrayList<ArrayList<String>>>();
       
       long [] bit_sequence = Bit_operation.init(values_from_why_tokens.size());
       
@@ -1976,7 +1975,18 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
   
   static String convert2md5(Head_strs heads)
   {
-    return MD5.get_MD5_encoding(heads.toString());
+    StringBuilder sb = new StringBuilder();
+    
+    for(int i = 0; i<heads.head_vals.size(); i++)
+    {
+      sb.append("###########");
+      sb.append(heads.head_vals.get(i));
+    }
+    
+    
+    return sb.toString();
+    
+//    return MD5.get_MD5_encoding(heads.toString());
   }
   
   static void check_valid_rows(String view_name, HashSet<Head_strs> tuple_head_vars, HashMap<String, Head_strs> encoding_origin_mappings, HashMap<String, HashMap<String, Integer>> view_grouping_value_prov_value_count_mappings, HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings, HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings)
@@ -2261,13 +2271,15 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
 //    
 //    String grouping_value_condition_value_string = gen_query_agg_value_expression(query_grouping_values, view_mapping, relation_seqs);
     
-    String query = Materialized_view_query_generator.gen_query_for_retrieving_materialized_views1(view, view_head_var_ids, view_why_prov_token_ids);
+    String query = Materialized_view_query_generator.gen_query_for_retrieving_materialized_views(view, view_head_var_ids, view_why_prov_token_ids);
     
     pst = c.prepareStatement(query);
     
     
 //    if(query.length() > 10000)
 //      System.out.println(query.substring(0, 10000));
+//    else
+//      System.out.println(query);
     
     double time1 = System.nanoTime();
     
@@ -2682,7 +2694,7 @@ public class Check_valid_view_mappings_agg_batch_processing1_materialized implem
   }
 
   @Override
-  public ConcurrentHashMap<Tuple, HashSet<Head_strs>> get_tuple_rows() {
+  public HashMap<Tuple, HashSet<Head_strs>> get_tuple_rows() {
     // TODO Auto-generated method stub
     return tuple_rows;
   }

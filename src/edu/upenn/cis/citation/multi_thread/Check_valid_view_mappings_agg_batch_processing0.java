@@ -26,27 +26,36 @@ import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
 import edu.upenn.cis.citation.query.Build_query_prov_index;
 import edu.upenn.cis.citation.query.Query_provenance;
+import edu.upenn.cis.citation.query.Query_provenance_2;
+import edu.upenn.cis.citation.util.Binary_search;
 import edu.upenn.cis.citation.util.Bit_operation;
 import edu.upenn.cis.citation.views.Materialized_view_query_generator;
 import edu.upenn.cis.citation.views.Query_converter2;
 import edu.upenn.cis.citation.views.Single_view;
 import edu.upenn.cis.citation.views.Virtual_view_query_generator;
 
-public class Check_valid_view_mappings_agg_batch_processing2 implements Check_valid_view_mappings {
+public class Check_valid_view_mappings_agg_batch_processing0 implements Check_valid_view_mappings {
   private Thread t;
   private String threadName;
   public Single_view view;
   
   public HashSet<Tuple> view_mappings;
   
-  public ArrayList<Vector<Head_strs>> values_from_why_tokens;
+//  public ArrayList<Vector<Head_strs>> values_from_why_tokens;
   
 //  public HashMap<Tuple, long[]> tuple_rows_bit_index = new HashMap<Tuple, long[]>();
-  public HashMap<Head_strs, Head_strs> query_grouping_value_agg_value_mapping;
   
-  public HashMap<Tuple, HashSet<Head_strs>> tuple_rows = new HashMap<Tuple, HashSet<Head_strs>>();
+  public HashMap<Tuple, Set> tuple_rows = new HashMap<Tuple, Set>();
   
-  public HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings = new HashMap<Head_strs, ArrayList<Integer>>();
+//  public HashMap<String, long[]>[] query_prov_index;
+  
+  public Vector<String>[] query_prov_lists;
+  
+  public Vector<long[]>[] prov_indexes;
+  
+  public HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists;
+  
+  public HashMap<String, Integer> query_grouping_value_initial_count; 
 
   public Query query = null;
   
@@ -54,26 +63,33 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
   
   public PreparedStatement pst;
   
-  public HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings;
+  public HashMap<String, String[][]> query_prov_instance;
   
+  public HashMap<String, Integer> grouping_value_prov_count_mappings;
+  
+  public HashMap<String, String[]>[] base_relation_contents;
 //  HashMap<String, String> subgoal_name_mappings;
   
-  public Check_valid_view_mappings_agg_batch_processing2(String db_name, String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<String, HashMap<String, Vector<Integer>>> rel_attr_value_mappings, HashMap<Head_strs, Head_strs> grouping_value_agg_value_mapping, Query query, Connection c, PreparedStatement pst) throws ClassNotFoundException, SQLException {
+  public Check_valid_view_mappings_agg_batch_processing0(String db_name, String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, String[][]> query_prov_instance, Vector<String>[] query_prov_lists, Vector<long[]>[] query_prov_indexes, Query query, HashMap<String, Integer> grouping_value_prov_count_mappings) throws ClassNotFoundException, SQLException {
      threadName = name;
 
      this.view = view;
      
      this.view_mappings = view_mappings;
      
-     this.values_from_why_tokens = curr_tuples;
+//     this.values_from_why_tokens = curr_tuples;
      
-     this.rel_attr_value_mappings = rel_attr_value_mappings;
+//     this.query_prov_index = query_prov_index;
      
-     this.tuple_why_prov_mappings = tuple_why_prov_mappings;
+     this.query_prov_lists = query_prov_lists;
      
-     this.query_grouping_value_agg_value_mapping = grouping_value_agg_value_mapping;
+     this.prov_indexes = query_prov_indexes;
      
+     this.query_prov_instance = query_prov_instance;
+
      this.query = query;
+     
+     this.grouping_value_prov_count_mappings = grouping_value_prov_count_mappings;
      
      Class.forName("org.postgresql.Driver");
      this.c = DriverManager
@@ -84,6 +100,40 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //     this.subgoal_name_mappings = subgoal_name_mappings;
 //     System.out.println("Creating " +  threadName );
   }
+  
+  public Check_valid_view_mappings_agg_batch_processing0(String db_name, String name, Single_view view, HashSet<Tuple> view_mappings, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, String[][]> query_prov_instance, HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists, Query query, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, Integer> query_group_value_initial_count, HashMap<String, String[]>[] base_relation_contents) throws ClassNotFoundException, SQLException {
+    threadName = name;
+
+    this.view = view;
+    
+    this.view_mappings = view_mappings;
+    
+//    this.values_from_why_tokens = curr_tuples;
+    
+//    this.query_prov_index = query_prov_index;
+    
+//    this.query_prov_lists = query_prov_lists;
+    
+    this.query_prov_index_lists = query_prov_index_lists;
+    
+    this.query_prov_instance = query_prov_instance;
+
+    this.query = query;
+    
+    this.grouping_value_prov_count_mappings = grouping_value_prov_count_mappings;
+    
+    this.query_grouping_value_initial_count = query_group_value_initial_count;
+    
+    Class.forName("org.postgresql.Driver");
+    this.c = DriverManager
+        .getConnection(init.db_url_prefix + db_name, init.usr_name , init.passwd);
+    
+    this.base_relation_contents = base_relation_contents;
+    
+//    this.subgoal_name_mappings = subgoal_name_mappings;
+//    System.out.println("Creating " +  threadName );
+ }
+ 
   
   static void get_valid_row_ids(Tuple tuple, ArrayList<String[][]> partial_mapping_values, HashSet<Head_strs> valid_head_vals, Head_strs[] head_val_array, HashSet<Integer> row_ids, Vector<Conditions> conditions, Vector<Subgoal> subgoals, HashMap<String, String> subgoal_name_mappings, Connection c, PreparedStatement pst) throws SQLException
   {
@@ -632,133 +682,133 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //    return grouping_value_condition_string;
   }
   
-  HashMap<String, Integer> count_tuples_within_view_groups_given_aggregate_values(Tuple tuple, HashMap<String, Head_strs> view_head_value_query_head_value_mappings, boolean has_having_clause) throws SQLException
-  {
-    HashMap<String, Integer> view_head_vals_tuple_count = new HashMap<String, Integer>();
-    
-    HashSet<Head_strs> head_values = tuple_rows.get(tuple);
-    
-//    System.out.println(head_values);
-    HashSet<String> grouping_values = new HashSet<String>();
-    Vector<String> relation_seqs = new Vector<String>();
-    String grouping_value_condition_string = gen_instantiation_condition_string(view.head.args, relation_seqs);
-//    for(int i = 0; i<view.head.args.size(); i++)
-//    {
-//      if(i >= 1)
-//        grouping_value_condition_string += ",";
-//      Argument view_grouping_attr = (Argument) view.head.args.get(i);
-//      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
-//      grouping_value_condition_string += view_grouping_attr_name;
-//    }
-//    grouping_value_condition_string += ")";
-    int count = 0;
-    StringBuilder sb = new StringBuilder();
-    if(view.head.args.size() > 0)
-    for(Head_strs head_val : head_values)
-    {
-      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
-      
-//      System.out.println("rids::" + curr_rids);
-      
-      for(Integer rid: curr_rids)
-      {
-        
-        
-//        grouping_values.add(view.evaluate_view_grouping_attrs2(values_from_why_tokens.get(rid), tuple, query));
-        String value = view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, query, relation_seqs); 
-        if(!grouping_values.contains(value))
-        {
-          if(count >= 1)
-            sb.append(",");
-          sb.append(value);
-          grouping_values.add(value);
-          count ++;
-        }
-        
-        
-//        System.out.println(grouping_values.length());
-//        grouping_value_condition_string += curr_grouping_value_condition_string;
-//        view_grouping_values_from_query.add(view_grouping_values);
-//        System.out.println(count);
-        
-      }
-      
-    }
-    
-    grouping_values.clear();
-    
-//    grouping_value_condition_string += "= ANY (VALUES" + grouping_values + ")";
-//    System.out.println(view_grouping_values_from_query);
-    
-    HashMap<String, String> sql_clauses = Query_converter2.data2sql_check_having_clause(tuple, view);
-//    Vector<String> grouping_values_copy = new Vector<String>();
-//    grouping_values_copy.addAll(grouping_values);
-    String string = sb.toString();
-    int[] query_head_attr_view_head_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(tuple);
-
-    view_head_vals_tuple_count = cal_count_partitions(tuple, string, grouping_value_condition_string, sql_clauses, view.head.args.size(), query_head_attr_view_head_ids, view_head_value_query_head_value_mappings);
-
-    if(view_head_vals_tuple_count.isEmpty())
-      tuple_rows.get(tuple).clear();
-    
-//    System.out.println(sql);
+//  HashMap<String, Integer> count_tuples_within_view_groups_given_aggregate_values(Tuple tuple, HashMap<String, Head_strs> view_head_value_query_head_value_mappings, boolean has_having_clause) throws SQLException
+//  {
+//    HashMap<String, Integer> view_head_vals_tuple_count = new HashMap<String, Integer>();
 //    
-//    pst = c.prepareStatement(sql);
+//    HashSet<Head_strs> head_values = tuple_rows.get(tuple);
 //    
-//    ResultSet rs = pst.executeQuery();
-    
-//    HashSet<Head_strs> potentail_invalid_head_values = null;
-//    
-//    if(has_having_clause)
+////    System.out.println(head_values);
+//    HashSet<String> grouping_values = new HashSet<String>();
+//    Vector<String> relation_seqs = new Vector<String>();
+//    String grouping_value_condition_string = gen_instantiation_condition_string(view.head.args, relation_seqs);
+////    for(int i = 0; i<view.head.args.size(); i++)
+////    {
+////      if(i >= 1)
+////        grouping_value_condition_string += ",";
+////      Argument view_grouping_attr = (Argument) view.head.args.get(i);
+////      String view_grouping_attr_name = view_grouping_attr.name.replace(init.separator, ".");
+////      grouping_value_condition_string += view_grouping_attr_name;
+////    }
+////    grouping_value_condition_string += ")";
+//    int count = 0;
+//    StringBuilder sb = new StringBuilder();
+//    if(view.head.args.size() > 0)
+//    for(Head_strs head_val : head_values)
 //    {
-//      potentail_invalid_head_values = new HashSet<Head_strs>();
+//      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
 //      
-//      potentail_invalid_head_values.addAll(view_head_value_query_head_value_mappings.keySet());
-//    }
-    
-    
-//    while(rs.next())
-//    {
-//      Vector<String> h_values = new Vector<String>();
-//      for(int i = 0; i<view.head.args.size(); i++)
+////      System.out.println("rids::" + curr_rids);
+//      
+//      for(Integer rid: curr_rids)
 //      {
-//        h_values.add(rs.getString(i + 1));
-//      }
-//      
-//      int tuple_count = rs.getInt(view.head.args.size() + 1);
-//      
-//      Head_strs view_head_values = new Head_strs(h_values);
-//      
-//      view_head_vals_tuple_count.put(view_head_values, tuple_count);
-//      
-//      
-//      Vector<String> q_head_values = new Vector<String>();
-//      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
-//      {
-//        q_head_values.add(h_values.get(query_head_attr_view_head_ids[i]));
-//      }
-//      
-//      view_head_value_query_head_value_mappings.put(view_head_values, new Head_strs(q_head_values));
-//      
-////      System.out.println("head_values::" + view_head_values);
-////      if(has_having_clause)
-////        potentail_invalid_head_values.remove(view_head_values);
-//    }
-//    System.out.println(potentail_invalid_head_values);
-//    if(has_having_clause)
-//    {
-//      for(Head_strs h: potentail_invalid_head_values)
-//      {
-//        head_values.remove(view_head_value_query_head_value_mappings.get(h));
 //        
-//        view_head_value_query_head_value_mappings.remove(h);
+//        
+////        grouping_values.add(view.evaluate_view_grouping_attrs2(values_from_why_tokens.get(rid), tuple, query));
+//        String value = view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, query, relation_seqs); 
+//        if(!grouping_values.contains(value))
+//        {
+//          if(count >= 1)
+//            sb.append(",");
+//          sb.append(value);
+//          grouping_values.add(value);
+//          count ++;
+//        }
+//        
+//        
+////        System.out.println(grouping_values.length());
+////        grouping_value_condition_string += curr_grouping_value_condition_string;
+////        view_grouping_values_from_query.add(view_grouping_values);
+////        System.out.println(count);
+//        
 //      }
+//      
 //    }
-    
-    
-    return view_head_vals_tuple_count;
-  }
-  
+//    
+//    grouping_values.clear();
+//    
+////    grouping_value_condition_string += "= ANY (VALUES" + grouping_values + ")";
+////    System.out.println(view_grouping_values_from_query);
+//    
+//    HashMap<String, String> sql_clauses = Query_converter2.data2sql_check_having_clause(tuple, view);
+////    Vector<String> grouping_values_copy = new Vector<String>();
+////    grouping_values_copy.addAll(grouping_values);
+//    String string = sb.toString();
+//    int[] query_head_attr_view_head_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(tuple);
+//
+//    view_head_vals_tuple_count = cal_count_partitions(tuple, string, grouping_value_condition_string, sql_clauses, view.head.args.size(), query_head_attr_view_head_ids, view_head_value_query_head_value_mappings);
+//
+//    if(view_head_vals_tuple_count.isEmpty())
+//      tuple_rows.get(tuple).clear();
+//    
+////    System.out.println(sql);
+////    
+////    pst = c.prepareStatement(sql);
+////    
+////    ResultSet rs = pst.executeQuery();
+//    
+////    HashSet<Head_strs> potentail_invalid_head_values = null;
+////    
+////    if(has_having_clause)
+////    {
+////      potentail_invalid_head_values = new HashSet<Head_strs>();
+////      
+////      potentail_invalid_head_values.addAll(view_head_value_query_head_value_mappings.keySet());
+////    }
+//    
+//    
+////    while(rs.next())
+////    {
+////      Vector<String> h_values = new Vector<String>();
+////      for(int i = 0; i<view.head.args.size(); i++)
+////      {
+////        h_values.add(rs.getString(i + 1));
+////      }
+////      
+////      int tuple_count = rs.getInt(view.head.args.size() + 1);
+////      
+////      Head_strs view_head_values = new Head_strs(h_values);
+////      
+////      view_head_vals_tuple_count.put(view_head_values, tuple_count);
+////      
+////      
+////      Vector<String> q_head_values = new Vector<String>();
+////      for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
+////      {
+////        q_head_values.add(h_values.get(query_head_attr_view_head_ids[i]));
+////      }
+////      
+////      view_head_value_query_head_value_mappings.put(view_head_values, new Head_strs(q_head_values));
+////      
+//////      System.out.println("head_values::" + view_head_values);
+//////      if(has_having_clause)
+//////        potentail_invalid_head_values.remove(view_head_values);
+////    }
+////    System.out.println(potentail_invalid_head_values);
+////    if(has_having_clause)
+////    {
+////      for(Head_strs h: potentail_invalid_head_values)
+////      {
+////        head_values.remove(view_head_value_query_head_value_mappings.get(h));
+////        
+////        view_head_value_query_head_value_mappings.remove(h);
+////      }
+////    }
+//    
+//    
+//    return view_head_vals_tuple_count;
+//  }
+//  
   
   String convert_head_string2string(Head_strs string)
   {
@@ -774,116 +824,116 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
     return res;
   }
   
-  HashMap<String, Integer> count_tuples_within_view_groups_given_provenance(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values, HashMap<Head_strs, Integer> q_provenance_count, Vector<Argument> all_view_instantiation_condition_args) throws SQLException
-  {
-//    HashMap<Head_strs, Integer> view_head_vals_tuple_count = new HashMap<Head_strs, Integer>();
-    
-    HashSet<Head_strs> head_values = tuple_rows.get(tuple);
-    HashSet<String> all_view_grouping_values = new HashSet<String>();
-    
-//    Vector<Argument> all_view_instantiation_condition_args = new Vector<Argument>();
-    for(int i = 0; i<view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).size(); i++)
-    {
-      int subgoal_id = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).get(i);
-      Subgoal subgoal = view.subgoals.get(subgoal_id);
-      
-      Vector<Integer> primary_key_ids = Single_view.relation_primary_key_mappings.get(tuple.query.subgoal_name_mappings.get(subgoal.name));
-      
-      for(int k = 0; k<primary_key_ids.size(); k++)
-      {
-        all_view_instantiation_condition_args.add((Argument) subgoal.args.get(primary_key_ids.get(k)));
-      }
-    }
-    
-    String view_instantiation_where_clause = gen_instantiation_condition_string(all_view_instantiation_condition_args);
-    StringBuilder sb = new StringBuilder();
-    int count = 0;
-    for(Head_strs head_val : head_values)
-    {
-      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
-      
-//      ArrayList<Head_strs> curr_view_provenance_values = new ArrayList<Head_strs>();
-      
-      for(Integer rid: curr_rids)
-      {
-        Head_strs view_grouping_values = view.evaluate_args_with_provenance(values_from_why_tokens.get(rid), tuple);
-        
-        
-        
-        if(q_provenance_count.get(view_grouping_values)== null)
-        {
-          q_provenance_count.put(view_grouping_values, 1);
-        }
-        else
-        {
-          q_provenance_count.put(view_grouping_values, q_provenance_count.get(view_grouping_values)+1);
-        }
-//        curr_view_provenance_values.add(view_grouping_values);
-        
-        view_provenance_values.put(view_grouping_values, head_val);
-        String value = convert_head_string2string(view_grouping_values);
-        if(!all_view_grouping_values.contains(value))
-        {
-          if(count >= 1)
-            sb.append(",");
-          all_view_grouping_values.add(value);
-          sb.append(value);
-          count ++;
-        }
-        
-
-      }
-      
-      
-    }
-    
-//    System.out.println(head_values);
-    
-    HashMap<String, String> sql_clauses = Query_converter2.data2sql_check_count_grouping_values(view, ".");
-//    Vector<String> all_view_grouping_values_copy = new Vector<String>();
-//    all_view_grouping_values_copy.addAll(all_view_grouping_values);
-    HashMap<String, Integer> view_head_vals_tuple_count = cal_count_partitions(tuple, sb.toString(), view_instantiation_where_clause, sql_clauses, view.head.args.size(), null, null);
-
-    if(view_head_vals_tuple_count.isEmpty())
-      tuple_rows.get(tuple).clear();
-//    String sql = Query_converter2.data2sql_check_count_grouping_values(view, view_provenance_values.keySet(), view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple));
+//  HashMap<String, Integer> count_tuples_within_view_groups_given_provenance(Tuple tuple, HashMap<Head_strs, Head_strs> view_provenance_values, HashMap<Head_strs, Integer> q_provenance_count, Vector<Argument> all_view_instantiation_condition_args) throws SQLException
+//  {
+////    HashMap<Head_strs, Integer> view_head_vals_tuple_count = new HashMap<Head_strs, Integer>();
 //    
-//    pst = c.prepareStatement(sql);
+//    HashSet<Head_strs> head_values = tuple_rows.get(tuple);
+//    HashSet<String> all_view_grouping_values = new HashSet<String>();
 //    
-//    System.out.println(sql);
-//    
-//    ResultSet rs = pst.executeQuery();
-    
-//    HashSet<Head_strs> potentail_invalid_head_values = null;
-//    
-//    if(has_having_clause)
+////    Vector<Argument> all_view_instantiation_condition_args = new Vector<Argument>();
+//    for(int i = 0; i<view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).size(); i++)
 //    {
-//      potentail_invalid_head_values = new HashSet<Head_strs>();
+//      int subgoal_id = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple).get(i);
+//      Subgoal subgoal = view.subgoals.get(subgoal_id);
 //      
-//      potentail_invalid_head_values.addAll(view_head_value_query_head_value_mappings.keySet());
-//    }
-    
-    
-    
-//    while(rs.next())
-//    {
-//      Vector<String> h_values = new Vector<String>();
-//      for(int i = 0; i<view.head.args.size(); i++)
+//      Vector<Integer> primary_key_ids = Single_view.relation_primary_key_mappings.get(tuple.query.subgoal_name_mappings.get(subgoal.name));
+//      
+//      for(int k = 0; k<primary_key_ids.size(); k++)
 //      {
-//        h_values.add(rs.getString(i + 1));
+//        all_view_instantiation_condition_args.add((Argument) subgoal.args.get(primary_key_ids.get(k)));
+//      }
+//    }
+//    
+//    String view_instantiation_where_clause = gen_instantiation_condition_string(all_view_instantiation_condition_args);
+//    StringBuilder sb = new StringBuilder();
+//    int count = 0;
+//    for(Head_strs head_val : head_values)
+//    {
+//      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
+//      
+////      ArrayList<Head_strs> curr_view_provenance_values = new ArrayList<Head_strs>();
+//      
+//      for(Integer rid: curr_rids)
+//      {
+//        Head_strs view_grouping_values = view.evaluate_args_with_provenance(values_from_why_tokens.get(rid), tuple);
+//        
+//        
+//        
+//        if(q_provenance_count.get(view_grouping_values)== null)
+//        {
+//          q_provenance_count.put(view_grouping_values, 1);
+//        }
+//        else
+//        {
+//          q_provenance_count.put(view_grouping_values, q_provenance_count.get(view_grouping_values)+1);
+//        }
+////        curr_view_provenance_values.add(view_grouping_values);
+//        
+//        view_provenance_values.put(view_grouping_values, head_val);
+//        String value = convert_head_string2string(view_grouping_values);
+//        if(!all_view_grouping_values.contains(value))
+//        {
+//          if(count >= 1)
+//            sb.append(",");
+//          all_view_grouping_values.add(value);
+//          sb.append(value);
+//          count ++;
+//        }
+//        
+//
 //      }
 //      
-//      int tuple_count = rs.getInt(view.head.args.size() + 1);
-//      
-//      Head_strs view_head_values = new Head_strs(h_values);
-//      
-//      view_head_vals_tuple_count.put(view_head_values, tuple_count);
 //      
 //    }
-    
-    return view_head_vals_tuple_count;
-  }
-  
+//    
+////    System.out.println(head_values);
+//    
+//    HashMap<String, String> sql_clauses = Query_converter2.data2sql_check_count_grouping_values(view, ".");
+////    Vector<String> all_view_grouping_values_copy = new Vector<String>();
+////    all_view_grouping_values_copy.addAll(all_view_grouping_values);
+//    HashMap<String, Integer> view_head_vals_tuple_count = cal_count_partitions(tuple, sb.toString(), view_instantiation_where_clause, sql_clauses, view.head.args.size(), null, null);
+//
+//    if(view_head_vals_tuple_count.isEmpty())
+//      tuple_rows.get(tuple).clear();
+////    String sql = Query_converter2.data2sql_check_count_grouping_values(view, view_provenance_values.keySet(), view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple));
+////    
+////    pst = c.prepareStatement(sql);
+////    
+////    System.out.println(sql);
+////    
+////    ResultSet rs = pst.executeQuery();
+//    
+////    HashSet<Head_strs> potentail_invalid_head_values = null;
+////    
+////    if(has_having_clause)
+////    {
+////      potentail_invalid_head_values = new HashSet<Head_strs>();
+////      
+////      potentail_invalid_head_values.addAll(view_head_value_query_head_value_mappings.keySet());
+////    }
+//    
+//    
+//    
+////    while(rs.next())
+////    {
+////      Vector<String> h_values = new Vector<String>();
+////      for(int i = 0; i<view.head.args.size(); i++)
+////      {
+////        h_values.add(rs.getString(i + 1));
+////      }
+////      
+////      int tuple_count = rs.getInt(view.head.args.size() + 1);
+////      
+////      Head_strs view_head_values = new Head_strs(h_values);
+////      
+////      view_head_vals_tuple_count.put(view_head_values, tuple_count);
+////      
+////    }
+//    
+//    return view_head_vals_tuple_count;
+//  }
+//  
   void compare_view_grouping_value_count(HashSet<Head_strs> q_head_values, HashMap<String, Head_strs> view_grouping_value_q_grouping_value_mappings, HashMap<String, Integer> view_grouping_value_tuple_count_mappings1, HashMap<String, Integer> view_grouping_value_tuple_count_mappings2, HashMap<Head_strs, Head_strs> view_provenance_values)
   {
     Set<String> view_grouping_value_sets = view_grouping_value_q_grouping_value_mappings.keySet();
@@ -1067,48 +1117,48 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
     }
   }
   
-  void retrive_result2(Tuple tuple, ResultSet rs, int head_size, HashMap<String, Integer> res, int[] query_head_attr_view_head_ids, HashMap<String, Head_strs> view_head_value_query_head_value_mappings) throws SQLException
-  {
-    HashSet<Head_strs> q_grouping_values = new HashSet<Head_strs>();
-    
-    while(rs.next())
-    {
-      String grouping_value = new String();
-      Vector<String> values = new Vector<String>();
-      for(int i = 0; i<head_size; i++)
-      {
-        if(i >= 1)
-          grouping_value += init.separator;
-        
-        grouping_value += (rs.getString(i + 1));
-        values.add(rs.getString(i + 1));
-      }
-      int count = rs.getInt(head_size + 1);
-      
-      String view_head_val = MD5.getMD5(grouping_value);
-      
-      res.put(view_head_val, count);
-      
-      {
-        Vector<String> q_head_values = new Vector<String>();
-        for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
-        {
-          q_head_values.add(values.get(query_head_attr_view_head_ids[i]));
-        }
-        
-        Head_strs curr_head_val = new Head_strs(q_head_values);
-        
-        q_grouping_values.add(curr_head_val);
-        
-        view_head_value_query_head_value_mappings.put(view_head_val, curr_head_val);
-      }
-    }
-    
-    tuple_rows.get(tuple).clear();
-    
-    tuple_rows.get(tuple).addAll(q_grouping_values);
-  }
-  
+//  void retrive_result2(Tuple tuple, ResultSet rs, int head_size, HashMap<String, Integer> res, int[] query_head_attr_view_head_ids, HashMap<String, Head_strs> view_head_value_query_head_value_mappings) throws SQLException
+//  {
+//    HashSet<Head_strs> q_grouping_values = new HashSet<Head_strs>();
+//    
+//    while(rs.next())
+//    {
+//      String grouping_value = new String();
+//      Vector<String> values = new Vector<String>();
+//      for(int i = 0; i<head_size; i++)
+//      {
+//        if(i >= 1)
+//          grouping_value += init.separator;
+//        
+//        grouping_value += (rs.getString(i + 1));
+//        values.add(rs.getString(i + 1));
+//      }
+//      int count = rs.getInt(head_size + 1);
+//      
+//      String view_head_val = MD5.getMD5(grouping_value);
+//      
+//      res.put(view_head_val, count);
+//      
+//      {
+//        Vector<String> q_head_values = new Vector<String>();
+//        for(int i = 0; i<query_head_attr_view_head_ids.length; i++)
+//        {
+//          q_head_values.add(values.get(query_head_attr_view_head_ids[i]));
+//        }
+//        
+//        Head_strs curr_head_val = new Head_strs(q_head_values);
+//        
+//        q_grouping_values.add(curr_head_val);
+//        
+//        view_head_value_query_head_value_mappings.put(view_head_val, curr_head_val);
+//      }
+//    }
+//    
+//    tuple_rows.get(tuple).clear();
+//    
+//    tuple_rows.get(tuple).addAll(q_grouping_values);
+//  }
+//  
   void retrive_result3(Tuple tuple, ResultSet rs, int head_size, HashMap<String, Integer> res, int[]query_head_attr_view_head_ids) throws SQLException
   {
 //    HashSet<Head_strs> q_grouping_values = new HashSet<Head_strs>();
@@ -1223,83 +1273,83 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //    
 //  }
   
-  HashMap<String, Integer> cal_count_partitions(Tuple tuple, String where_clause_values, String where_clause_attrs, HashMap<String, String> sql_other_clauses, int grouping_attr_num, int[] query_head_attr_view_head_ids, HashMap<String, Head_strs> view_head_value_query_head_value_mappings) throws SQLException
-  {
-    int partition_size = 500000;//(int) Math.sqrt(where_clause_values.size());
-    
-//    int num = 0;
-    
-    HashMap<String, Integer> counts_per_group = new HashMap<String, Integer>();
-//    long t1 = System.nanoTime();
-
-//    while(num < where_clause_values.size())
-    {
-      StringBuilder sb = new StringBuilder();
-      
-//      sb.append(view.local_with_clause + " select ");
-      sb.append("select ");
-      
-      if(sql_other_clauses.get("select") != null)
-      {
-        sb.append(sql_other_clauses.get("select") + sql_other_clauses.get("select_agg"));
-      }
-      else
-      {
-        sb.append(sql_other_clauses.get("select_agg"));
-      }
-      
-      sb.append(" from " + sql_other_clauses.get("from"));
-//      int start = num;
-//      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
-      
-      
-      if(sql_other_clauses.get("where") != null)
-      {
-        sb.append(" where " + sql_other_clauses.get("where") + " and " + where_clause_attrs);
-        sb.append("=ANY(VALUES");
-        sb.append(where_clause_values);
-        sb.append(")");
-      }
-      else
-      {
-        sb.append(" where " + where_clause_attrs + "=ANY(VALUES");
-        sb.append(where_clause_values);
-        sb.append(")");
-      }
-      
-      if(sql_other_clauses.get("group_by") != null)
-      {
-        sb.append(" group by " + sql_other_clauses.get("group_by")); 
-      }
-      
-      if(sql_other_clauses.get("having") != null)
-      {
-        sb.append(" having " + sql_other_clauses.get("having"));
-      }
-      
-//      System.out.println(sb.toString().substring(0, 1000));
-      
-      pst = c.prepareStatement(sb.toString());
-      
-      ResultSet rs = pst.executeQuery();
-      if(query_head_attr_view_head_ids != null)
-        retrive_result2(tuple, rs, grouping_attr_num, counts_per_group, query_head_attr_view_head_ids, view_head_value_query_head_value_mappings);
-      else
-        retrive_result3(tuple, rs, grouping_attr_num, counts_per_group, query_head_attr_view_head_ids);
-//      System.out.println(num);
-//      System.out.println(sb.toString());
-
-//      num += partition_size;
-    }
-    
-//    long t2 = System.nanoTime();
-//    double time = (t2 - t1) * 1.0/1000000000;
-//    System.out.println("sql_time::" + time);
-    
-    return counts_per_group;
-    
-  }
-  
+//  HashMap<String, Integer> cal_count_partitions(Tuple tuple, String where_clause_values, String where_clause_attrs, HashMap<String, String> sql_other_clauses, int grouping_attr_num, int[] query_head_attr_view_head_ids, HashMap<String, Head_strs> view_head_value_query_head_value_mappings) throws SQLException
+//  {
+//    int partition_size = 500000;//(int) Math.sqrt(where_clause_values.size());
+//    
+////    int num = 0;
+//    
+//    HashMap<String, Integer> counts_per_group = new HashMap<String, Integer>();
+////    long t1 = System.nanoTime();
+//
+////    while(num < where_clause_values.size())
+//    {
+//      StringBuilder sb = new StringBuilder();
+//      
+////      sb.append(view.local_with_clause + " select ");
+//      sb.append("select ");
+//      
+//      if(sql_other_clauses.get("select") != null)
+//      {
+//        sb.append(sql_other_clauses.get("select") + sql_other_clauses.get("select_agg"));
+//      }
+//      else
+//      {
+//        sb.append(sql_other_clauses.get("select_agg"));
+//      }
+//      
+//      sb.append(" from " + sql_other_clauses.get("from"));
+////      int start = num;
+////      int end = (start + partition_size) < where_clause_values.size() ? (start + partition_size): where_clause_values.size();
+//      
+//      
+//      if(sql_other_clauses.get("where") != null)
+//      {
+//        sb.append(" where " + sql_other_clauses.get("where") + " and " + where_clause_attrs);
+//        sb.append("=ANY(VALUES");
+//        sb.append(where_clause_values);
+//        sb.append(")");
+//      }
+//      else
+//      {
+//        sb.append(" where " + where_clause_attrs + "=ANY(VALUES");
+//        sb.append(where_clause_values);
+//        sb.append(")");
+//      }
+//      
+//      if(sql_other_clauses.get("group_by") != null)
+//      {
+//        sb.append(" group by " + sql_other_clauses.get("group_by")); 
+//      }
+//      
+//      if(sql_other_clauses.get("having") != null)
+//      {
+//        sb.append(" having " + sql_other_clauses.get("having"));
+//      }
+//      
+////      System.out.println(sb.toString().substring(0, 1000));
+//      
+//      pst = c.prepareStatement(sb.toString());
+//      
+//      ResultSet rs = pst.executeQuery();
+//      if(query_head_attr_view_head_ids != null)
+//        retrive_result2(tuple, rs, grouping_attr_num, counts_per_group, query_head_attr_view_head_ids, view_head_value_query_head_value_mappings);
+//      else
+//        retrive_result3(tuple, rs, grouping_attr_num, counts_per_group, query_head_attr_view_head_ids);
+////      System.out.println(num);
+////      System.out.println(sb.toString());
+//
+////      num += partition_size;
+//    }
+//    
+////    long t2 = System.nanoTime();
+////    double time = (t2 - t1) * 1.0/1000000000;
+////    System.out.println("sql_time::" + time);
+//    
+//    return counts_per_group;
+//    
+//  }
+//  
   HashMap<Head_strs, Integer> cal_count_partitions3(String where_clause_values, String where_clause_attrs, HashMap<String, String> sql_other_clauses, int grouping_attr_num) throws SQLException
   {
     int partition_size = 500000;//(int) Math.sqrt(where_clause_values.size());
@@ -1375,117 +1425,117 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
   }
   
   
-  void deal_with_view_with_aggregation1() throws SQLException
-  {
-
-    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
-    {
-      Tuple view_mapping = (Tuple) iter2.next();
-      
-      HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings = new HashMap<String, HashSet<String>>();
-      
-      double time1 = System.nanoTime();
-      
-      HashMap<String, Head_strs> encoding_origin_mappings = new HashMap<String, Head_strs>();
-      
-      HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = get_query_provenance_num(view_mapping,encoding_origin_mappings);
-
-      
-      double time2 = System.nanoTime();
-      
-      HashMap<String, Vector<HashMap<String, Integer>>> view_grouping_value_prov_value_count_mappings = get_view_provenance_num2(query_grouping_value_view_grouping_value_mappings, view, view_mapping, query_grouping_value_prov_value_count_mappings, c, pst);
-      
-      double time3 = System.nanoTime();
-      
-      check_valid_rows2(tuple_rows.get(view_mapping), encoding_origin_mappings, view_grouping_value_prov_value_count_mappings, query_grouping_value_prov_value_count_mappings, query_grouping_value_view_grouping_value_mappings);
-      
-      double time4 = System.nanoTime();
-      
-      double t1 = (time2 - time1) *1.0/1000000000;
-      double t2 = (time3 - time2) *1.0/1000000000;
-      double t3 = (time4 - time3) *1.0/1000000000;
-      
-      System.out.println("t1::" + t1);
-      System.out.println("t2::" + t2);
-      System.out.println("t3::" + t3);
-    }
+//  void deal_with_view_with_aggregation1() throws SQLException
+//  {
+//
+//    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
+//    {
+//      Tuple view_mapping = (Tuple) iter2.next();
+//      
+//      HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings = new HashMap<String, HashSet<String>>();
+//      
+//      double time1 = System.nanoTime();
+//      
+//      HashMap<String, Head_strs> encoding_origin_mappings = new HashMap<String, Head_strs>();
+//      
+//      HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = get_query_provenance_num(view_mapping,encoding_origin_mappings);
+//
+//      
+//      double time2 = System.nanoTime();
+//      
+//      HashMap<String, Vector<HashMap<String, Integer>>> view_grouping_value_prov_value_count_mappings = get_view_provenance_num2(query_grouping_value_view_grouping_value_mappings, view, view_mapping, query_grouping_value_prov_value_count_mappings, c, pst);
+//      
+//      double time3 = System.nanoTime();
+//      
+//      check_valid_rows2(tuple_rows.get(view_mapping), encoding_origin_mappings, view_grouping_value_prov_value_count_mappings, query_grouping_value_prov_value_count_mappings, query_grouping_value_view_grouping_value_mappings);
+//      
+//      double time4 = System.nanoTime();
+//      
+//      double t1 = (time2 - time1) *1.0/1000000000;
+//      double t2 = (time3 - time2) *1.0/1000000000;
+//      double t3 = (time4 - time3) *1.0/1000000000;
+//      
+//      System.out.println("t1::" + t1);
+//      System.out.println("t2::" + t2);
+//      System.out.println("t3::" + t3);
+//    }
+//  
+//  }
+//  
   
-  }
-  
-  
-  void deal_with_view_with_aggregation() throws SQLException
-  {
-
-//    System.out.println(tuple_why_prov_mappings);
-    
-    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
-    {
-//      view.reset_values();
-      
-      Tuple tuple = (Tuple) iter2.next();
-      
-      System.out.println(tuple_rows.get(tuple).size());
-      if(tuple_rows.get(tuple).isEmpty())
-        continue;
-      
-      //store the count of the tuples in each view grouping values (instantiated by the grouping values from provenance)
-      HashMap<String, Integer> view_grouping_value_tuple_count_mappings1 = null;
-      
-    //build mappings between view grouping values and query grouping values
-      HashMap<String, Head_strs> view_grouping_value_q_grouping_value_mappings = new HashMap<String, Head_strs>();
-      
-      if(view.has_having_clause)
-        view_grouping_value_tuple_count_mappings1 = count_tuples_within_view_groups_given_aggregate_values(tuple, view_grouping_value_q_grouping_value_mappings, true);
-      else
-        view_grouping_value_tuple_count_mappings1 = count_tuples_within_view_groups_given_aggregate_values(tuple, view_grouping_value_q_grouping_value_mappings, false);
-      
-            
-//      System.out.println("second_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
-      
-      System.out.println("second_test::");
-      
-      if(!tuple_rows.get(tuple).isEmpty())
-      {
-        //store the mappings between the query provenance and query grouping values
-        HashMap<Head_strs, Head_strs> query_provenance_grouping_value_mappings = new HashMap<Head_strs, Head_strs>();
-        
-        //store the count of the provenance expression in query
-        HashMap<Head_strs, Integer> q_provenance_count1 = new HashMap<Head_strs, Integer>();
-        
-        Vector<Argument> view_instantiated_with_provenance_args = new Vector<Argument>();
-        //store the count of the tuples in each view grouping values (instantiated by the provenance)
-        HashMap<String, Integer> view_grouping_value_tuple_count_mappings2 = count_tuples_within_view_groups_given_provenance(tuple, query_provenance_grouping_value_mappings, q_provenance_count1, view_instantiated_with_provenance_args);
-        
-//        System.out.println("view_grouping_value_count1::" + view_grouping_value_tuple_count_mappings1);
-        
-//        System.out.println("view_grouping_value_count2::" + view_grouping_value_tuple_count_mappings2);
-        
-//        System.out.println("view_grouping_value_query_grouping_value_mappings::" + view_grouping_value_q_grouping_value_mappings);
-        
-        compare_view_grouping_value_count(tuple_rows.get(tuple), view_grouping_value_q_grouping_value_mappings, view_grouping_value_tuple_count_mappings1, view_grouping_value_tuple_count_mappings2, query_provenance_grouping_value_mappings);
-        
-//        System.out.println("third_test::" + tuple_rows.get(tuple).size() + "::" + tuple_rows.get(tuple).isEmpty());
-        System.out.println("third_test::");
-        if(!tuple_rows.get(tuple).isEmpty())
-        {
-          
-          //store the count of the provenance expression in view
-          HashMap<Head_strs, Integer> q_provenance_count2 = compute_provenance_count_in_view(tuple, query_provenance_grouping_value_mappings, view_instantiated_with_provenance_args);
-//          System.out.println("q_count2::" + q_provenance_count2.size());
-//          System.out.println("q_count1::" + q_provenance_count1.size());
-          
-          compare_provenance_count_query_and_view(tuple, q_provenance_count1, q_provenance_count2, query_provenance_grouping_value_mappings);
-          
-//          System.out.println("fourth_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
-          System.out.println("fourth_test::");
-          
-          System.out.println(tuple_rows.get(tuple).size());
-        }
-      }
-    }
-  
-  }
-  
+//  void deal_with_view_with_aggregation() throws SQLException
+//  {
+//
+////    System.out.println(tuple_why_prov_mappings);
+//    
+//    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
+//    {
+////      view.reset_values();
+//      
+//      Tuple tuple = (Tuple) iter2.next();
+//      
+//      System.out.println(tuple_rows.get(tuple).size());
+//      if(tuple_rows.get(tuple).isEmpty())
+//        continue;
+//      
+//      //store the count of the tuples in each view grouping values (instantiated by the grouping values from provenance)
+//      HashMap<String, Integer> view_grouping_value_tuple_count_mappings1 = null;
+//      
+//    //build mappings between view grouping values and query grouping values
+//      HashMap<String, Head_strs> view_grouping_value_q_grouping_value_mappings = new HashMap<String, Head_strs>();
+//      
+//      if(view.has_having_clause)
+//        view_grouping_value_tuple_count_mappings1 = count_tuples_within_view_groups_given_aggregate_values(tuple, view_grouping_value_q_grouping_value_mappings, true);
+//      else
+//        view_grouping_value_tuple_count_mappings1 = count_tuples_within_view_groups_given_aggregate_values(tuple, view_grouping_value_q_grouping_value_mappings, false);
+//      
+//            
+////      System.out.println("second_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
+//      
+//      System.out.println("second_test::");
+//      
+//      if(!tuple_rows.get(tuple).isEmpty())
+//      {
+//        //store the mappings between the query provenance and query grouping values
+//        HashMap<Head_strs, Head_strs> query_provenance_grouping_value_mappings = new HashMap<Head_strs, Head_strs>();
+//        
+//        //store the count of the provenance expression in query
+//        HashMap<Head_strs, Integer> q_provenance_count1 = new HashMap<Head_strs, Integer>();
+//        
+//        Vector<Argument> view_instantiated_with_provenance_args = new Vector<Argument>();
+//        //store the count of the tuples in each view grouping values (instantiated by the provenance)
+//        HashMap<String, Integer> view_grouping_value_tuple_count_mappings2 = count_tuples_within_view_groups_given_provenance(tuple, query_provenance_grouping_value_mappings, q_provenance_count1, view_instantiated_with_provenance_args);
+//        
+////        System.out.println("view_grouping_value_count1::" + view_grouping_value_tuple_count_mappings1);
+//        
+////        System.out.println("view_grouping_value_count2::" + view_grouping_value_tuple_count_mappings2);
+//        
+////        System.out.println("view_grouping_value_query_grouping_value_mappings::" + view_grouping_value_q_grouping_value_mappings);
+//        
+//        compare_view_grouping_value_count(tuple_rows.get(tuple), view_grouping_value_q_grouping_value_mappings, view_grouping_value_tuple_count_mappings1, view_grouping_value_tuple_count_mappings2, query_provenance_grouping_value_mappings);
+//        
+////        System.out.println("third_test::" + tuple_rows.get(tuple).size() + "::" + tuple_rows.get(tuple).isEmpty());
+//        System.out.println("third_test::");
+//        if(!tuple_rows.get(tuple).isEmpty())
+//        {
+//          
+//          //store the count of the provenance expression in view
+//          HashMap<Head_strs, Integer> q_provenance_count2 = compute_provenance_count_in_view(tuple, query_provenance_grouping_value_mappings, view_instantiated_with_provenance_args);
+////          System.out.println("q_count2::" + q_provenance_count2.size());
+////          System.out.println("q_count1::" + q_provenance_count1.size());
+//          
+//          compare_provenance_count_query_and_view(tuple, q_provenance_count1, q_provenance_count2, query_provenance_grouping_value_mappings);
+//          
+////          System.out.println("fourth_test::" + tuple_rows.get(tuple) + "::" + tuple_rows.get(tuple).isEmpty());
+//          System.out.println("fourth_test::");
+//          
+//          System.out.println(tuple_rows.get(tuple).size());
+//        }
+//      }
+//    }
+//  
+//  }
+//  
   
   static String get_value_seq(Head_strs values)
   {
@@ -1557,130 +1607,130 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
     return args;
   }
   
-  void partially_instantiate_views_with_grouping_values(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
-  {
-    
-    Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
-    
-    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
-    
-    Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
-    
-    Vector<Integer> view_tokens = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
-    
-    String sql = Query_converter2.data2sql_partial_instantiation_with_grouping_values(view, selected_args, grouping_args, tuple.target_agg_functions, head_vals, view.subgoals, view_tokens);
-    
-//    System.out.println(sql);
-    
-    pst = c.prepareStatement(sql);
-    
-    ResultSet rs = pst.executeQuery();
-   
-    rids.clear();
-    
-    head_vals.clear();
-    
-    while(rs.next())
-    {
-      Vector<String> grouping_values = new Vector<String>();
-      
-      Vector<String> agg_values = new Vector<String>();
-      
-      for(int i = 0; i<selected_args.size(); i++)
-      {
-        grouping_values.add(rs.getString(i + 1));
-      }
-      
-      for(int i = 0; i<grouping_args.size(); i++)
-      {
-        agg_values.add(rs.getString(selected_args.size() + i + 1));
-      }
-      
-      Head_strs grouping_vals = new Head_strs(grouping_values);
-      
-      Head_strs target_agg_vals = query_grouping_value_agg_value_mapping.get(grouping_vals);
-      
-      for(int i = 0; i<grouping_arg_ids.size(); i++)
-      {
-        String target_agg_val = target_agg_vals.head_vals.get(grouping_arg_ids.get(i));
-        
-        String agg_val = agg_values.get(i);
-        
-        if(agg_val.equals(target_agg_val))
-        {
-          rids.addAll(tuple_why_prov_mappings.get(grouping_vals));
-          
-          head_vals.add(grouping_vals);
-        }
-      }
-      
-    }
-    
-  }
-    
-  void partially_instantiate_views_with_provenance(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
-  {
-    
-    Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
-    
-    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
-    
-    Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
-    
-    Vector<Integer> view_tokens = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
-    
-    String [] provenance_table_sqls = get_provenance_table_sql(tuple, rids, values_from_why_tokens, view_tokens, view);
-    
-    String sql = Query_converter2.data2sql_partial_instantiation_with_provenance_values(view, selected_args, grouping_args, tuple.target_agg_functions, provenance_table_sqls, view.subgoals, view_tokens);
-    
-    pst = c.prepareStatement(sql);
-    
-//    System.out.println(sql);
-    
-    ResultSet rs = pst.executeQuery();
-   
-    rids.clear();
-    
-    head_vals.clear();
-    
-    while(rs.next())
-    {
-      Vector<String> grouping_values = new Vector<String>();
-      
-      Vector<String> agg_values = new Vector<String>();
-      
-      for(int i = 0; i<selected_args.size(); i++)
-      {
-        grouping_values.add(rs.getString(i + 1));
-      }
-      
-      for(int i = 0; i<grouping_args.size(); i++)
-      {
-        agg_values.add(rs.getString(selected_args.size() + i + 1));
-      }
-      
-      Head_strs grouping_vals = new Head_strs(grouping_values);
-      
-      Head_strs target_agg_vals = query_grouping_value_agg_value_mapping.get(grouping_vals);
-      
-      for(int i = 0; i<grouping_arg_ids.size(); i++)
-      {
-        String target_agg_val = target_agg_vals.head_vals.get(grouping_arg_ids.get(i));
-        
-        String agg_val = agg_values.get(i);
-        
-        if(agg_val.equals(target_agg_val))
-        {
-          rids.addAll(tuple_why_prov_mappings.get(grouping_vals));
-          
-          head_vals.add(grouping_vals);
-        }
-      }
-      
-    }
-    
-  }
-  
+//  void partially_instantiate_views_with_grouping_values(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
+//  {
+//    
+//    Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
+//    
+//    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
+//    
+//    Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
+//    
+//    Vector<Integer> view_tokens = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
+//    
+//    String sql = Query_converter2.data2sql_partial_instantiation_with_grouping_values(view, selected_args, grouping_args, tuple.target_agg_functions, head_vals, view.subgoals, view_tokens);
+//    
+////    System.out.println(sql);
+//    
+//    pst = c.prepareStatement(sql);
+//    
+//    ResultSet rs = pst.executeQuery();
+//   
+//    rids.clear();
+//    
+//    head_vals.clear();
+//    
+//    while(rs.next())
+//    {
+//      Vector<String> grouping_values = new Vector<String>();
+//      
+//      Vector<String> agg_values = new Vector<String>();
+//      
+//      for(int i = 0; i<selected_args.size(); i++)
+//      {
+//        grouping_values.add(rs.getString(i + 1));
+//      }
+//      
+//      for(int i = 0; i<grouping_args.size(); i++)
+//      {
+//        agg_values.add(rs.getString(selected_args.size() + i + 1));
+//      }
+//      
+//      Head_strs grouping_vals = new Head_strs(grouping_values);
+//      
+//      Head_strs target_agg_vals = query_grouping_value_agg_value_mapping.get(grouping_vals);
+//      
+//      for(int i = 0; i<grouping_arg_ids.size(); i++)
+//      {
+//        String target_agg_val = target_agg_vals.head_vals.get(grouping_arg_ids.get(i));
+//        
+//        String agg_val = agg_values.get(i);
+//        
+//        if(agg_val.equals(target_agg_val))
+//        {
+//          rids.addAll(tuple_why_prov_mappings.get(grouping_vals));
+//          
+//          head_vals.add(grouping_vals);
+//        }
+//      }
+//      
+//    }
+//    
+//  }
+//    
+//  void partially_instantiate_views_with_provenance(Tuple tuple, HashSet<Integer> rids, Vector<Head_strs> head_vals) throws SQLException
+//  {
+//    
+//    Vector<Argument> selected_args = get_attribute_in_view(tuple, query.head.args);
+//    
+//    Vector<Vector<Argument>> grouping_args = get_agg_attribute_in_view(tuple, tuple.target_agg_args);
+//    
+//    Vector<Integer> grouping_arg_ids = tuple.target_agg_ids;
+//    
+//    Vector<Integer> view_tokens = view.view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
+//    
+//    String [] provenance_table_sqls = get_provenance_table_sql(tuple, rids, values_from_why_tokens, view_tokens, view);
+//    
+//    String sql = Query_converter2.data2sql_partial_instantiation_with_provenance_values(view, selected_args, grouping_args, tuple.target_agg_functions, provenance_table_sqls, view.subgoals, view_tokens);
+//    
+//    pst = c.prepareStatement(sql);
+//    
+////    System.out.println(sql);
+//    
+//    ResultSet rs = pst.executeQuery();
+//   
+//    rids.clear();
+//    
+//    head_vals.clear();
+//    
+//    while(rs.next())
+//    {
+//      Vector<String> grouping_values = new Vector<String>();
+//      
+//      Vector<String> agg_values = new Vector<String>();
+//      
+//      for(int i = 0; i<selected_args.size(); i++)
+//      {
+//        grouping_values.add(rs.getString(i + 1));
+//      }
+//      
+//      for(int i = 0; i<grouping_args.size(); i++)
+//      {
+//        agg_values.add(rs.getString(selected_args.size() + i + 1));
+//      }
+//      
+//      Head_strs grouping_vals = new Head_strs(grouping_values);
+//      
+//      Head_strs target_agg_vals = query_grouping_value_agg_value_mapping.get(grouping_vals);
+//      
+//      for(int i = 0; i<grouping_arg_ids.size(); i++)
+//      {
+//        String target_agg_val = target_agg_vals.head_vals.get(grouping_arg_ids.get(i));
+//        
+//        String agg_val = agg_values.get(i);
+//        
+//        if(agg_val.equals(target_agg_val))
+//        {
+//          rids.addAll(tuple_why_prov_mappings.get(grouping_vals));
+//          
+//          head_vals.add(grouping_vals);
+//        }
+//      }
+//      
+//    }
+//    
+//  }
+//  
   static String[] get_provenance_table_sql(Tuple tuple, HashSet<Integer> rids, ArrayList<Vector<Head_strs>> values_from_why_tokens, Vector<Integer> view_tokens, Single_view view)
   {
     String[] rel_sqls = new String[view_tokens.size()];
@@ -1741,8 +1791,63 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
     return string;
   }
   
-  void deal_with_view_view_non_aggregation()
+  void deal_with_view_view_non_aggregation() throws SQLException
   {
+
+    StringBuilder stringbuilder = new StringBuilder();
+    
+//    double time1 = System.nanoTime();
+    
+    ResultSet rs = Query_provenance_2.get_query_provenance(view, c, pst);
+
+//    double time2 = System.nanoTime();
+//    
+//    double time = (time2 - time1) * 1.0/1000000000;
+//    
+//    System.out.println("sql_time::" + time);
+    double time1 = System.nanoTime();
+    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
+    {
+      Tuple view_mapping = (Tuple) iter2.next();
+      
+//      HashSet<String> query_grouping_values = new HashSet<String>();
+//      
+//      query_grouping_values.addAll(query_prov_instance.keySet());
+      
+      
+      
+      get_view_provenance_num2(stringbuilder, rs, view, view_mapping, c, pst);
+      
+      
+      
+//      HashMap<String, Head_strs> encoding_origin_mappings = new HashMap<String, Head_strs>();
+//      
+//      HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = get_query_provenance_num(view_mapping,encoding_origin_mappings);
+//      
+//      double time3 = System.nanoTime();
+//      
+//      check_valid_rows(tuple_rows.get(view_mapping), encoding_origin_mappings, view_grouping_value_prov_value_count_mappings, query_grouping_value_prov_value_count_mappings, query_grouping_value_view_grouping_value_mappings);
+//      
+//      double time4 = System.nanoTime();
+//      
+      
+//      System.out.println("t2::" + t2);
+//      System.out.println("t3::" + t3);
+    }
+    double time2 = System.nanoTime();
+    double t1 = (time2 - time1) *1.0/1000000000;
+//      double t2 = (time3 - time2) *1.0/1000000000;
+//      double t3 = (time4 - time3) *1.0/1000000000;
+      
+      System.out.println("t1::" + t1);
+  
+  }
+
+  
+  
+  void deal_with_view_view_non_aggregation2() throws SQLException
+  {
+
     for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
     {
 //      view.reset_values();
@@ -1757,9 +1862,9 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
       
       HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new HashMap<String, ArrayList<ArrayList<String>>>();
       
-      long [] bit_sequence = Bit_operation.init(values_from_why_tokens.size());
+      long [] bit_sequence = Bit_operation.init(query_prov_instance.size());
       
-      HashSet<Head_strs> head_values = new HashSet<Head_strs>();
+      HashSet<String> head_values = new HashSet<String>();
       
 //      tuple_rows_bit_index.put(tuple, bit_sequence);
       
@@ -1773,28 +1878,37 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
       {
         HashSet<String> partial_mapping_subgoals = get_unique_partial_mapping_subgoals(view, tuple, i);
         
-        String[][] curr_partial_mapping_values = new String[values_from_why_tokens.size()][partial_mapping_subgoals.size()];
+        String[][] curr_partial_mapping_values = new String[query_prov_instance.size()][partial_mapping_subgoals.size()];
         
         partial_mapping_values.add(curr_partial_mapping_values);
       }
       
-      Set<Head_strs> head_vals = tuple_why_prov_mappings.keySet();
+      Set<String> head_vals = query_prov_instance.keySet();
       
-      Head_strs[] head_val_array = new Head_strs[values_from_why_tokens.size()];
+      Head_strs[] head_val_array = new Head_strs[query_prov_instance.size()];
       
       HashSet<Integer> valid_row_ids = new HashSet<Integer>();
       
-      for(Head_strs head_val: head_vals)
+      for(String head_val: head_vals)
       {
-        ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
+        String[][] provs = query_prov_instance.get(head_val);
         
         boolean valid4curr_head_val = true;
         
-        for(Integer curr_rid : curr_rids)
+        for(String[] prov: provs)
         {
-          view.evaluate_args(values_from_why_tokens.get(curr_rid), tuple);
+          ArrayList<String[]> tuples = new ArrayList<String[]>();
           
-          head_val_array[curr_rid] = head_val;
+          for(int i = 0; i<prov.length; i++)
+          {
+            String[] curr_tuples = base_relation_contents[i].get(prov[i]);
+            
+            tuples.add(curr_tuples);
+          }
+          
+          view.evaluate_args(tuples, tuple);
+          
+//          head_val_array[curr_rid] = head_val;
           
           if(!view.check_validity(tuple))//rel_attr_value_mappings, undermined_table_conditions_mappings, undetermined_table_arg_value_mappings, first, c, pst))
           {
@@ -1804,10 +1918,10 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
             break;
             
           }
-          else
-          {
-            view.get_partial_mapping_values(tuple, partial_mapping_values, curr_rid);
-          }
+//          else
+//          {
+//            view.get_partial_mapping_values(tuple, partial_mapping_values, curr_rid);
+//          }
           
         }
         
@@ -1815,7 +1929,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
         {
           tuple_rows.get(tuple).add(head_val);
           
-          valid_row_ids.addAll(curr_rids);
+//          valid_row_ids.addAll(curr_rids);
         }
         
       }
@@ -1840,72 +1954,194 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //      }
 //      System.out.println(tuple_rows.get(tuple));
 
-      try {
-//        double t1 = System.nanoTime();
-        
-        get_valid_row_ids(tuple, partial_mapping_values, tuple_rows.get(tuple), head_val_array, valid_row_ids, view.conditions, view.subgoals, view.subgoal_name_mappings, c, pst);
-        
-//        double t2 = System.nanoTime();
+//      try {
+////        double t1 = System.nanoTime();
 //        
-//        double time = (t2 - t1) * 1.0/1000000000;
+//        get_valid_row_ids(tuple, partial_mapping_values, tuple_rows.get(tuple), head_val_array, valid_row_ids, view.conditions, view.subgoals, view.subgoal_name_mappings, c, pst);
 //        
-//        System.out.println(time);
-      } catch (SQLException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+////        double t2 = System.nanoTime();
+////        
+////        double time = (t2 - t1) * 1.0/1000000000;
+////        
+////        System.out.println(time);
+//      } catch (SQLException e) {
+//        // TODO Auto-generated catch block
+//        e.printStackTrace();
+//      }
       
 //      System.out.println(tuple_rows.get(tuple));
       
     }
+  
+    
   }
+//  {
+//    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
+//    {
+////      view.reset_values();
+//      
+//      Tuple tuple = (Tuple) iter2.next();
+//      
+////      System.out.println(tuple.name + "|" + tuple.mapSubgoals_str);
+//      
+//      //each table -> related table -> arg_list
+//      
+//      HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new HashMap<String, ArrayList<Conditions>>();
+//      
+//      HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new HashMap<String, ArrayList<ArrayList<String>>>();
+//      
+//      long [] bit_sequence = Bit_operation.init(values_from_why_tokens.size());
+//      
+//      HashSet<Head_strs> head_values = new HashSet<Head_strs>();
+//      
+////      tuple_rows_bit_index.put(tuple, bit_sequence);
+//      
+//      tuple_rows.put(tuple, head_values);
+//      
+//      boolean first = true;
+//      
+//      ArrayList<String[][]> partial_mapping_values = new ArrayList<String[][]>();
+//      
+//      for(int i = 0; i<tuple.cluster_patial_mapping_condition_ids.size(); i++)
+//      {
+//        HashSet<String> partial_mapping_subgoals = get_unique_partial_mapping_subgoals(view, tuple, i);
+//        
+//        String[][] curr_partial_mapping_values = new String[values_from_why_tokens.size()][partial_mapping_subgoals.size()];
+//        
+//        partial_mapping_values.add(curr_partial_mapping_values);
+//      }
+//      
+//      Set<Head_strs> head_vals = tuple_why_prov_mappings.keySet();
+//      
+//      Head_strs[] head_val_array = new Head_strs[values_from_why_tokens.size()];
+//      
+//      HashSet<Integer> valid_row_ids = new HashSet<Integer>();
+//      
+//      for(Head_strs head_val: head_vals)
+//      {
+//        ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
+//        
+//        boolean valid4curr_head_val = true;
+//        
+//        for(Integer curr_rid : curr_rids)
+//        {
+//          view.evaluate_args(values_from_why_tokens.get(curr_rid), tuple);
+//          
+//          head_val_array[curr_rid] = head_val;
+//          
+//          if(!view.check_validity(tuple))//rel_attr_value_mappings, undermined_table_conditions_mappings, undetermined_table_arg_value_mappings, first, c, pst))
+//          {
+//            
+//            valid4curr_head_val = false;
+//            
+//            break;
+//            
+//          }
+//          else
+//          {
+//            view.get_partial_mapping_values(tuple, partial_mapping_values, curr_rid);
+//          }
+//          
+//        }
+//        
+//        if(valid4curr_head_val)
+//        {
+//          tuple_rows.get(tuple).add(head_val);
+//          
+//          valid_row_ids.addAll(curr_rids);
+//        }
+//        
+//      }
+//      
+////      for(int i = 0; i<values_from_why_tokens.size(); i++)
+////      {
+////        view.evaluate_args(values_from_why_tokens.get(i), tuple);
+////        
+////        if(view.check_validity(tuple, partial_mapping_values, i))//rel_attr_value_mappings, undermined_table_conditions_mappings, undetermined_table_arg_value_mappings, first, c, pst))
+////        {
+////          
+//////              if(undermined_table_conditions_mappings.size() == 0)              
+////          {
+//////            Bit_operation.set_bit(tuple_rows_bit_index.get(tuple), i);
+////            
+////            tuple_rows.get(tuple).add(i);
+////          }
+////          
+////        }
+////        
+//////        first = false;
+////      }
+////      System.out.println(tuple_rows.get(tuple));
+//
+//      try {
+////        double t1 = System.nanoTime();
+//        
+//        get_valid_row_ids(tuple, partial_mapping_values, tuple_rows.get(tuple), head_val_array, valid_row_ids, view.conditions, view.subgoals, view.subgoal_name_mappings, c, pst);
+//        
+////        double t2 = System.nanoTime();
+////        
+////        double time = (t2 - t1) * 1.0/1000000000;
+////        
+////        System.out.println(time);
+//      } catch (SQLException e) {
+//        // TODO Auto-generated catch block
+//        e.printStackTrace();
+//      }
+//      
+////      System.out.println(tuple_rows.get(tuple));
+//      
+//    }
+//  }
   
   public void run() {
-//     System.out.println("Running " +  threadName );
-//     try {
-//        for(int i = 4; i > 0; i--) {
-//           System.out.println("Thread: " + threadName + ", " + i);
-//           // Let the thread sleep for a while.
-//           Thread.sleep(50);
-//        }
-//     } catch (InterruptedException e) {
-//        System.out.println("Thread " +  threadName + " interrupted.");
-//     }
-//     System.out.println("Thread " +  threadName + " exiting.");
+
     
-//    if(!view.head.has_agg)
-    deal_with_view_view_non_aggregation();
-//    System.out.println("first_test::");
-    if(view.head.has_agg)
-    {
       try {
+        
+        if(!view.head.has_agg)
+          deal_with_view_view_non_aggregation();
+        else
+        {
+        
         deal_with_view_with_aggregation2();
+        }
         c.close();
 
       } catch (SQLException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
       }
-    }
-    
-    
 //    System.out.println(view.view_name);
   }
   
   
   void deal_with_view_with_aggregation2() throws SQLException
   {
+    StringBuilder stringbuilder = new StringBuilder();
+    
+//    double time1 = System.nanoTime();
+    
+    ResultSet rs = Query_provenance_2.get_query_provenance(view, c, pst);
+
+//    double time2 = System.nanoTime();
+//    
+//    double time = (time2 - time1) * 1.0/1000000000;
+//    
+//    System.out.println("sql_time::" + time);
+    double time1 = System.nanoTime();
     for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
     {
       Tuple view_mapping = (Tuple) iter2.next();
       
-      HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings = new HashMap<String, HashSet<String>>();
+//      HashSet<String> query_grouping_values = new HashSet<String>();
+//      
+//      query_grouping_values.addAll(query_prov_instance.keySet());
       
-      double time1 = System.nanoTime();
       
-      get_view_provenance_num(tuple_rows.get(view_mapping), query_grouping_value_view_grouping_value_mappings, tuple_rows.get(view_mapping), view, view_mapping, c, pst);
       
-      double time2 = System.nanoTime();
+      get_view_provenance_num2(stringbuilder, rs, view, view_mapping, c, pst);
+      
+      
       
 //      HashMap<String, Head_strs> encoding_origin_mappings = new HashMap<String, Head_strs>();
 //      
@@ -1917,14 +2153,16 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //      
 //      double time4 = System.nanoTime();
 //      
-      double t1 = (time2 - time1) *1.0/1000000000;
+      
+//      System.out.println("t2::" + t2);
+//      System.out.println("t3::" + t3);
+    }
+    double time2 = System.nanoTime();
+    double t1 = (time2 - time1) *1.0/1000000000;
 //      double t2 = (time3 - time2) *1.0/1000000000;
 //      double t3 = (time4 - time3) *1.0/1000000000;
       
       System.out.println("t1::" + t1);
-//      System.out.println("t2::" + t2);
-//      System.out.println("t3::" + t3);
-    }
   }
   
   static String convert2md5(Head_strs heads)
@@ -1946,100 +2184,100 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //    return MD5.get_MD5_encoding(heads.toString());
   }
   
-  HashMap<String, HashMap<String, Integer>> get_query_provenance_num(Tuple view_mapping, HashMap<String, Head_strs> encoding_origin_mappings)
-  {
-    HashSet<Head_strs> grouping_values = tuple_rows.get(view_mapping);
-    
-    HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = new HashMap<String, HashMap<String, Integer>>();
-    
-    for(Head_strs grouping_value: grouping_values)
-    {
-      ArrayList<Integer> rids = tuple_why_prov_mappings.get(grouping_value);
-      
-      String converted_grouping_value = convert2md5(grouping_value);
-      
-      encoding_origin_mappings.put(converted_grouping_value, grouping_value);
-      
-      for(Integer rid : rids)
-      {
-        Vector<Head_strs> provenance_vec = values_from_why_tokens.get(rid);
-        
-        Head_strs q_provenance = view.evaluate_args_with_provenance(provenance_vec, view_mapping);
-        
-        String converted_q_provenance = convert2md5(q_provenance);
-        
-        if(query_grouping_value_prov_value_count_mappings.get(converted_grouping_value) == null)
-        {
-          HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
-          
-          prov_value_count_mappings.put(converted_q_provenance, 1);
-          
-          query_grouping_value_prov_value_count_mappings.put(converted_grouping_value, prov_value_count_mappings);
-        }
-        else
-        {
-          if(query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).get(converted_q_provenance) == null)
-          {
-            query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).put(converted_q_provenance, 1);
-          }
-          else
-          {
-            int count = query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).get(converted_q_provenance);
-            
-            query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).put(converted_q_provenance, count + 1);
-          }
-        }
-        
-        
-      }
-      
-    }
-    
-    return query_grouping_value_prov_value_count_mappings;
-  }
-  
-  String gen_query_agg_value_expression(HashSet<Head_strs> head_values, Tuple tuple, Vector<String> relation_seqs)
-  {
-    int count = 0;
-    StringBuilder sb = new StringBuilder();
-    HashSet<String> grouping_values = new HashSet<String>();
-    if(view.head.args.size() > 0)
-    for(Head_strs head_val : head_values)
-    {
-      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
-      
-//      System.out.println("rids::" + curr_rids);
-      
-      for(Integer rid: curr_rids)
-      {
-        
-        
-//        grouping_values.add(view.evaluate_view_grouping_attrs2(values_from_why_tokens.get(rid), tuple, query));
-        String value = view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, query, relation_seqs); 
-        if(!grouping_values.contains(value))
-        {
-          if(count >= 1)
-            sb.append(",");
-          sb.append(value);
-          grouping_values.add(value);
-          count ++;
-        }
-        
-        
-//        System.out.println(grouping_values.length());
-//        grouping_value_condition_string += curr_grouping_value_condition_string;
-//        view_grouping_values_from_query.add(view_grouping_values);
-//        System.out.println(count);
-        
-      }
-      
-    }
-    
-    grouping_values.clear();
-    
-    return sb.toString();
-  }
-  
+//  HashMap<String, HashMap<String, Integer>> get_query_provenance_num(Tuple view_mapping, HashMap<String, Head_strs> encoding_origin_mappings)
+//  {
+//    HashSet<Head_strs> grouping_values = tuple_rows.get(view_mapping);
+//    
+//    HashMap<String, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings = new HashMap<String, HashMap<String, Integer>>();
+//    
+//    for(Head_strs grouping_value: grouping_values)
+//    {
+//      ArrayList<Integer> rids = tuple_why_prov_mappings.get(grouping_value);
+//      
+//      String converted_grouping_value = convert2md5(grouping_value);
+//      
+//      encoding_origin_mappings.put(converted_grouping_value, grouping_value);
+//      
+//      for(Integer rid : rids)
+//      {
+//        Vector<Head_strs> provenance_vec = values_from_why_tokens.get(rid);
+//        
+//        Head_strs q_provenance = view.evaluate_args_with_provenance(provenance_vec, view_mapping);
+//        
+//        String converted_q_provenance = convert2md5(q_provenance);
+//        
+//        if(query_grouping_value_prov_value_count_mappings.get(converted_grouping_value) == null)
+//        {
+//          HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
+//          
+//          prov_value_count_mappings.put(converted_q_provenance, 1);
+//          
+//          query_grouping_value_prov_value_count_mappings.put(converted_grouping_value, prov_value_count_mappings);
+//        }
+//        else
+//        {
+//          if(query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).get(converted_q_provenance) == null)
+//          {
+//            query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).put(converted_q_provenance, 1);
+//          }
+//          else
+//          {
+//            int count = query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).get(converted_q_provenance);
+//            
+//            query_grouping_value_prov_value_count_mappings.get(converted_grouping_value).put(converted_q_provenance, count + 1);
+//          }
+//        }
+//        
+//        
+//      }
+//      
+//    }
+//    
+//    return query_grouping_value_prov_value_count_mappings;
+//  }
+//  
+//  String gen_query_agg_value_expression(HashSet<Head_strs> head_values, Tuple tuple, Vector<String> relation_seqs)
+//  {
+//    int count = 0;
+//    StringBuilder sb = new StringBuilder();
+//    HashSet<String> grouping_values = new HashSet<String>();
+//    if(view.head.args.size() > 0)
+//    for(Head_strs head_val : head_values)
+//    {
+//      ArrayList<Integer> curr_rids = tuple_why_prov_mappings.get(head_val);
+//      
+////      System.out.println("rids::" + curr_rids);
+//      
+//      for(Integer rid: curr_rids)
+//      {
+//        
+//        
+////        grouping_values.add(view.evaluate_view_grouping_attrs2(values_from_why_tokens.get(rid), tuple, query));
+//        String value = view.evaluate_view_grouping_attrs(values_from_why_tokens.get(rid), tuple, query, relation_seqs); 
+//        if(!grouping_values.contains(value))
+//        {
+//          if(count >= 1)
+//            sb.append(",");
+//          sb.append(value);
+//          grouping_values.add(value);
+//          count ++;
+//        }
+//        
+//        
+////        System.out.println(grouping_values.length());
+////        grouping_value_condition_string += curr_grouping_value_condition_string;
+////        view_grouping_values_from_query.add(view_grouping_values);
+////        System.out.println(count);
+//        
+//      }
+//      
+//    }
+//    
+//    grouping_values.clear();
+//    
+//    return sb.toString();
+//  }
+//  
   String gen_query_agg_value_expression2(HashSet<Head_strs> head_values, Tuple tuple, Query query, Vector<String> relation_seqs)
   {
     int count = 0;
@@ -2232,191 +2470,548 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
   }
 
   
-  void get_view_provenance_num(HashSet<Head_strs> valid_q_grouping_values, HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings, HashSet<Head_strs> query_grouping_values, Single_view view, Tuple view_mapping, Connection c, PreparedStatement pst) throws SQLException
+//  void get_view_provenance_num(ResultSet rs, HashSet<Head_strs> valid_q_grouping_values, HashMap<String, HashSet<String>> query_grouping_value_view_grouping_value_mappings, Single_view view, Tuple view_mapping, Connection c, PreparedStatement pst) throws SQLException
+//  {
+//    int[] view_head_var_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(view_mapping);
+//    
+//    Vector<Integer> q_why_column_ids = view.view_mapping_q_why_prov_token_col_ids_mapping.get(view_mapping);
+//    
+//    Vector<Integer> v_why_column_ids = view.view_mapping_view_why_prov_token_col_ids_mapping.get(view_mapping);
+//
+////    HashMap<Head_strs, HashMap<String, int[]>> view_query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, int[]>>(); 
+//    
+//    HashMap<String, Integer> view_query_count = new HashMap<String, Integer>();
+//    
+////    HashSet<Head_strs> view_query_keys = new HashSet<Head_strs>();
+//    
+////    HashMap<Head_strs, HashMap<String, Integer>> query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, Integer>>();
+//    
+//    double time0 = System.nanoTime();
+//    
+//    double intersect_time = 0;
+//    
+//    while(rs.next())
+//    {
+//      
+////      Vector<String> grouping_value_vec = new Vector<String>();
+////      
+////      for(int i = 0; i<view.head.args.size(); i++)
+////      {
+////        grouping_value_vec.add(rs.getString(i + 1));
+////      }
+//      
+//      Vector<String> query_grouping_value_vec = new Vector<String>();
+//
+//      for(int i = 0; i<view_head_var_ids.length; i++)
+//      {
+//        query_grouping_value_vec.add(rs.getString(view_head_var_ids[i] + 1));
+//      }
+//      
+//      Head_strs query_grouping_value = new Head_strs(query_grouping_value_vec);
+//      
+//      
+//      Array citation_vec = rs.getArray(view.head.args.size() + 1);
+//      
+//      String[][] prov_lists = (String[][]) citation_vec.getArray();
+//      
+//      for(int i = 0; i<prov_lists.length; i++)
+//      {
+//        String[] curr_provenance = prov_lists[i];
+//        
+////        String prov_expr = Build_query_prov_index.convert2md5(curr_provenance, v_why_column_ids);
+//        
+////        HashMap<String, int[]> curr_query_prov_index_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+////        
+////        if(curr_query_prov_index_mappings != null)
+////        {
+////          int[] counts = curr_query_prov_index_mappings.get(prov_expr);
+////          
+////          if(counts !=null)
+////          {
+////            
+////            counts[0]++;
+//////            HashMap<String, Integer> curr_view_prov_index_mappings = view_prov_index_mappings.get(query_grouping_value);
+//////            
+//////            int count = curr_view_prov_index_mappings.get(prov_expr);
+//////            
+//////            curr_view_prov_index_mappings.put(prov_expr, count + 1);
+////            
+////            continue;
+////          }
+////            
+////        }
+//        
+//        int id = 0;
+//        
+//        long[] intersect_indexes = null;
+//        
+//        double t1 = System.nanoTime();
+//        
+//        for(Integer q_prov_col: q_why_column_ids)
+//        {
+//          Vector<String> query_prov_list = query_prov_lists[q_prov_col];
+//          
+//          Vector<long[]> prov_index = prov_indexes[q_prov_col];
+//          
+////          HashMap<String, long[]> query_index = query_prov_index[q_prov_col];
+//          
+//          StringBuilder sb = new StringBuilder();
+//          
+//          sb.append(curr_provenance[v_why_column_ids.get(id)]);
+//          
+//          sb.append(init.separator);
+//          
+//          sb.append(query_grouping_value);
+//          
+//          int pos = Binary_search.binarySearch(query_prov_list, sb.toString());
+//          
+//          if(!Binary_search.check_exists(query_prov_list, sb.toString(), pos))
+//            break;
+//          
+////          long[] indexes = query_index.get(sb.toString());
+//          long[] indexes = prov_index.get(pos);
+//          
+////          HashSet<Integer> indexes = prov_index_mappings.get(query_grouping_value);
+//          
+////          if(indexes == null)
+////            break;
+//          
+//          
+//          
+//          if(id == 0)
+//          {
+//            intersect_indexes = Bit_operation.clone_array(indexes);
+//            
+//            
+//          }
+//          else
+//          {
+//            Bit_operation.and(intersect_indexes, indexes);
+//          }
+//          
+//          id++;
+//        }
+//        
+//        double t2 = System.nanoTime();
+//        
+//        intersect_time += (t2 - t1)*1.0/1000000000;
+//        
+//        //provenance not matching, quit reasoning for current view tuple
+//        if(id < q_why_column_ids.size())
+//        {
+//          break;
+//        }
+//        
+//        int count = Bit_operation.numberOfSetBits(intersect_indexes); 
+//        
+//        if(count == 0)
+//          break;
+////        if(!intersect_indexes.isEmpty())
+//        else
+//        {
+//          
+//          view_query_count.compute(query_grouping_value, (key, value) -> value == null ? count : value + count);
+//
+////          Integer count = view_query_count.get(query_grouping_value);
+////          
+////          if(count == null)
+////          {
+//////            view_query_keys.add(query_grouping_value);
+////            
+////            view_query_count.put(query_grouping_value, intersect_indexes.size());
+////          }
+////          else
+////            view_query_count.put(query_grouping_value, count + intersect_indexes.size());
+//          
+//          
+////          int q_prov_count = intersect_indexes.size();
+////          
+////          HashMap<String, int[]> curr_view_prov_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+////          
+////          if(curr_view_prov_mappings == null)
+////          {
+////            curr_view_prov_mappings = new HashMap<String, int[]>();
+////            
+////            int[] counts = new int[2];
+////            
+////            counts[0] = 1;
+////            
+////            counts[1] = q_prov_count;
+////            
+////            curr_view_prov_mappings.put(prov_expr, counts);
+////            
+////            view_query_prov_index_mappings.put(query_grouping_value, curr_view_prov_mappings);
+//////            
+//////            HashMap<String, Integer> curr_query_prov_mappings = new HashMap<String, Integer>();
+//////            
+//////            curr_query_prov_mappings.put(prov_expr, q_prov_count);
+//////            
+//////            query_prov_index_mappings.put(query_grouping_value, curr_query_prov_mappings);
+////          }
+////          else
+////          {
+////            int[] count = curr_view_prov_mappings.get(prov_expr);
+////            
+////            if(count == null)
+////            {
+////              count = new int[2];
+////              
+////              count[0] = 1;
+////              
+////              count[1] = q_prov_count;
+////              
+////              curr_view_prov_mappings.put(prov_expr, count);
+////              
+//////              query_prov_index_mappings.get(query_grouping_value).put(prov_expr, q_prov_count);
+////            }
+////            else
+////              count[0] ++;
+////          }
+//        }
+//        
+//       
+//        
+//      }
+//      
+//      
+////      String converted_query_grouping_value = convert2md5(query_grouping_value);
+////    
+////      
+////      if(!query_grouping_values.contains(query_grouping_value))
+////        continue;
+////      
+//////      double t1 = System.nanoTime();
+////      
+////      Head_strs view_grouping_value = new Head_strs(grouping_value_vec);
+////      
+////      String converted_view_grouping_value = convert2md5(view_grouping_value);
+////      
+//////      double t1 = System.nanoTime();
+////      
+////      if(query_grouping_value_view_grouping_value_mappings.get(converted_query_grouping_value) == null)
+////      {
+////        HashSet<String> view_grouping_values = new HashSet<String>();
+////        
+////        view_grouping_values.add(converted_view_grouping_value);
+////        
+////        query_grouping_value_view_grouping_value_mappings.put(converted_query_grouping_value, view_grouping_values);
+////      }
+////      else
+////      {
+////        query_grouping_value_view_grouping_value_mappings.get(converted_query_grouping_value).add(converted_view_grouping_value);
+////      }
+////      
+////      grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, retrieve_provenance_values(rs, view.head.args.size()));
+//      
+//      
+//      
+//      
+////      Vector<String> prov_vec = new Vector<String>();
+////      
+////      for(int k = view.head.args.size(); k<col_num; k++)
+////      {
+////        prov_vec.add(rs.getString(k + 1));
+////      }
+////      
+////      Head_strs prov_value = new Head_strs(prov_vec);
+////      
+////      String converted_prov_value = convert2md5(prov_value);
+////      
+////      if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value) == null)
+////      {
+////        HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
+////        
+////        prov_value_count_mappings.put(converted_prov_value, 1);
+////        
+////        grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, prov_value_count_mappings);
+////      }
+////      else
+////      {
+////        if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value) == null)
+////        {
+////          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, 1);
+////        }
+////        else
+////        {
+////          int count = grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value);
+////          
+////          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, count + 1);
+////        }
+////      }
+//      
+//    }
+//    
+////    if(view_query_prov_index_mappings.isEmpty())
+////    {
+////      valid_q_grouping_values.clear();
+////      
+////      tuple_rows.put(view_mapping, valid_q_grouping_values);
+////      
+////      return;
+////    }
+//    
+//    double time1 = System.nanoTime();
+//    
+//    check_valid_rows2(tuple_rows, view_mapping, view_query_count, query_prov_instance);
+//    
+//    double time2 = System.nanoTime();
+//    
+//    double delta_time = (time2 - time1)*1.0/1000000000;
+//
+//    double d_time = (time1 - time0) *1.0/1000000000;
+//    
+//    System.out.println("time0------" + d_time);
+//    
+//    System.out.println("time::::::::::" + delta_time);
+//    
+//    System.out.println("intersect_time::::" + intersect_time);
+//    
+//    System.out.println(view.view_name);
+//    
+////    System.out.println("row_count::" + valid_q_grouping_values.size());
+////    
+////    tuple_rows.put(view_mapping, valid_q_grouping_values);
+//    
+////    return grouping_value_prov_value_count_mappings;
+//  }
+//  
+  void get_view_provenance_num2(StringBuilder stringbuilder, ResultSet rs, Single_view view, Tuple view_mapping, Connection c, PreparedStatement pst) throws SQLException
   {
     int[] view_head_var_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(view_mapping);
-    
-    Vector<Integer> view_why_prov_token_ids = view.view_mapping_view_why_prov_token_col_ids_mapping.get(view_mapping);
-    
-    Vector<String> relation_seqs = new Vector<String>();
-    
-    String grouping_value_condition_string = gen_instantiation_condition_string(view.head.args, relation_seqs);
-    
-    double test_time = 0.0;
-    
-//    double t1 = System.nanoTime();
-//    
-//    String grouping_value_condition_value_string = gen_query_agg_value_expression(query_grouping_values, view_mapping, relation_seqs);
-//    
-//    double t2 = System.nanoTime();
-//    test_time += ((t2 - t1)*1.0/1000000000);
-    
-    String query = Virtual_view_query_generator.gen_query_for_retrieving_materialized_views2(view, view_head_var_ids, view_why_prov_token_ids, grouping_value_condition_string, null);
-    
-    pst = c.prepareStatement(query);
-    
-    
-//    if(query.length() > 10000)
-//      System.out.println(query.substring(0, 10000));
-    
-//    System.out.println(query);
-    
-//    System.out.println("fetch_size::" + pst.getFetchSize());
-//    
-    pst.setFetchSize(1000);
-    
-    double time1 = System.nanoTime();
-    
-    ResultSet rs = pst.executeQuery();
-    
-    rs.setFetchSize(1000);
-    
-    double time2 = System.nanoTime();
-    
-    double time = (time2 - time1) * 1.0/1000000000;
-    
-    System.out.println("sql_time::" + time);
-    
-//    HashMap<String, HashMap<String, Integer>> grouping_value_prov_value_count_mappings = new HashMap<String, HashMap<String, Integer>>();
     
     Vector<Integer> q_why_column_ids = view.view_mapping_q_why_prov_token_col_ids_mapping.get(view_mapping);
     
     Vector<Integer> v_why_column_ids = view.view_mapping_view_why_prov_token_col_ids_mapping.get(view_mapping);
 
-    HashMap<Head_strs, HashMap<String, Integer>> view_prov_index_mappings = new HashMap<Head_strs, HashMap<String, Integer>>(); 
+//    HashMap<Head_strs, HashMap<String, int[]>> view_query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, int[]>>(); 
     
-    HashMap<Head_strs, HashMap<String, Integer>> query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, Integer>>();
+    HashMap<String, Integer> view_query_count = new HashMap<String, Integer>();
+    
+    view_query_count.putAll(query_grouping_value_initial_count);
+    
+//    HashSet<Head_strs> view_query_keys = new HashSet<Head_strs>();
+    
+//    HashMap<Head_strs, HashMap<String, Integer>> query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, Integer>>();
+    
+    double time0 = System.nanoTime();
+    
+    double intersect_time = 0;
+    
+    double r_time = 0;
     
     while(rs.next())
     {
-      Vector<String> grouping_value_vec = new Vector<String>();
+      
+//      Vector<String> grouping_value_vec = new Vector<String>();
+//      
+//      for(int i = 0; i<view.head.args.size(); i++)
+//      {
+//        grouping_value_vec.add(rs.getString(i + 1));
+//      }
       
       
       
-      for(int i = 0; i<view.head.args.size(); i++)
-      {
-        grouping_value_vec.add(rs.getString(i + 1));
-      }
-      
-      Vector<String> query_grouping_value_vec = new Vector<String>();
+//      Vector<String> query_grouping_value_vec = new Vector<String>();
+      double t11 = System.nanoTime();
+      String query_grouping_value_arr = new String();
 
       for(int i = 0; i<view_head_var_ids.length; i++)
       {
-        query_grouping_value_vec.add(grouping_value_vec.get(view_head_var_ids[i]));
+        if(i >= 1)
+          query_grouping_value_arr = Head_strs.concatenate_strings(stringbuilder, query_grouping_value_arr, rs.getString(view_head_var_ids[i] + 1));
+        else
+          query_grouping_value_arr = rs.getString(view_head_var_ids[i] + 1);
+        
+//        query_grouping_value_vec.add(rs.getString(view_head_var_ids[i] + 1));
       }
       
-      Head_strs query_grouping_value = new Head_strs(query_grouping_value_vec);
+      
+      
+//      Head_strs query_grouping_value = new Head_strs(query_grouping_value_vec);
       
       Array citation_vec = rs.getArray(view.head.args.size() + 1);
       
-      String[] prov_lists = (String[]) citation_vec.getArray();
+      String[][] prov_lists = (String[][]) citation_vec.getArray();
+      
+      double t22 = System.nanoTime();
+      
+      r_time += (t22 - t11);
       
       for(int i = 0; i<prov_lists.length; i++)
       {
-        String prov = prov_lists[i];
+        String[] curr_provenance = prov_lists[i];
         
-        String[] curr_provenance = prov.split(Query_provenance.separator_input);
+//        String prov_expr = Build_query_prov_index.convert2md5(curr_provenance, v_why_column_ids);
         
-        String prov_expr = Build_query_prov_index.convert2md5(curr_provenance, v_why_column_ids);
-        
-        HashMap<String, Integer> curr_query_prov_index_mappings = query_prov_index_mappings.get(query_grouping_value);
-        
-        if(curr_query_prov_index_mappings != null)
-        {
-          if(curr_query_prov_index_mappings.get(prov_expr) !=null)
-          {
-            HashMap<String, Integer> curr_view_prov_index_mappings = view_prov_index_mappings.get(query_grouping_value);
-            
-            int count = curr_view_prov_index_mappings.get(prov_expr);
-            
-            curr_view_prov_index_mappings.put(prov_expr, count + 1);
-            
-            continue;
-          }
-            
-        }
+//        HashMap<String, int[]> curr_query_prov_index_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+//        
+//        if(curr_query_prov_index_mappings != null)
+//        {
+//          int[] counts = curr_query_prov_index_mappings.get(prov_expr);
+//          
+//          if(counts !=null)
+//          {
+//            
+//            counts[0]++;
+////            HashMap<String, Integer> curr_view_prov_index_mappings = view_prov_index_mappings.get(query_grouping_value);
+////            
+////            int count = curr_view_prov_index_mappings.get(prov_expr);
+////            
+////            curr_view_prov_index_mappings.put(prov_expr, count + 1);
+//            
+//            continue;
+//          }
+//            
+//        }
         
         int id = 0;
         
-        HashSet<Integer> intersect_indexes = new HashSet<Integer>();
+        long[] intersect_indexes = null;
+        
+        double t1 = System.nanoTime();
         
         for(Integer q_prov_col: q_why_column_ids)
         {
-          HashMap<String, HashMap<Head_strs, HashSet<Integer>>> query_index = Prov_reasoning2.query_indexes[q_prov_col];
+//          Vector<String> query_prov_list = query_prov_lists[q_prov_col];
+//          
+//          Vector<long[]> prov_index = prov_indexes[q_prov_col];
           
-          HashMap<Head_strs, HashSet<Integer>> prov_index_mappings = query_index.get(prov_expr);
+          HashMap<String, HashMap<String, long[]>> query_index = query_prov_index_lists[q_prov_col];
           
-          if(prov_index_mappings == null)
+          
+          HashMap<String, long[]> curr_query_index = query_index.get(curr_provenance[v_why_column_ids.get(id)]);
+          
+          if(curr_query_index == null)
+          {
             break;
+          }
           
-          HashSet<Integer> indexes = prov_index_mappings.get(query_grouping_value);
+          long[] indexes = curr_query_index.get(query_grouping_value_arr);
+          
+//          StringBuilder sb = new StringBuilder();
+          
+//          stringbuilder.append(curr_provenance[v_why_column_ids.get(id)]);
+//          
+//          stringbuilder.append(init.separator);
+//          
+//          stringbuilder.append(query_grouping_value_arr);
+//          
+//          String res = stringbuilder.toString();
+//          
+//          stringbuilder.delete(0, res.length());
+////          int pos = Binary_search.binarySearch(query_prov_list, sb.toString());
+////          
+////          if(!Binary_search.check_exists(query_prov_list, sb.toString(), pos))
+////            break;
+//          
+//          
+//          long[] indexes = query_index.get(res);
+          
+//          long[] indexes = prov_index.get(pos);
+          
+//          HashSet<Integer> indexes = prov_index_mappings.get(query_grouping_value);
           
           if(indexes == null)
             break;
           
+          
+          
           if(id == 0)
-            intersect_indexes.addAll(indexes);
+          {
+            intersect_indexes = Bit_operation.clone_array(indexes);
+            
+            
+          }
           else
-            intersect_indexes.retainAll(indexes);
+          {
+            Bit_operation.and(intersect_indexes, indexes);
+          }
           
           id++;
         }
         
+        double t2 = System.nanoTime();
         
+        intersect_time += (t2 - t1)*1.0/1000000000;
+        
+        
+        //provenance not matching, quit reasoning for current view tuple
         if(id < q_why_column_ids.size())
-          intersect_indexes.clear();
-        
-        if(!intersect_indexes.isEmpty())
         {
-          int q_prov_count = intersect_indexes.size();
-          
-          HashMap<String, Integer> curr_view_prov_mappings = view_prov_index_mappings.get(query_grouping_value);
-          
-          if(curr_view_prov_mappings == null)
-          {
-            curr_view_prov_mappings = new HashMap<String, Integer>();
-            
-            curr_view_prov_mappings.put(prov_expr, 1);
-            
-            view_prov_index_mappings.put(query_grouping_value, curr_view_prov_mappings);
-            
-            HashMap<String, Integer> curr_query_prov_mappings = new HashMap<String, Integer>();
-            
-            curr_query_prov_mappings.put(prov_expr, q_prov_count);
-            
-            query_prov_index_mappings.put(query_grouping_value, curr_query_prov_mappings);
-          }
-          else
-          {
-            Integer count = curr_view_prov_mappings.get(prov_expr);
-            
-            if(count == null)
-            {
-              curr_view_prov_mappings.put(prov_expr, 1);
-              
-              query_prov_index_mappings.get(query_grouping_value).put(prov_expr, q_prov_count);
-            }
-            else
-              curr_view_prov_mappings.put(prov_expr, count + 1);
-          }
+          break;
         }
+        
+        int count = Bit_operation.numberOfSetBits(intersect_indexes); 
+        
+        if(count == 0)
+          break;
+//        if(!intersect_indexes.isEmpty())
+        else
+        {
+          
+          
+          view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? count : value + count);
+
+//          Integer count = view_query_count.get(query_grouping_value);
+//          
+//          if(count == null)
+//          {
+////            view_query_keys.add(query_grouping_value);
+//            
+//            view_query_count.put(query_grouping_value, intersect_indexes.size());
+//          }
+//          else
+//            view_query_count.put(query_grouping_value, count + intersect_indexes.size());
+          
+          
+//          int q_prov_count = intersect_indexes.size();
+//          
+//          HashMap<String, int[]> curr_view_prov_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+//          
+//          if(curr_view_prov_mappings == null)
+//          {
+//            curr_view_prov_mappings = new HashMap<String, int[]>();
+//            
+//            int[] counts = new int[2];
+//            
+//            counts[0] = 1;
+//            
+//            counts[1] = q_prov_count;
+//            
+//            curr_view_prov_mappings.put(prov_expr, counts);
+//            
+//            view_query_prov_index_mappings.put(query_grouping_value, curr_view_prov_mappings);
+////            
+////            HashMap<String, Integer> curr_query_prov_mappings = new HashMap<String, Integer>();
+////            
+////            curr_query_prov_mappings.put(prov_expr, q_prov_count);
+////            
+////            query_prov_index_mappings.put(query_grouping_value, curr_query_prov_mappings);
+//          }
+//          else
+//          {
+//            int[] count = curr_view_prov_mappings.get(prov_expr);
+//            
+//            if(count == null)
+//            {
+//              count = new int[2];
+//              
+//              count[0] = 1;
+//              
+//              count[1] = q_prov_count;
+//              
+//              curr_view_prov_mappings.put(prov_expr, count);
+//              
+////              query_prov_index_mappings.get(query_grouping_value).put(prov_expr, q_prov_count);
+//            }
+//            else
+//              count[0] ++;
+//          }
+        }
+        
+       
+        
       }
-      
-      
-      if(query_prov_index_mappings.isEmpty() || view_prov_index_mappings.isEmpty())
-        valid_q_grouping_values.clear();
-      
-      
-      check_valid_rows(valid_q_grouping_values, view_prov_index_mappings, query_prov_index_mappings);
-      
-      
-      
-      
-      
-      
-      
-      
-      
       
       
 //      String converted_query_grouping_value = convert2md5(query_grouping_value);
@@ -2486,25 +3081,109 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
       
     }
     
+//    if(view_query_prov_index_mappings.isEmpty())
+//    {
+//      valid_q_grouping_values.clear();
+//      
+//      tuple_rows.put(view_mapping, valid_q_grouping_values);
+//      
+//      return;
+//    }
     
+//    double time1 = System.nanoTime();
     
-    System.out.println("test_time::" + test_time);
+    check_valid_rows2(tuple_rows, view_mapping, view_query_count, query_prov_instance);
+    
+//    double time2 = System.nanoTime();
+//    
+//    double delta_time = (time2 - time1)*1.0/1000000000;
+//
+//    double d_time = (time1 - time0) *1.0/1000000000;
+//    
+//    r_time = r_time *1.0/1000000000;
+//    
+//    System.out.println("time0------" + d_time);
+//    
+//    System.out.println("time::::::::::" + delta_time);
+//    
+//    System.out.println("intersect_time::::" + intersect_time);
+//    
+//    System.out.println("retrieve_time:::" + r_time);
+//    
+//    System.out.println(view.view_name);
+    
+//    System.out.println("row_count::" + valid_q_grouping_values.size());
+//    
+//    tuple_rows.put(view_mapping, valid_q_grouping_values);
     
 //    return grouping_value_prov_value_count_mappings;
   }
   
-  static void check_valid_rows(HashSet<Head_strs> tuple_head_vars, HashMap<Head_strs, HashMap<String, Integer>> view_grouping_value_prov_value_count_mappings, HashMap<Head_strs, HashMap<String, Integer>> query_grouping_value_prov_value_count_mappings)
+  
+//  static void check_valid_rows2(HashMap<Tuple, Set<Head_strs>> tuple_rows, Tuple view_mapping, HashMap<Head_strs, Integer> view_query_count, HashMap<Head_strs, String[][]> query_prov_instance)
+  static void check_valid_rows2(HashMap<Tuple, Set> tuple_rows, Tuple view_mapping, HashMap<String, Integer> view_query_count, HashMap<String, String[][]> query_prov_instance)
   {
-    Set<Head_strs> grouping_values = query_grouping_value_prov_value_count_mappings.keySet();
+    
+    Iterator<Entry<String, Integer>> it = view_query_count.entrySet().iterator();
+    
+//    double t1 = System.nanoTime();
+    
+    while(it.hasNext())
+    {
+      Entry<String, Integer> grouping_value_count_pairs = it.next();
+      
+      int count1 = grouping_value_count_pairs.getValue();
+      
+      int count2 = query_prov_instance.get(grouping_value_count_pairs.getKey()).length;
+      
+      if(count1 != count2)
+        it.remove();
+      
+      
+    }
+    
+//    double t2 = System.nanoTime();
+//    
+//    double time = (t2 - t1)*1.0/1000000000;
+//    
+//    System.out.println("compare_time::" + time);
+    
+//    HashSet<Head_strs> grouping_values = new HashSet<Head_strs>();
+//    
+//    grouping_values.addAll();
+    
+    tuple_rows.put(view_mapping, view_query_count.keySet());
+    
+//    while(it.hasNext())
+//    {
+//      Head_strs grouping_value = it.next();
+//      
+//      Integer count1 = view_query_count.get(grouping_value);
+//      
+//      if(count1 == null)
+//        it.remove();
+//      
+//      String[][] prov_lists = query_prov_instance.get(grouping_value);
+//      
+//      if(prov_lists == null)
+//        it.remove();
+//      
+//      if(prov_lists.length != count1)
+//        it.remove();
+//    }
+  }
+  
+  static void check_valid_rows(HashSet<Head_strs> tuple_head_vars, HashMap<Head_strs, HashMap<String, int[]>> view_grouping_value_prov_value_count_mappings, HashMap<Head_strs, String[][]> query_prov_index)
+  {
+    Set<Head_strs> grouping_values = view_grouping_value_prov_value_count_mappings.keySet();
     
     for(Head_strs grouping_value: grouping_values)
     {
-      HashMap<String, Integer> prov_value_count_mappings1 = query_grouping_value_prov_value_count_mappings.get(grouping_value);
+      HashMap<String, int[]> prov_value_count_mappings1 = view_grouping_value_prov_value_count_mappings.get(grouping_value);
       
-      HashMap<String, Integer> prov_value_count_mappings2 = view_grouping_value_prov_value_count_mappings.get(grouping_value);
+      int expected_prov_length = query_prov_index.get(grouping_value).length;
       
-      
-      if(!compare_provenance_count(prov_value_count_mappings1, prov_value_count_mappings2))
+      if(!compare_provenance_count(prov_value_count_mappings1, expected_prov_length))
       {
         tuple_head_vars.remove(grouping_value);
       }
@@ -2793,7 +3472,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
                 
       }
       
-      if(!compare_provenance_count(prov_value_count_mappings1, prov_value_count_mappings1_copy))
+//      if(!compare_provenance_count(prov_value_count_mappings1, prov_value_count_mappings1_copy))
       {
         tuple_head_vars.remove(encoding_origin_mappings.get(grouping_value));
       }
@@ -2888,7 +3567,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
 //                
 //      }
       
-      if(!compare_provenance_count(prov_value_count_mappings1, view_prov_value_count))
+//      if(!compare_provenance_count(prov_value_count_mappings1, view_prov_value_count))
       {
         tuple_head_vars.remove(encoding_origin_mappings.get(grouping_value));
       }
@@ -2896,27 +3575,29 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
   }
   
   
-  static boolean compare_provenance_count(HashMap<String, Integer> prov_value_count_mappings1, HashMap<String, Integer> prov_value_count_mappings2)
+  static boolean compare_provenance_count(HashMap<String, int[]> prov_value_count_mappings1, int expected_prov_length)
   {
     Set<String> prov_values1 = prov_value_count_mappings1.keySet();
     
     int multiplier = 0;
     
+    int total_count = 0;
+    
     for(String prov_value: prov_values1)
     {
-      Integer count1 = prov_value_count_mappings1.get(prov_value);
+      int[] count1 = prov_value_count_mappings1.get(prov_value);
       
-      Integer count2 = prov_value_count_mappings2.get(prov_value);
+      total_count += count1[1];
       
-      if(count2 == null)
+//      if(count2 == null)
+//      {
+//        return false;
+//      }
+//      else
       {
-        return false;
-      }
-      else
-      {
-        if(count1 == (count1/count2)*count2)
-          return true;
-        else 
+        if(count1[0] != (count1[0]/count1[1])*count1[1])
+//          return true;
+//        else 
           return false;
         
         
@@ -2938,6 +3619,9 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
         
       }
     }
+    
+    if(total_count != expected_prov_length)
+      return false;
     
     return true;
   }
@@ -3260,7 +3944,7 @@ public class Check_valid_view_mappings_agg_batch_processing2 implements Check_va
   }
 
   @Override
-  public HashMap<Tuple, HashSet<Head_strs>> get_tuple_rows() {
+  public HashMap<Tuple, Set> get_tuple_rows() {
     // TODO Auto-generated method stub
     return tuple_rows;
   }

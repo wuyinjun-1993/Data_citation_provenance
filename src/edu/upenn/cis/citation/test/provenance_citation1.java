@@ -29,13 +29,13 @@ import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.init.init;
 import edu.upenn.cis.citation.pre_processing.view_operation;
 import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning3;
-import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning4;
+import edu.upenn.cis.citation.prov_reasoning.Prov_reasoning2;
 import edu.upenn.cis.citation.query.Query_provenance;
 import edu.upenn.cis.citation.user_query.query_storage;
 import edu.upenn.cis.citation.views.Query_converter;
 import edu.upenn.cis.citation.views.Single_view;
 
-public class provenance_citation {
+public class provenance_citation1 {
   
 //  static String path = "/home/wuyinjun/workspace/Data_citation_demo/reasoning_results/";
   
@@ -115,19 +115,19 @@ public class provenance_citation {
   
   static void reasoning_with_covering_set_opt(Query query, boolean iscluster, int thread_num, boolean sortcluster, boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException, IOException, InterruptedException, JSONException
   {
-    Prov_reasoning4.batch_size = thread_num;
+    Prov_reasoning2.batch_size = thread_num;
     
 //    int factor = 1;//Integer.valueOf(args[1]);
     
-//    Prov_reasoning4.factor = factor;
+//    Prov_reasoning2.factor = factor;
     
-    Prov_reasoning4.sort_cluster = sortcluster;
+    Prov_reasoning2.sort_cluster = sortcluster;
     
-    Prov_reasoning4.init(c, pst);
+    Prov_reasoning2.init(c, pst);
   
-//    Prov_reasoning4.init_from_database(c, pst);
+//    Prov_reasoning2.init_from_database(c, pst);
     
-    Prov_reasoning4.init_from_files(is_materialized, c, pst);
+    Prov_reasoning2.init_from_files(is_materialized, c, pst);
     
     double start = 0;
     
@@ -139,7 +139,7 @@ public class provenance_citation {
     
     HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
     
-    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, is_materialized, provenance_instances, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning2.reasoning(query, curr_valid_view_mappings, iscluster, is_materialized, provenance_instances, c, pst);
 
     end = System.nanoTime();
     
@@ -149,18 +149,18 @@ public class provenance_citation {
     {
       System.out.println("reasoning time 3:" + time);
       
-      System.out.println("view_mapping_time 3:" + Prov_reasoning4.view_mapping_time);
+      System.out.println("view_mapping_time 3:" + Prov_reasoning2.view_mapping_time);
       
-      System.out.println("covering_set_time 3:" + Prov_reasoning4.covering_set_time);
+      System.out.println("covering_set_time 3:" + Prov_reasoning2.covering_set_time);
 
     }
     else
     {
       System.out.println("reasoning time 4:" + time);
       
-      System.out.println("view_mapping_time 4:" + Prov_reasoning4.view_mapping_time);
+      System.out.println("view_mapping_time 4:" + Prov_reasoning2.view_mapping_time);
       
-      System.out.println("covering_set_time 4:" + Prov_reasoning4.covering_set_time);
+      System.out.println("covering_set_time 4:" + Prov_reasoning2.covering_set_time);
 
     }
     
@@ -181,16 +181,16 @@ public class provenance_citation {
     System.out.println("query_time::" + query_time);
     
     
-    Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
+    Set<Tuple> view_mappings = Prov_reasoning2.tuple_valid_rows.keySet();
     
     
     System.out.println("view_mapping_num::" + view_mappings.size());
     
     
     if(is_materialized)
-      write2file_view_mappings(path + "view_mapping_rows1", Prov_reasoning4.tuple_valid_rows);
+      write2file_view_mappings(path + "view_mapping_rows1", Prov_reasoning2.tuple_valid_rows);
     else
-      write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
+      write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning2.tuple_valid_rows);
 
 //    System.out.println(covering_sets);
     
@@ -198,13 +198,13 @@ public class provenance_citation {
     
 //    System.out.println("Covering_set::" + covering_sets);
     
-    System.out.println("Group_num::" + Prov_reasoning4.group_view_mappings.size());
+    System.out.println("Group_num::" + Prov_reasoning2.group_view_mappings.size());
     
-    Set<String> group_ids = Prov_reasoning4.group_covering_sets.keySet();
+    Set<String> group_ids = Prov_reasoning2.group_covering_sets.keySet();
     
     for(String group_id: group_ids)
     {
-      HashMap<Tuple, Integer> view_mapping_ids = Prov_reasoning4.group_view_mappings.get(group_id);
+      HashMap<Tuple, Integer> view_mapping_ids = Prov_reasoning2.group_view_mappings.get(group_id);
       
       Set<Tuple> curr_view_mappings = view_mapping_ids.keySet();
       
@@ -235,7 +235,7 @@ public class provenance_citation {
     else
       write2file(path + "covering_sets2", covering_sets);
     
-    HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
+    HashSet<String> formatted_citations = Prov_reasoning2.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
     if(is_materialized)
       write2file(path + "citation1", formatted_citations);
@@ -243,12 +243,9 @@ public class provenance_citation {
       write2file(path + "citation2", formatted_citations);
     
     if(is_materialized)
-      write2file(path + "covering_sets_per_group1", Prov_reasoning4.group_covering_sets);
+      write2file(path + "covering_sets_per_group1", Prov_reasoning2.group_covering_sets);
     else
-      write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
-    
-//    provenance_citation2.output_valid_view_mappings(Prov_reasoning4.valid_view_mappings_schema_level);
-    
+      write2file(path + "covering_sets_per_group2", Prov_reasoning2.group_covering_sets);
     
   }
   
@@ -265,7 +262,7 @@ public class provenance_citation {
     
     Prov_reasoning3.init();
   
-//    Prov_reasoning4.init_from_database(c, pst);
+//    Prov_reasoning2.init_from_database(c, pst);
     
     Prov_reasoning3.init_from_files(c, pst);
     
@@ -336,7 +333,7 @@ public class provenance_citation {
     
     write2file(path + "citation2", formatted_citations);
     
-    write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    write2file(path + "covering_sets_per_group2", Prov_reasoning2.group_covering_sets);
     
   
   }
@@ -360,7 +357,7 @@ public class provenance_citation {
     
     String db_name = args[3];
     
-    Prov_reasoning4.db_name = db_name;
+    Prov_reasoning2.db_name = db_name;
     
     Prov_reasoning3.db_name = db_name;
 
@@ -381,6 +378,13 @@ public class provenance_citation {
     }
     
     Query query = Load_views_and_citation_queries.get_query_test_case(Query_provenance.query_file, c, pst).get(qid);
+    
+    Prov_reasoning2.query_indexes = new HashMap[query.body.size()];
+    
+    for(int i = 0; i<query.body.size(); i++)
+    {
+      Prov_reasoning2.query_indexes[i] = new HashMap<String, HashMap<Head_strs, HashSet<Integer>>>();
+    }
     
     System.out.println(query);
     
@@ -546,11 +550,11 @@ public class provenance_citation {
     
     Query_provenance.connect(init.db_prov_url, init.usr_name, init.passwd);
     
-    Prov_reasoning4.test_case = false;
+    Prov_reasoning2.test_case = false;
     
 //    Query query = query_storage.get_query_by_id(1, Query_provenance.con, pst);
     
-    ResultSet rs = Query_provenance.get_provenance4query(query, Prov_reasoning4.test_case);
+    ResultSet rs = Query_provenance.get_provenance4query(query, Prov_reasoning2.test_case);
     
 //    printResult(rs, query);
     
@@ -562,13 +566,13 @@ public class provenance_citation {
   c = DriverManager
       .getConnection(init.db_url, init.usr_name , init.passwd);
   
-//    Prov_reasoning4.factor = factor;
+//    Prov_reasoning2.factor = factor;
     
-    Prov_reasoning4.sort_cluster = sortcluster;
+    Prov_reasoning2.sort_cluster = sortcluster;
     
-    Prov_reasoning4.init(c, pst);
+    Prov_reasoning2.init(c, pst);
   
-    Prov_reasoning4.init_from_files(false, c, pst);//(c, pst);
+    Prov_reasoning2.init_from_files(false, c, pst);//(c, pst);
     
     double start = 0;
     
@@ -580,7 +584,7 @@ public class provenance_citation {
     
 //    HashSet<citation_view_vector> covering_sets = new HashSet<citation_view_vector>();
     
-    HashSet<Covering_set> covering_sets = Prov_reasoning4.reasoning(query, curr_valid_view_mappings, iscluster, false, rs, c, pst);
+    HashSet<Covering_set> covering_sets = Prov_reasoning2.reasoning(query, curr_valid_view_mappings, iscluster, false, rs, c, pst);
 
     end = System.nanoTime();
     
@@ -590,34 +594,34 @@ public class provenance_citation {
     {
       System.out.println("reasoning time 3:" + time);
       
-      System.out.println("view_mapping_time 3:" + Prov_reasoning4.view_mapping_time);
+      System.out.println("view_mapping_time 3:" + Prov_reasoning2.view_mapping_time);
       
-      System.out.println("covering_set_time 3:" + Prov_reasoning4.covering_set_time);
+      System.out.println("covering_set_time 3:" + Prov_reasoning2.covering_set_time);
 
     }
     else
     {
       System.out.println("reasoning time 4:" + time);
       
-      System.out.println("view_mapping_time 4:" + Prov_reasoning4.view_mapping_time);
+      System.out.println("view_mapping_time 4:" + Prov_reasoning2.view_mapping_time);
       
-      System.out.println("covering_set_time 4:" + Prov_reasoning4.covering_set_time);
+      System.out.println("covering_set_time 4:" + Prov_reasoning2.covering_set_time);
 
     }
-    Set<Tuple> view_mappings = Prov_reasoning4.tuple_valid_rows.keySet();
+    Set<Tuple> view_mappings = Prov_reasoning2.tuple_valid_rows.keySet();
     
-    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning4.tuple_valid_rows);
+    write2file_view_mappings(path + "view_mapping_rows2", Prov_reasoning2.tuple_valid_rows);
 
     if(iscluster)
       write2file(path + "covering_sets3", covering_sets);
     else
       write2file(path + "covering_sets4", covering_sets);
     
-    HashSet<String> formatted_citations = Prov_reasoning4.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
+    HashSet<String> formatted_citations = Prov_reasoning2.gen_citations(curr_valid_view_mappings, covering_sets, c, pst);
     
     write2file(path + "citation2", formatted_citations);
     
-    write2file(path + "covering_sets_per_group2", Prov_reasoning4.group_covering_sets);
+    write2file(path + "covering_sets_per_group2", Prov_reasoning2.group_covering_sets);
     
     Query_provenance.reset();
     
@@ -627,11 +631,11 @@ public class provenance_citation {
   
   static void output_view_mapping_valid_rids()
   {
-    Set<Tuple> tuples = Prov_reasoning4.tuple_valid_rows.keySet();
+    Set<Tuple> tuples = Prov_reasoning2.tuple_valid_rows.keySet();
     
     for(Tuple tuple: tuples)
     {
-      System.out.print(tuple.name + "   " + Prov_reasoning4.tuple_valid_rows.get(tuple).size());
+      System.out.print(tuple.name + "   " + Prov_reasoning2.tuple_valid_rows.get(tuple).size());
       
       System.out.println();
     }
@@ -639,7 +643,7 @@ public class provenance_citation {
   
   static void output_view_mappings_per_group()
   {
-    Set<String> strings = Prov_reasoning4.group_view_mappings.keySet();
+    Set<String> strings = Prov_reasoning2.group_view_mappings.keySet();
     
     int num = 0;
     
@@ -647,7 +651,7 @@ public class provenance_citation {
     {
       System.out.println("group" + num);
       
-      HashMap<Tuple, Integer> tuple_indexes = Prov_reasoning4.group_view_mappings.get(string);
+      HashMap<Tuple, Integer> tuple_indexes = Prov_reasoning2.group_view_mappings.get(string);
       
       Set<Tuple> tuples = tuple_indexes.keySet();
       
@@ -701,18 +705,18 @@ public class provenance_citation {
     
   }
   
-  static void write2file_view_mappings(String file_name, HashMap tuple_valid_rows) throws IOException
+  static void write2file_view_mappings(String file_name, HashMap<Tuple, HashSet> view_mapping_count) throws IOException
   {
       File fout = new File(file_name);
       FileOutputStream fos = new FileOutputStream(fout);
    
       BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
    
-      Set<Tuple> view_mappings = tuple_valid_rows.keySet();
+      Set<Tuple> view_mappings = view_mapping_count.keySet();
       
       for(Tuple view_mapping: view_mappings)
       {
-        int count = ((Set) tuple_valid_rows.get(view_mapping)).size();
+        int count = view_mapping_count.get(view_mapping).size();
         
         String sorted_mapping_string = get_sorted_mapping_string(view_mapping, view_mapping.mapSubgoals_str);
         

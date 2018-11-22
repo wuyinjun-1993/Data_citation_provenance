@@ -15,7 +15,7 @@ import edu.upenn.cis.citation.views.Query_converter;
 
 public class Query_view_generator_synthetic_instance_size {
 
-  static String directory = "synthetic_example/";
+  static String directory = "synthetic_example/test/";
   
 //  static String directory = "./";
   

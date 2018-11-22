@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONException;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
@@ -151,7 +150,7 @@ public class provenance_citation3 {
     
     ResultSet rs = pst.executeQuery();
     
-    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
+    HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
     
     HashSet<Covering_set> covering_sets = Schema_reasoning_agg.reasoning(query, curr_valid_view_mappings, iscluster, rs, c, pst);
 
@@ -234,7 +233,7 @@ public class provenance_citation3 {
     
     start = System.nanoTime();
     
-    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
+    HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
     
     HashSet<edu.upenn.cis.citation.citation_view0.Covering_set> covering_sets = Prov_reasoning3.reasoning(query, curr_valid_view_mappings, iscluster, get_query_instance(query, c, pst), c, pst);
 
@@ -525,7 +524,7 @@ public class provenance_citation3 {
     
     start = System.nanoTime();
     
-    ConcurrentHashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new ConcurrentHashMap<Single_view, HashSet<Tuple>>();
+    HashMap<Single_view, HashSet<Tuple>> curr_valid_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
     
 //    HashSet<citation_view_vector> covering_sets = new HashSet<citation_view_vector>();
     
@@ -596,7 +595,7 @@ public class provenance_citation3 {
     {
       System.out.println("group" + num);
       
-      ConcurrentHashMap<Tuple, Integer> tuple_indexes = Schema_reasoning_agg.group_view_mappings.get(string);
+      HashMap<Tuple, Integer> tuple_indexes = Schema_reasoning_agg.group_view_mappings.get(string);
       
       Set<Tuple> tuples = tuple_indexes.keySet();
       
@@ -650,7 +649,7 @@ public class provenance_citation3 {
     
   }
   
-  static void write2file_view_mappings(String file_name, ConcurrentHashMap<Tuple, HashSet> view_mapping_count) throws IOException
+  static void write2file_view_mappings(String file_name, HashMap<Tuple, HashSet> view_mapping_count) throws IOException
   {
       File fout = new File(file_name);
       FileOutputStream fos = new FileOutputStream(fout);
@@ -680,7 +679,7 @@ public class provenance_citation3 {
       bw.close();
   }
   
-  public static void write2file(String file_name, ConcurrentHashMap<String, HashSet<Covering_set>> views) throws IOException
+  public static void write2file(String file_name, HashMap<String, HashSet<Covering_set>> views) throws IOException
   {
     File fout = new File(file_name);
     FileOutputStream fos = new FileOutputStream(fout);

@@ -43,8 +43,15 @@ public class init {
   
   public static String passwd = "12345678";
   
+  public static String prov_col = "\"c" + separator + provenance_column_suffix + "\"";
+  
   public static void main(String [] args) throws ClassNotFoundException, SQLException
   {
+    
+    String db_name = args[0];
+    
+    String db_url = db_url_prefix + db_name;
+    
         
     Connection c = null;
     PreparedStatement pst = null;
@@ -54,14 +61,18 @@ public class init {
     
   reset(c, pst);
   
-//    Vector<String> relation_names = get_all_base_relations(c, pst);
-//    
-//    for(int i = 0; i<relation_names.size(); i++)
-//    {
-//      insert_provenance_columns(relation_names.get(i), c, pst);
-//      
-//      insert_provenance_tokens(relation_names.get(i), c, pst);
-//    }
+  System.out.println("reset done!!");
+  
+    Vector<String> relation_names = get_all_base_relations(c, pst);
+    
+    for(int i = 0; i<relation_names.size(); i++)
+    {
+      insert_provenance_columns(relation_names.get(i), c, pst);
+      
+      insert_provenance_tokens(relation_names.get(i), c, pst);
+      
+      System.out.println(relation_names.get(i) + "::done");
+    }
   
   c.close();
   }
@@ -134,9 +145,9 @@ public class init {
 //        pst.execute();
 //      }
             
-      String col_name_encoding = MD5.get_MD5_encoding(relation);
+//      String col_name_encoding = MD5.get_MD5_encoding(relation);
       
-      String update_query = update_query_head + "\"c" + separator + col_name_encoding + provenance_column_suffix + "\" = '" + relation + separator + num + "'" + where_clause;
+      String update_query = update_query_head + "\"c" + separator + provenance_column_suffix + "\" = '" + relation + separator + num + "'" + where_clause;
       
       pst = c.prepareStatement(update_query);
       
@@ -259,11 +270,23 @@ public class init {
       if(attr_name.endsWith(provenance_column_suffix))
       {
         String reset_query = "alter table " + relation_name + " drop column \"" + attr_name + "\"";
+//        String reset_query = "alter table " + relation_name + " rename \"" + attr_name + "\" to \"c" + separator + provenance_column_suffix + "\""; 
+        
+//        System.out.println(reset_query);
         
         pst = c.prepareStatement(reset_query);
         
         pst.execute();
       }
+      
+//      if(attr_name.equals("citation_view"))
+//      {
+//        String reset_query = "alter table " + relation_name + " drop column " + attr_name;
+//        
+//        pst = c.prepareStatement(reset_query);
+//        
+//        pst.execute();
+//      }
       
     }
   }
@@ -288,7 +311,9 @@ public class init {
     
     String relation_name_encoding = MD5.get_MD5_encoding(relation_name);
     
-    String query = "alter table " + relation_name + " add column \"c" + separator + relation_name_encoding + provenance_column_suffix + "\" text";
+    String query = "alter table " + relation_name + " add column \"c" + separator + provenance_column_suffix + "\" text";
+    
+    System.out.println(query);
     
     pst = c.prepareStatement(query);
     

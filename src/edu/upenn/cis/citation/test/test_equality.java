@@ -21,6 +21,11 @@ public class test_equality {
     static String view_mapping_file1 = "reasoning_results/view_mapping_rows1";
     
     static String view_mapping_file2 = "reasoning_results/view_mapping_rows2";
+
+    static String view_mapping_file3 = "reasoning_results/view_mapping_rows3";
+    
+    static String view_mapping_file4 = "reasoning_results/view_mapping_rows4";
+
     
     static String citation_file1 = "reasoning_results/citations";
     
@@ -30,6 +35,11 @@ public class test_equality {
     
     static String covering_set_group_file2 = "reasoning_results/covering_sets_per_group2";
     
+    static String covering_set_group_file3 = "reasoning_results/covering_sets_per_group3";
+    
+    static String covering_set_group_file4 = "reasoning_results/covering_sets_per_group4";
+
+    
     public static void main(String [] args)
     {
       
@@ -37,15 +47,15 @@ public class test_equality {
       
       test_equality1();
       
-//    test_equality3();
+    test_equality3();
       
     }
     
     static void test_equality3()
     {
-      HashMap<String, Integer> key_value1 = get_view_mappings_rows(view_mapping_file1);
+      HashMap<String, Integer> key_value1 = get_view_mappings_rows(view_mapping_file2);
       
-      HashMap<String, Integer> key_value2 = get_view_mappings_rows(view_mapping_file2);
+      HashMap<String, Integer> key_value2 = get_view_mappings_rows(view_mapping_file4);
       
 //    System.out.println(key_value1);
 //    
@@ -60,15 +70,15 @@ public class test_equality {
     {
 //    System.out.println("covering_set_group1");
       
-      HashSet<HashSet<String>> arr1 = get_covering_sets_group_strs(covering_set_group_file1);
+      HashSet<HashSet<String>> arr1 = get_covering_sets_group_strs(covering_set_group_file2);
       
 //    System.out.println("covering_set_group2");
       
-      System.out.println(arr1);
+//      System.out.println(arr1);
       
-      HashSet<HashSet<String>> arr2 = get_covering_sets_group_strs(covering_set_group_file2);
+      HashSet<HashSet<String>> arr2 = get_covering_sets_group_strs(covering_set_group_file4);
       
-      System.out.println(arr2);
+//      System.out.println(arr2);
       
       if(arr1.size() != arr2.size())
       {
@@ -194,11 +204,11 @@ public class test_equality {
     
     static void test_equality1()
     {
-      Vector<String> arr1 = get_view_strs(file1);
+      Vector<String> arr1 = get_view_strs(file2);
       
 //      Vector<String> arr2 = get_view_strs(file2);
       
-      Vector<String> arr3 = get_view_strs(file2);
+      Vector<String> arr3 = get_view_strs(file4);
       
 //      Vector<String> arr4 = get_view_strs(file4);
       

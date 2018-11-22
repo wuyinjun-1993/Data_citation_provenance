@@ -13,7 +13,6 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.text.View;
 import edu.upenn.cis.citation.Corecover.Argument;
 import edu.upenn.cis.citation.Corecover.CoreCover;
@@ -258,15 +257,15 @@ public class Single_view {
     if(!view.head.has_agg)
       return;
     
-    Vector<String> indexed_cols = new Vector<String>();
+//    Vector<String> indexed_cols = new Vector<String>();
+//    
+//    Vector<String> grouping_attrs_strings = new Vector<String>();
+//    
+//    Vector<String> provenance_attrs_strings = new Vector<String>();
     
-    Vector<String> grouping_attrs_strings = new Vector<String>();
+    String sql = Query_converter.data2sql_with_provenance_col_create_materialized(view);//Query_converter.datalog2sql_view_conjunction(view, indexed_cols, grouping_attrs_strings, provenance_attrs_strings);
     
-    Vector<String> provenance_attrs_strings = new Vector<String>();
-    
-    String sql = Query_converter.datalog2sql_view_conjunction(view, indexed_cols, grouping_attrs_strings, provenance_attrs_strings);
-    
-    System.out.println(indexed_cols);
+//    System.out.println(indexed_cols);
     
     String view_query = "create MATERIALIZED view " + view.view_name + " as (" + sql + ")";
     
@@ -279,7 +278,7 @@ public class Single_view {
 //    build_index(provenance_attrs_strings, view.view_name, c, pst);
 //    build_index_on_materilized_views_for_grouping_attributes(view, c, pst);
 //    
-    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
+//    build_index_on_materilized_views_for_provenance_cols(view, indexed_cols, c, pst);
   }
   
   public static void materilization2(Single_view view, Connection c, PreparedStatement pst) throws SQLException
@@ -664,7 +663,7 @@ public class Single_view {
     
   }
   
-  static boolean build_grouping_attr_id_mappings(Vector<Argument> view_grouping_attrs, Vector<Argument> query_grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings, Tuple tuple, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
+  static boolean build_grouping_attr_id_mappings(Vector<Argument> view_grouping_attrs, Vector<Argument> query_grouping_attrs, HashMap<Tuple, Vector<int[]>> view_mapping_grouping_attr_ids_mappings, HashMap<Tuple, int[]> view_mapping_query_head_var_attr_in_view_head_ids_mappings, Tuple tuple, HashMap<String, Integer> subgoal_id_mappings, Vector<Subgoal> subgoals)
   {
     Vector<int[]> ids = new Vector<int[]>();
     
@@ -719,7 +718,7 @@ public class Single_view {
     return reverse_mapped_args;
   }
   
-  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, ConcurrentHashMap<String, Integer> subgoal_id_mappings, Vector<Argument> q_head_vars)
+  public void build_view_mappings(Vector<Subgoal> subgoals, Database canDb, HashMap<String, Integer> subgoal_id_mappings, Vector<Argument> q_head_vars)
   {
     
     view_mappings = CoreCover.computeViewTuples(canDb, this);
@@ -1131,7 +1130,54 @@ public class Single_view {
 
   }
 
-  String clean_boolean_type(Argument arg, String string)
+  public void evaluate_args(ArrayList<String[]> values, Tuple tuple)
+  {
+    Vector<Integer> q_why_column_ids = view_mapping_q_why_prov_token_col_ids_mapping.get(tuple);
+    
+    Vector<Integer> v_why_column_ids = view_mapping_view_why_prov_token_col_ids_mapping.get(tuple);
+    
+    Vector<int[][]> condition_ids = view_mapping_condition_ids_mappings.get(tuple);
+    
+    for(int i = 0; i<condition_ids.size();i++)
+    {
+      int [][]ids = condition_ids.get(i);
+      
+      int subgoal_id1 = ids[0][0];
+      
+      int subgoal_id2 = ids[1][0];
+      
+      if(subgoal_id1 >= 0)
+      {
+        String[] curr_values = values.get(q_why_column_ids.get(subgoal_id1));
+        
+        Argument arg1 = (Argument) subgoals.get(v_why_column_ids.get(subgoal_id1)).args.get(ids[0][1]);
+        
+        arg1.set_value(curr_values[ids[0][1]].toLowerCase());
+      }
+      
+      if(subgoal_id2 >= 0)
+      {
+        String[] curr_values = values.get(q_why_column_ids.get(subgoal_id2));
+        
+        Argument arg2 = (Argument) subgoals.get(v_why_column_ids.get(subgoal_id2)).args.get(ids[1][1]);
+        
+        arg2.set_value(curr_values[ids[1][1]].toLowerCase());
+      }
+    }
+    
+//    for(int i = 0; i<q_why_column_ids.size(); i++)
+//    {
+//      Head_strs curr_values = values.get(q_why_column_ids.get(i));
+//      
+//      evaluate_single_subgoal_args(curr_values, subgoals.get(v_why_column_ids.get(i)));
+//      
+//    }
+    
+
+  }
+
+  
+  public static String clean_boolean_type(Argument arg, String string)
   {
     if(arg.data_type.equals("boolean"))
     {
