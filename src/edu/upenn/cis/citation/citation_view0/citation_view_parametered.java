@@ -4,6 +4,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -333,7 +334,7 @@ public class citation_view_parametered extends citation_view{
 //		get_queries();
 	}
 	
-	public citation_view_parametered(String name, Single_view query, Tuple tuple)
+	public citation_view_parametered(String name, Single_view query, Tuple tuple, HashMap<Tuple, ArrayList<Integer>> view_mapping_query_arg_ids_mappings )
 	{
 		
 		this.name = name;
@@ -344,9 +345,11 @@ public class citation_view_parametered extends citation_view{
 		
 		this.view_tuple = tuple;
 		
-		Vector<Conditions> conditions = tuple.conditions;
+//		Vector<Conditions> conditions = tuple.conditions;
 				
 		set_table_names(tuple);
+		
+		tuple.covered_arg_ids.addAll(view_mapping_query_arg_ids_mappings.get(tuple));
 		
 		unique_id_string = get_unique_string_id();
 		

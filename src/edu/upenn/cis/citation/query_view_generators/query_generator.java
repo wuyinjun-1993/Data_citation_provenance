@@ -679,6 +679,8 @@ public class query_generator {
 						
 		gen_shuffled_head_args(head_grouping_vars);
 		
+		gen_shuffled_head_args(head_agg_var_arrs);
+		
 		Query query = new Query(name, new Subgoal(name, head_grouping_vars, head_agg_var_arrs, head_agg_functions, true), body, lambda_terms2, predicates, maps);
 		
 //		queries[1] = new Query(name, new Subgoal(name, heads), body, lambda_terms2, predicates, maps);
@@ -1315,7 +1317,7 @@ public class query_generator {
       return values;
     }
 	
-	static void gen_shuffled_head_args(Vector<Argument> head_args)
+	static void gen_shuffled_head_args(Vector head_args)
 	{
 	  Collections.shuffle(head_args);
 	}

@@ -19,6 +19,7 @@ import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
 import edu.upenn.cis.citation.Operation.Conditions;
+import edu.upenn.cis.citation.Operation.Operation;
 import edu.upenn.cis.citation.citation_view1.Head_strs;
 import edu.upenn.cis.citation.init.MD5;
 import edu.upenn.cis.citation.init.init;
@@ -1791,6 +1792,90 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
     return string;
   }
   
+  
+  static String gen_single_condition_string(Argument arg1, Argument arg2, Operation op)
+  {
+    String res = new String();
+    
+    if(!arg2.isConst())
+      res += arg1.relation_name + "." + arg1.attribute_name + op.toString() + arg2.relation_name + "." + arg2.attribute_name;
+    else
+      res += arg1.relation_name + "." + arg1.attribute_name + op.toString() + arg2.name;
+    
+    return res;
+  }
+  
+  
+  public static String get_query_conditions(Query query, Tuple view_mapping)
+  {
+    String condition_string = " where ";
+    
+    HashSet<String> mapped_subgoals = view_mapping.getTargetSubgoal_strs();
+    
+    int count = 0;
+    
+    for(int i = 0; i<query.conditions.size(); i++)
+    {
+      
+      Conditions condition = query.conditions.get(i);
+      
+      if(condition.agg_function1 == null && condition.agg_function2 == null)
+      {
+        String query_subgoal1 = condition.subgoal1.get(0);
+        
+        Argument arg1 = condition.arg1.get(0);
+        
+        Argument arg2 = condition.arg2.get(0);
+        
+        if(mapped_subgoals.contains(query_subgoal1))
+        {
+          if(arg2.isConst())
+          {
+            
+            Argument target_arg1 = view_mapping.reverse_phi.apply(arg1);
+            
+//            Argument target_arg2 = view_mapping.reverse_phi.apply(arg2);
+            
+            String curr_condition_string = gen_single_condition_string(target_arg1, arg2, condition.op);
+            
+            if(count > 0)
+              condition_string += " and ";
+            
+            condition_string += curr_condition_string;
+            
+            count++;
+          }
+          else
+          {
+            
+            String query_subgoal2 = condition.subgoal2.get(0);
+            
+            if(mapped_subgoals.contains(query_subgoal2))
+            {
+              Argument target_arg1 = view_mapping.reverse_phi.apply(arg1);
+              
+              Argument target_arg2 = view_mapping.reverse_phi.apply(arg2);
+              
+              String curr_condition_string = gen_single_condition_string(target_arg1, target_arg2, condition.op);
+              
+              if(count > 0)
+                condition_string += " and ";
+              
+              condition_string += curr_condition_string;
+              
+              count++;
+            }
+          }
+        }
+        
+      }
+      
+    }
+    
+    return condition_string;
+    
+  }
+  
   void deal_with_view_view_non_aggregation() throws SQLException
   {
 
@@ -1798,8 +1883,6 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
     
 //    double time1 = System.nanoTime();
     
-    ResultSet rs = Query_provenance_2.get_query_provenance(view, c, pst);
-
 //    double time2 = System.nanoTime();
 //    
 //    double time = (time2 - time1) * 1.0/1000000000;
@@ -1813,10 +1896,11 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
 //      HashSet<String> query_grouping_values = new HashSet<String>();
 //      
 //      query_grouping_values.addAll(query_prov_instance.keySet());
+      String condition_string = get_query_conditions(query, view_mapping);
       
+      ResultSet rs = Query_provenance_2.get_query_provenance_with_condition(view, condition_string, c, pst);//(view, c, pst);
       
-      
-      get_view_provenance_num2(stringbuilder, rs, view, view_mapping, c, pst);
+      get_view_provenance_num_conjunction(stringbuilder, rs, view, view_mapping, c, pst);
       
       
       
@@ -2099,7 +2183,7 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
       try {
         
         if(!view.head.has_agg)
-          deal_with_view_view_non_aggregation();
+          deal_with_view_view_non_aggregation2();
         else
         {
         
@@ -2809,8 +2893,6 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
 //        grouping_value_vec.add(rs.getString(i + 1));
 //      }
       
-      
-      
 //      Vector<String> query_grouping_value_vec = new Vector<String>();
       double t11 = System.nanoTime();
       String query_grouping_value_arr = new String();
@@ -2837,7 +2919,11 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
       
       r_time += (t22 - t11);
       
-      for(int i = 0; i<prov_lists.length; i++)
+      int i = 0;
+      
+      int prov_count = 0;
+      
+      for(i = 0; i<prov_lists.length; i++)
       {
         String[] curr_provenance = prov_lists[i];
         
@@ -2948,9 +3034,9 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
 //        if(!intersect_indexes.isEmpty())
         else
         {
+          prov_count += count;
           
-          
-          view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? count : value + count);
+//          view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? count : value + count);
 
 //          Integer count = view_query_count.get(query_grouping_value);
 //          
@@ -3012,6 +3098,387 @@ public class Check_valid_view_mappings_agg_batch_processing0 implements Check_va
        
         
       }
+      
+      if(i >= prov_lists.length)
+      {
+        Integer curr_count = view_query_count.get(query_grouping_value_arr); 
+        
+        if(curr_count == null)
+        {
+          view_query_count.put(query_grouping_value_arr, prov_count);
+        }
+        else
+        {
+          view_query_count.put(query_grouping_value_arr, prov_count + curr_count);
+        }
+        
+        
+//        view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? prov_count : value + prov_count);
+      }
+      
+      
+//      String converted_query_grouping_value = convert2md5(query_grouping_value);
+//    
+//      
+//      if(!query_grouping_values.contains(query_grouping_value))
+//        continue;
+//      
+////      double t1 = System.nanoTime();
+//      
+//      Head_strs view_grouping_value = new Head_strs(grouping_value_vec);
+//      
+//      String converted_view_grouping_value = convert2md5(view_grouping_value);
+//      
+////      double t1 = System.nanoTime();
+//      
+//      if(query_grouping_value_view_grouping_value_mappings.get(converted_query_grouping_value) == null)
+//      {
+//        HashSet<String> view_grouping_values = new HashSet<String>();
+//        
+//        view_grouping_values.add(converted_view_grouping_value);
+//        
+//        query_grouping_value_view_grouping_value_mappings.put(converted_query_grouping_value, view_grouping_values);
+//      }
+//      else
+//      {
+//        query_grouping_value_view_grouping_value_mappings.get(converted_query_grouping_value).add(converted_view_grouping_value);
+//      }
+//      
+//      grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, retrieve_provenance_values(rs, view.head.args.size()));
+      
+      
+      
+      
+//      Vector<String> prov_vec = new Vector<String>();
+//      
+//      for(int k = view.head.args.size(); k<col_num; k++)
+//      {
+//        prov_vec.add(rs.getString(k + 1));
+//      }
+//      
+//      Head_strs prov_value = new Head_strs(prov_vec);
+//      
+//      String converted_prov_value = convert2md5(prov_value);
+//      
+//      if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value) == null)
+//      {
+//        HashMap<String, Integer> prov_value_count_mappings = new HashMap<String, Integer>();
+//        
+//        prov_value_count_mappings.put(converted_prov_value, 1);
+//        
+//        grouping_value_prov_value_count_mappings.put(converted_view_grouping_value, prov_value_count_mappings);
+//      }
+//      else
+//      {
+//        if(grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value) == null)
+//        {
+//          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, 1);
+//        }
+//        else
+//        {
+//          int count = grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).get(converted_prov_value);
+//          
+//          grouping_value_prov_value_count_mappings.get(converted_view_grouping_value).put(converted_prov_value, count + 1);
+//        }
+//      }
+      
+    }
+    
+//    if(view_query_prov_index_mappings.isEmpty())
+//    {
+//      valid_q_grouping_values.clear();
+//      
+//      tuple_rows.put(view_mapping, valid_q_grouping_values);
+//      
+//      return;
+//    }
+    
+//    double time1 = System.nanoTime();
+    
+    check_valid_rows2(tuple_rows, view_mapping, view_query_count, query_prov_instance);
+    
+//    double time2 = System.nanoTime();
+//    
+//    double delta_time = (time2 - time1)*1.0/1000000000;
+//
+//    double d_time = (time1 - time0) *1.0/1000000000;
+//    
+//    r_time = r_time *1.0/1000000000;
+//    
+//    System.out.println("time0------" + d_time);
+//    
+//    System.out.println("time::::::::::" + delta_time);
+//    
+//    System.out.println("intersect_time::::" + intersect_time);
+//    
+//    System.out.println("retrieve_time:::" + r_time);
+//    
+//    System.out.println(view.view_name);
+    
+//    System.out.println("row_count::" + valid_q_grouping_values.size());
+//    
+//    tuple_rows.put(view_mapping, valid_q_grouping_values);
+    
+//    return grouping_value_prov_value_count_mappings;
+  }
+  
+  
+  void get_view_provenance_num_conjunction(StringBuilder stringbuilder, ResultSet rs, Single_view view, Tuple view_mapping, Connection c, PreparedStatement pst) throws SQLException
+  {
+    int[] view_head_var_ids = view.view_mapping_query_head_var_attr_in_view_head_ids_mappings.get(view_mapping);
+    
+    Vector<Integer> q_why_column_ids = view.view_mapping_q_why_prov_token_col_ids_mapping.get(view_mapping);
+    
+    Vector<Integer> v_why_column_ids = view.view_mapping_view_why_prov_token_col_ids_mapping.get(view_mapping);
+
+//    HashMap<Head_strs, HashMap<String, int[]>> view_query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, int[]>>(); 
+    
+    HashMap<String, Integer> view_query_count = new HashMap<String, Integer>();
+    
+    view_query_count.putAll(query_grouping_value_initial_count);
+    
+//    HashSet<Head_strs> view_query_keys = new HashSet<Head_strs>();
+    
+//    HashMap<Head_strs, HashMap<String, Integer>> query_prov_index_mappings = new HashMap<Head_strs, HashMap<String, Integer>>();
+    
+    double time0 = System.nanoTime();
+    
+    double intersect_time = 0;
+    
+    double r_time = 0;
+    
+    while(rs.next())
+    {
+      
+//      Vector<String> grouping_value_vec = new Vector<String>();
+//      
+//      for(int i = 0; i<view.head.args.size(); i++)
+//      {
+//        grouping_value_vec.add(rs.getString(i + 1));
+//      }
+      
+//      Vector<String> query_grouping_value_vec = new Vector<String>();
+      double t11 = System.nanoTime();
+      String query_grouping_value_arr = new String();
+
+      for(int i = 0; i<view_head_var_ids.length; i++)
+      {
+        if(i >= 1)
+          query_grouping_value_arr = Head_strs.concatenate_strings(stringbuilder, query_grouping_value_arr, rs.getString(view_head_var_ids[i] + 1));
+        else
+          query_grouping_value_arr = rs.getString(view_head_var_ids[i] + 1);
+        
+//        query_grouping_value_vec.add(rs.getString(view_head_var_ids[i] + 1));
+      }
+      
+      
+      
+//      Head_strs query_grouping_value = new Head_strs(query_grouping_value_vec);
+      
+      Array citation_vec = rs.getArray(view.head.args.size() + 1);
+      
+      String[] prov_lists = (String[]) citation_vec.getArray();
+      
+      double t22 = System.nanoTime();
+      
+      r_time += (t22 - t11);
+      
+      int i = 0;
+      
+      int prov_count = 0;
+      
+//      for(i = 0; i<prov_lists.length; i++)
+//      {
+        String[] curr_provenance = prov_lists;
+        
+//        String prov_expr = Build_query_prov_index.convert2md5(curr_provenance, v_why_column_ids);
+        
+//        HashMap<String, int[]> curr_query_prov_index_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+//        
+//        if(curr_query_prov_index_mappings != null)
+//        {
+//          int[] counts = curr_query_prov_index_mappings.get(prov_expr);
+//          
+//          if(counts !=null)
+//          {
+//            
+//            counts[0]++;
+////            HashMap<String, Integer> curr_view_prov_index_mappings = view_prov_index_mappings.get(query_grouping_value);
+////            
+////            int count = curr_view_prov_index_mappings.get(prov_expr);
+////            
+////            curr_view_prov_index_mappings.put(prov_expr, count + 1);
+//            
+//            continue;
+//          }
+//            
+//        }
+        
+        int id = 0;
+        
+        long[] intersect_indexes = null;
+        
+        double t1 = System.nanoTime();
+        
+        for(Integer q_prov_col: q_why_column_ids)
+        {
+//          Vector<String> query_prov_list = query_prov_lists[q_prov_col];
+//          
+//          Vector<long[]> prov_index = prov_indexes[q_prov_col];
+          
+          HashMap<String, HashMap<String, long[]>> query_index = query_prov_index_lists[q_prov_col];
+          
+          
+          HashMap<String, long[]> curr_query_index = query_index.get(curr_provenance[v_why_column_ids.get(id)]);
+          
+          if(curr_query_index == null)
+          {
+            break;
+          }
+          
+          long[] indexes = curr_query_index.get(query_grouping_value_arr);
+          
+//          StringBuilder sb = new StringBuilder();
+          
+//          stringbuilder.append(curr_provenance[v_why_column_ids.get(id)]);
+//          
+//          stringbuilder.append(init.separator);
+//          
+//          stringbuilder.append(query_grouping_value_arr);
+//          
+//          String res = stringbuilder.toString();
+//          
+//          stringbuilder.delete(0, res.length());
+////          int pos = Binary_search.binarySearch(query_prov_list, sb.toString());
+////          
+////          if(!Binary_search.check_exists(query_prov_list, sb.toString(), pos))
+////            break;
+//          
+//          
+//          long[] indexes = query_index.get(res);
+          
+//          long[] indexes = prov_index.get(pos);
+          
+//          HashSet<Integer> indexes = prov_index_mappings.get(query_grouping_value);
+          
+          if(indexes == null)
+            break;
+          
+          
+          
+          if(id == 0)
+          {
+            intersect_indexes = Bit_operation.clone_array(indexes);
+            
+            
+          }
+          else
+          {
+            Bit_operation.and(intersect_indexes, indexes);
+          }
+          
+          id++;
+        }
+        
+        double t2 = System.nanoTime();
+        
+        intersect_time += (t2 - t1)*1.0/1000000000;
+        
+        
+        //provenance not matching, quit reasoning for current view tuple
+        if(id < q_why_column_ids.size())
+        {
+          break;
+        }
+        
+        int count = Bit_operation.numberOfSetBits(intersect_indexes); 
+        
+        if(count == 0)
+          break;
+//        if(!intersect_indexes.isEmpty())
+        else
+        {
+          prov_count += count;
+          
+//          view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? count : value + count);
+
+//          Integer count = view_query_count.get(query_grouping_value);
+//          
+//          if(count == null)
+//          {
+////            view_query_keys.add(query_grouping_value);
+//            
+//            view_query_count.put(query_grouping_value, intersect_indexes.size());
+//          }
+//          else
+//            view_query_count.put(query_grouping_value, count + intersect_indexes.size());
+          
+          
+//          int q_prov_count = intersect_indexes.size();
+//          
+//          HashMap<String, int[]> curr_view_prov_mappings = view_query_prov_index_mappings.get(query_grouping_value);
+//          
+//          if(curr_view_prov_mappings == null)
+//          {
+//            curr_view_prov_mappings = new HashMap<String, int[]>();
+//            
+//            int[] counts = new int[2];
+//            
+//            counts[0] = 1;
+//            
+//            counts[1] = q_prov_count;
+//            
+//            curr_view_prov_mappings.put(prov_expr, counts);
+//            
+//            view_query_prov_index_mappings.put(query_grouping_value, curr_view_prov_mappings);
+////            
+////            HashMap<String, Integer> curr_query_prov_mappings = new HashMap<String, Integer>();
+////            
+////            curr_query_prov_mappings.put(prov_expr, q_prov_count);
+////            
+////            query_prov_index_mappings.put(query_grouping_value, curr_query_prov_mappings);
+//          }
+//          else
+//          {
+//            int[] count = curr_view_prov_mappings.get(prov_expr);
+//            
+//            if(count == null)
+//            {
+//              count = new int[2];
+//              
+//              count[0] = 1;
+//              
+//              count[1] = q_prov_count;
+//              
+//              curr_view_prov_mappings.put(prov_expr, count);
+//              
+////              query_prov_index_mappings.get(query_grouping_value).put(prov_expr, q_prov_count);
+//            }
+//            else
+//              count[0] ++;
+//          }
+        }
+        
+       
+        
+//      }
+      
+//      if(i >= prov_lists.length)
+//      {
+        Integer curr_count = view_query_count.get(query_grouping_value_arr); 
+        
+        if(curr_count == null)
+        {
+          view_query_count.put(query_grouping_value_arr, prov_count);
+        }
+        else
+        {
+          view_query_count.put(query_grouping_value_arr, prov_count + curr_count);
+        }
+        
+        
+//        view_query_count.compute(query_grouping_value_arr, (key, value) -> value == null ? prov_count : value + prov_count);
+//      }
       
       
 //      String converted_query_grouping_value = convert2md5(query_grouping_value);

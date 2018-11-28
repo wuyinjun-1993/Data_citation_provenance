@@ -421,7 +421,10 @@ public class Query_converter {
 //        str += "array_agg(" + subgoal.name + "." + init.prov_col + ")";
     }
     
-    str += "]) as " + init.prov_col;
+    if(isAgg)
+      str += "]) as " + init.prov_col;
+    else
+      str += "] as " + init.prov_col;
     
     return str;
   }
@@ -471,6 +474,55 @@ public class Query_converter {
       }
       
     }
+    
+    return sql;
+  }
+  
+  public static String data2sql_with_provenance_col_with_condition_string(Single_view view, String condition_string)
+  {
+    String sql = new String();
+
+    String[] sel_item = get_sel_item_with_why_token_columns2(view.head.args, true);
+        
+    String prov_cols = get_prov_cols(view.subgoals, view.head.has_agg);
+    
+    String citation_table = get_relations_without_citation_table(view.subgoals, view.subgoal_name_mappings, true);
+    
+    String condition = get_condition(view.conditions, true);
+            
+    sql = "select " + sel_item[0];
+    
+    if(view.head.size() > 0)
+      sql += "," + prov_cols;
+    else
+      sql += prov_cols;
+    
+    
+//    if(view.head.has_agg)
+//    {
+////      if(query.head.args.size() > 0)
+////        sql += ",";
+//      sql += "," + get_agg_item_in_select_clause(view.head, true);
+//    }
+    
+    sql += " from " + citation_table + condition_string;
+    
+    if(condition != null && !condition.isEmpty())
+        sql += " and " + condition;
+    
+    
+//    if(view.head.has_agg && view.head.args.size() > 0)
+//    {
+//      sql += " group by " + sel_item[1];
+//      
+//      String having_clause = get_having_clauses(view.conditions, true);
+//      
+//      if(!having_clause.isEmpty())
+//      {
+//        sql += " having " + having_clause;
+//      }
+//      
+//    }
     
     return sql;
   }

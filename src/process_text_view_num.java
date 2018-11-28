@@ -101,7 +101,7 @@ public class process_text_view_num {
     return avg;
   }
   
-  static void cal_average(Vector<Vector<Double>> SSLA_time, Vector<Vector<Double>> TLA_time, Vector<Vector<Double>> provenance_based_time, Vector<Vector<Double>> SSLA_covering_set_time, Vector<Vector<Double>> TLA_covering_set_time, Vector<Vector<Double>> provenance_covering_set_time, Vector<String> results){
+  static void cal_average(Vector<Vector<Double>>[] provenance_based_time, Vector<Vector<Double>>[] provenance_covering_set_time, Vector<String> results){
 //  {
 //    Set<Integer> query_instance_size_sets = materialized_results.keySet();
 //    
@@ -126,33 +126,47 @@ public class process_text_view_num {
 //      view_instance_size_vec.addAll(view_instance_size_sets);
 //      
 //      Collections.sort(view_instance_size_vec);
+    for(int j = 0; j<provenance_based_time[0].size(); j++)
+    {
       
-      for(int i = 0; i<SSLA_time.size(); i++)
+//      Vector<Vector<Double>> curr_SSLA_time = SSLA_time[j];
+//      
+//      Vector<Vector<Double>> curr_SSLA_covering_set_time = SSLA_covering_set_time[j];
+//      
+//      Vector<Vector<Double>> curr_prov_time = provenance_based_time[j];
+//      
+//      Vector<Vector<Double>> curr_prov_covering_set_time = provenance_covering_set_time[j];
+      
+      
+      Vector<Double> time = new Vector<Double>();
+      
+      
+      for(int i = 0; i<provenance_based_time.length; i++)
       {
-        Vector<Double> curr_SSLA_time_sets = SSLA_time.get(i);
+//        Vector<Double> curr_SSLA_time_sets = SSLA_time[j].get(i);
         
-        Vector<Double> curr_TLA_time_sets = TLA_time.get(i);
+//        Vector<Double> curr_TLA_time_sets = TLA_time.get(i);
         
         
-        Vector<Double> curr_provenance_time_sets = provenance_based_time.get(i);
+        Vector<Double> curr_provenance_time_sets = provenance_based_time[i].get(j);
         
-        Vector<Double> curr_SSLA_covering_set_time_sets = SSLA_covering_set_time.get(i);
+//        Vector<Double> curr_SSLA_covering_set_time_sets = SSLA_covering_set_time[j].get(i);
         
-        Vector<Double> curr_TLA_covering_set_time_sets = TLA_covering_set_time.get(i);
+//        Vector<Double> curr_TLA_covering_set_time_sets = TLA_covering_set_time.get(i);
         
-        Vector<Double> curr_provenance_covering_set_time_sets = provenance_covering_set_time.get(i);
+        Vector<Double> curr_provenance_covering_set_time_sets = provenance_covering_set_time[i].get(j);
         
 //        String instance_size = view_instance_size_mappings.get(view_instance_size);
         
-        remove_outlier(curr_SSLA_time_sets);
+//        remove_outlier(curr_SSLA_time_sets);
         
-        remove_outlier(curr_TLA_time_sets);
+//        remove_outlier(curr_TLA_time_sets);
         
         remove_outlier(curr_provenance_time_sets);
         
-        remove_outlier(curr_SSLA_covering_set_time_sets);
+//        remove_outlier(curr_SSLA_covering_set_time_sets);
         
-        remove_outlier(curr_TLA_covering_set_time_sets);
+//        remove_outlier(curr_TLA_covering_set_time_sets);
         
         remove_outlier(curr_provenance_covering_set_time_sets);
         
@@ -187,29 +201,35 @@ public class process_text_view_num {
 //        avg3 = avg3/curr_TLA_time_sets.size();
         
         
-        Vector<Double> time = new Vector<Double>();
         
         
-        time.add(cal_average(curr_TLA_time_sets));
         
-        time.add(cal_average(curr_TLA_covering_set_time_sets));
+//        time.add(cal_average(curr_TLA_time_sets));
         
-        time.add(cal_average(curr_SSLA_time_sets));
+//        time.add(cal_average(curr_TLA_covering_set_time_sets));
         
-        time.add(cal_average(curr_SSLA_covering_set_time_sets));
+//        time.add(cal_average(curr_SSLA_time_sets));
+        
+//        time.add(cal_average(curr_SSLA_covering_set_time_sets));
         
         time.add(cal_average(curr_provenance_time_sets)); 
         
         time.add(cal_average(curr_provenance_covering_set_time_sets));
-        
-        results.add(compose_string(time));
       }
       
+      results.add(compose_string(time));
+
+    }
+    
 //    }
   }
   
   static void remove_outlier(Vector<Double> values)
   {
+    if(values.size() <= 3)
+      return;
+    
+    
     Collections.sort(values);
     
     System.out.println(values);
@@ -241,6 +261,27 @@ public class process_text_view_num {
     
   }
   
+  
+//  static int iterate_retrieve_results(int state, final int i, Vector<Double> bit_and_cluster_times, Vector<Double> bit_times, Vector<Double> cluster_times, Vector<Double> time, String line
+//      , String approa_prefix, String bit_and_cluster_prefix, String bit_prefix, String cluster_prefix, String non_prefix)
+//  {
+//    switch(state)
+//    {
+//      case i:
+//      {
+//        
+//        
+//        
+//        break;
+//      }
+//    }
+//    
+//    
+//    
+//    
+//    return state;
+//  }
+  
   static Vector<String> process(String file)
   {
     Vector<String> results = new Vector<String>();
@@ -252,7 +293,17 @@ public class process_text_view_num {
     try (BufferedReader br = new BufferedReader(new FileReader(file))) {
       String line;
 
-      String start_prefix = "provenance_based_approach::";
+      String prov_prefix = "provenance_based_approach::";
+      
+      String SSLA_prefix = "SSLA::";
+      
+      String bit_and_cluster_prefix = "bit+cluster::";
+ 
+      String bit_prefix = "bit::";
+      
+      String cluster_prefix = "cluster::";
+      
+      String none_prefix = "none::";
       
       String view_instance_size_prefix = "view_final_size::";
       
@@ -260,7 +311,7 @@ public class process_text_view_num {
       
       String materialized_true = "materialized::true";
       
-      String provenance_time_prefix = "reasoning time 3:";
+      String provenance_time_prefix = "time::";
       
       String SSLA_time_prefix = "SSLA_agg_time::";
       
@@ -268,7 +319,7 @@ public class process_text_view_num {
       
       String view_size_prefix = "view_instance_size_mappings::";
       
-      String covering_set_time_prefix1 = "covering_set_time 3:";
+      String covering_set_time_prefix1 = "Covering_set_time::";
       
       String covering_set_time_prefix2 = "Covering_set_time::";
       
@@ -277,14 +328,44 @@ public class process_text_view_num {
       int query_instance_size = -1;
       
       int view_instance_size = -1;
+      
+      Vector<Double> provenance_time_bit_and_cluster_vec = new Vector<Double>();
+      
+      Vector<Double> provenance_time_bit_vec = new Vector<Double>();
+      
+      Vector<Double> provenance_time_cluster_vec = new Vector<Double>();
 
       Vector<Double> provenance_time_vec = new Vector<Double>();
       
+      Vector<Double> SSLA_time_bit_and_cluster_vec = new Vector<Double>();
+      
+      Vector<Double> SSLA_time_bit_vec = new Vector<Double>();
+      
+      Vector<Double> SSLA_time_cluster_vec = new Vector<Double>();
+      
       Vector<Double> SSLA_time_vec = new Vector<Double>();
+      
+      Vector<Double> TLA_time_bit_and_cluster_vec = new Vector<Double>();
+      
+      Vector<Double> TLA_time_bit_vec = new Vector<Double>();
+      
+      Vector<Double> TLA_time_cluster_vec = new Vector<Double>();
       
       Vector<Double> TLA_time_vec = new Vector<Double>();
       
+      Vector<Double> provenance_covering_set_bit_and_cluster_time = new Vector<Double>();
+      
+      Vector<Double> provenance_covering_set_bit_time = new Vector<Double>();
+      
+      Vector<Double> provenance_covering_set_cluster_time = new Vector<Double>();
+      
       Vector<Double> provenance_covering_set_time = new Vector<Double>();
+      
+      Vector<Double> SSLA_covering_set_bit_and_cluster_time = new Vector<Double>();
+      
+      Vector<Double> SSLA_covering_set_bit_time = new Vector<Double>();
+      
+      Vector<Double> SSLA_covering_set_cluster_time = new Vector<Double>();
       
       Vector<Double> SSLA_covering_set_time = new Vector<Double>();
       
@@ -318,8 +399,48 @@ public class process_text_view_num {
       
       Vector<Vector<Double>> provenance_covering_set_time_vec = new Vector<Vector<Double>>();
       
+      Vector<Vector<Double>> SSLA_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_based_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> SSLA_covering_set_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_covering_set_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_covering_set_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> SSLA_bit_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_bit_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_based_bit_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> SSLA_covering_set_bit_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_covering_set_bit_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_covering_set_bit_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> SSLA_bit_and_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_bit_and_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_based_bit_and_cluster_results = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> SSLA_covering_set_bit_and_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> TLA_covering_set_bit_and_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      Vector<Vector<Double>> provenance_covering_set_bit_and_cluster_time_vec = new Vector<Vector<Double>>();
+      
+      
+      
       
       Vector<Vector<Double>> materialized_view_size_results = new Vector<Vector<Double>>();
+      
+      int i = 0;
       
       while ((line = br.readLine()) != null) {
          // process the line.
@@ -328,7 +449,7 @@ public class process_text_view_num {
         {
           case 0:
           {
-            if(line.startsWith(start_prefix))
+            if(line.startsWith(prov_prefix))
             {
 //                query_instance_size = (int)get_value(query_instance_size_prefix, line);
 //                
@@ -341,21 +462,130 @@ public class process_text_view_num {
           }
           case 1:
           {
+            
+            if(line.startsWith(bit_and_cluster_prefix))
+            {
+              state = 2;
+            }
+            
+            break;
+          }
+          
+          
+          case 2:
+          {
+            
+            
+            
             if(line.startsWith(provenance_time_prefix))
             {
               double time = get_value(provenance_time_prefix, line);
               
               System.out.println("provenance_time::" + time);
               
-              state = 2;
+//              state = 3;
               
-              provenance_time_vec.add(time);
+              provenance_time_bit_and_cluster_vec.add(time);
+            }
+            else
+            {
+              if(line.startsWith(covering_set_time_prefix1))
+              {
+                double time = get_value(covering_set_time_prefix1, line);
+                
+                System.out.println("provenance_covering_set_time::" + time);
+                
+                provenance_covering_set_bit_and_cluster_time.add(time);
+              }
+              else
+              {
+                if(line.startsWith(bit_prefix))
+                {
+                  state = 3;
+                }
+              }
             }
             
             break;
           }
           
-          case 2:
+          case 3:
+          {
+            if(line.startsWith(provenance_time_prefix))
+            {
+              double time = get_value(provenance_time_prefix, line);
+              
+              System.out.println("provenance_time::" + time);
+              
+              provenance_time_bit_vec.add(time);
+            }
+            else
+            {
+              if(line.startsWith(covering_set_time_prefix1))
+              {
+                double time = get_value(covering_set_time_prefix1, line);
+                
+                System.out.println("provenance_covering_set_time::" + time);
+                
+                provenance_covering_set_bit_time.add(time);
+              }
+              else
+              {
+                if(line.startsWith(cluster_prefix))
+                {
+//                  double time = get_value(SSLA_prefix, line);
+//                  
+//                  System.out.println("SSLA_time::" + time);
+//                  
+//                  SSLA_time_vec.add(time);
+                  
+                  state = 4;
+                }
+              }
+            }
+            
+            break;
+          }
+          
+          case 4:
+          {
+            if(line.startsWith(provenance_time_prefix))
+            {
+              double time = get_value(provenance_time_prefix, line);
+              
+              System.out.println("provenance_time::" + time);
+              
+              provenance_time_cluster_vec.add(time);
+            }
+            else
+            {
+              if(line.startsWith(covering_set_time_prefix1))
+              {
+                double time = get_value(covering_set_time_prefix1, line);
+                
+                System.out.println("provenance_covering_set_time::" + time);
+                
+                provenance_covering_set_cluster_time.add(time);
+              }
+              else
+              {
+                if(line.startsWith(none_prefix))
+                {
+//                  double time = get_value(SSLA_prefix, line);
+//                  
+//                  System.out.println("SSLA_time::" + time);
+//                  
+//                  SSLA_time_vec.add(time);
+                  
+                  state = 5;
+                }
+              }
+            }
+            
+            break;
+          }
+          
+          case 5:
           {
             if(line.startsWith(provenance_time_prefix))
             {
@@ -377,97 +607,220 @@ public class process_text_view_num {
               }
               else
               {
-                if(line.startsWith(SSLA_time_prefix))
+                if(line.startsWith(SSLA_prefix))
                 {
-                  double time = get_value(SSLA_time_prefix, line);
+//                  double time = get_value(SSLA_prefix, line);
+//                  
+//                  System.out.println("SSLA_time::" + time);
+//                  
+//                  SSLA_time_vec.add(time);
                   
-                  System.out.println("SSLA_time::" + time);
-                  
-                  SSLA_time_vec.add(time);
-                  
-                  state = 3;
+                  state = 6;
                 }
               }
             }
             
-            break;
-          }
-          
-          case 3:
-          {
-            if(line.startsWith(SSLA_time_prefix))
-            {
-              double time = get_value(SSLA_time_prefix, line);
-              
-              System.out.println("SSLA_time::" + time);
-              
-              SSLA_time_vec.add(time);
-            }
-            else
-            {
-              if(line.startsWith(covering_set_time_prefix2))
-              {
-                double time = get_value(covering_set_time_prefix2, line);
-                
-                System.out.println("SSLA_covering_set_time::" + time);
-                
-                SSLA_covering_set_time.add(time);
-              }
-              else
-              {
-                if(line.startsWith(TLA_time_prefix))
-                {
-                  double time = get_value(TLA_time_prefix, line);
-                  
-                  System.out.println("TLA_time::" + time);
-                  
-                  TLA_time_vec.add(time);
-                  
-                  state = 4;
-                }
-              }
-            }
             
             break;
           }
-          
-          
-          case 4:
+//          
+          case 6:
           {
-            if(line.startsWith(TLA_time_prefix))
-            {
-              double time = get_value(TLA_time_prefix, line);
-              
-              System.out.println("TLA_time::" + time);
-              
-              TLA_time_vec.add(time);
-              
-            }
-            else
-            {
-              if(line.startsWith(covering_set_time_prefix2))
-              {
-                double time = get_value(covering_set_time_prefix2, line);
+//            
+//            if(line.startsWith(bit_and_cluster_prefix))
+//            {
+//              state = 7;
+//              
+//            }
+//            
+//            break;
+//          }
+//          
+//          case 7:
+//          {
+//            if(line.startsWith(SSLA_time_prefix))
+//            {
+//              double time = get_value(SSLA_time_prefix, line);
+//              
+//              System.out.println("SSLA_time::" + time);
+//              
+//              SSLA_time_bit_and_cluster_vec.add(time);
+//            }
+//            else
+//            {
+//              if(line.startsWith(covering_set_time_prefix2))
+//              {
+//                double time = get_value(covering_set_time_prefix2, line);
+//                
+//                System.out.println("SSLA_covering_set_time::" + time);
+//                
+//                SSLA_covering_set_bit_and_cluster_time.add(time);
+//              }
+//              else
+//              {
+//                
+//                if(line.startsWith(bit_prefix))
+//                {
+//                  state = 8;
+//                }
+//              }
+//              
+//            }
+//            
+//            break;
+//            
+//          }
+//          
+//          case 8:
+//          {
+//            if(line.startsWith(SSLA_time_prefix))
+//            {
+//              double time = get_value(SSLA_time_prefix, line);
+//              
+//              System.out.println("SSLA_time::" + time);
+//              
+//              SSLA_time_bit_vec.add(time);
+//            }
+//            else
+//            {
+//              if(line.startsWith(covering_set_time_prefix2))
+//              {
+//                double time = get_value(covering_set_time_prefix2, line);
+//                
+//                System.out.println("SSLA_covering_set_time::" + time);
+//                
+//                SSLA_covering_set_bit_time.add(time);
+//              }
+//              else
+//              {
+//                
+//                if(line.startsWith(cluster_prefix))
+//                {
+//                  state = 9;
+//                }
+//              }
+//              
+//            }
+//            
+//            break;
+//          }
+//          
+//          case 9:
+//          {
+//            if(line.startsWith(SSLA_time_prefix))
+//            {
+//              double time = get_value(SSLA_time_prefix, line);
+//              
+//              System.out.println("SSLA_time::" + time);
+//              
+//              SSLA_time_cluster_vec.add(time);
+//            }
+//            else
+//            {
+//              if(line.startsWith(covering_set_time_prefix2))
+//              {
+//                double time = get_value(covering_set_time_prefix2, line);
+//                
+//                System.out.println("SSLA_covering_set_time::" + time);
+//                
+//                SSLA_covering_set_cluster_time.add(time);
+//              }
+//              else
+//              {
+//                
+//                if(line.startsWith(none_prefix))
+//                {
+//                  state = 10;
+//                }
+//              }
+//              
+//            }
+//            
+//            break;
+//          }
+//          
+//          case 10:
+//          {
+//            if(line.startsWith(SSLA_time_prefix))
+//            {
+//              double time = get_value(SSLA_time_prefix, line);
+//              
+//              System.out.println("SSLA_time::" + time);
+//              
+//              SSLA_time_vec.add(time);
+//            }
+//            else
+//            {
+//              if(line.startsWith(covering_set_time_prefix2))
+//              {
+//                double time = get_value(covering_set_time_prefix2, line);
+//                
+//                System.out.println("SSLA_covering_set_time::" + time);
+//                
+//                SSLA_covering_set_time.add(time);
+//              }
+//              else
+//              {
                 
-                System.out.println("TLA_covering_set_time::" + time);
-                
-                TLA_covering_set_time.add(time);
-              }
-              else
-              {
-                if(line.startsWith(start_prefix))
+                if(line.startsWith(prov_prefix))
                 {
                   process_result(query_instance_size, view_instance_size, SSLA_time_vec, SSLA_results);
                   
                   process_result(query_instance_size, view_instance_size, SSLA_covering_set_time, SSLA_covering_set_time_vec);
                   
-                  process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
-                  
-                  process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
+//                  process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
                   
                   process_result(query_instance_size, view_instance_size, provenance_time_vec, provenance_based_results);
                   
                   process_result(query_instance_size, view_instance_size, provenance_covering_set_time, provenance_covering_set_time_vec);
+                  
+                  
+                  
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_time_cluster_vec, SSLA_cluster_results);
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_covering_set_cluster_time, SSLA_covering_set_cluster_time_vec);
+                  
+//                  process_result(query_instance_size, view_instance_size, TLA_time_cluster_vec, TLA_cluster_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_covering_set_cluster_time_vec, TLA_covering_set_time_vec);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_time_cluster_vec, provenance_based_cluster_results);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_covering_set_cluster_time, provenance_covering_set_cluster_time_vec);
+
+                  
+                  
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_time_bit_vec, SSLA_bit_results);
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_covering_set_bit_time, SSLA_covering_set_bit_time_vec);
+                  
+//                  process_result(query_instance_size, view_instance_size, TLA_time_bit_vec, TLA_bit_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_covering_set_bit_time, TLA_covering_set_time_vec);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_time_bit_vec, provenance_based_bit_results);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_covering_set_bit_time, provenance_covering_set_bit_time_vec);
+
+                  
+                  
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_time_bit_and_cluster_vec, SSLA_bit_and_cluster_results);
+                  
+                  process_result(query_instance_size, view_instance_size, SSLA_covering_set_bit_and_cluster_time, SSLA_covering_set_bit_and_cluster_time_vec);
+                  
+//                  process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_time_bit_and_cluster_vec, provenance_based_bit_and_cluster_results);
+                  
+                  process_result(query_instance_size, view_instance_size, provenance_covering_set_bit_and_cluster_time, provenance_covering_set_bit_and_cluster_time_vec);
+
                   
                   state = 1;
                   
@@ -482,13 +835,112 @@ public class process_text_view_num {
                   provenance_time_vec.clear();
                   
                   provenance_covering_set_time.clear();
+                  
+                  
+                  
+                  SSLA_time_cluster_vec.clear();
+                  
+                  SSLA_covering_set_cluster_time.clear();
+                  
+//                  TLA_time_vec.clear();
+//                  
+//                  TLA_covering_set_time.clear();
+                  
+                  provenance_time_cluster_vec.clear();
+                  
+                  provenance_covering_set_cluster_time.clear();
+                  
+                  
+                  SSLA_time_bit_vec.clear();
+                  
+                  SSLA_covering_set_bit_time.clear();
+                  
+                  TLA_time_vec.clear();
+                  
+                  TLA_covering_set_time.clear();
+                  
+                  provenance_time_bit_vec.clear();
+                  
+                  provenance_covering_set_bit_time.clear();
+                  
+                  
+                  SSLA_time_bit_and_cluster_vec.clear();
+                  
+                  SSLA_covering_set_bit_and_cluster_time.clear();
+                  
+//                  TLA_time_vec.clear();
+//                  
+//                  TLA_covering_set_time.clear();
+                  
+                  provenance_time_bit_and_cluster_vec.clear();
+                  
+                  provenance_covering_set_bit_and_cluster_time.clear();
                 }
-              }
-
-            }
+//              }
+//              
+//            }
             
+            break;
           }
           
+          
+//          case 4:
+//          {
+//            if(line.startsWith(TLA_time_prefix))
+//            {
+//              double time = get_value(TLA_time_prefix, line);
+//              
+//              System.out.println("TLA_time::" + time);
+//              
+//              TLA_time_vec.add(time);
+//              
+//            }
+//            else
+//            {
+//              if(line.startsWith(covering_set_time_prefix2))
+//              {
+//                double time = get_value(covering_set_time_prefix2, line);
+//                
+//                System.out.println("TLA_covering_set_time::" + time);
+//                
+//                TLA_covering_set_time.add(time);
+//              }
+//              else
+//              {
+//                if(line.startsWith(prov_prefix))
+//                {
+//                  process_result(query_instance_size, view_instance_size, SSLA_time_vec, SSLA_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, SSLA_covering_set_time, SSLA_covering_set_time_vec);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
+//                  
+//                  process_result(query_instance_size, view_instance_size, provenance_time_vec, provenance_based_results);
+//                  
+//                  process_result(query_instance_size, view_instance_size, provenance_covering_set_time, provenance_covering_set_time_vec);
+//                  
+//                  state = 1;
+//                  
+//                  SSLA_time_vec.clear();
+//                  
+//                  SSLA_covering_set_time.clear();
+//                  
+//                  TLA_time_vec.clear();
+//                  
+//                  TLA_covering_set_time.clear();
+//                  
+//                  provenance_time_vec.clear();
+//                  
+//                  provenance_covering_set_time.clear();
+//                }
+//              }
+//
+//            }
+//            
+//          }
+//          
         }
         
 //        if(query_instance_size > 0 && state == 5)
@@ -508,19 +960,110 @@ public class process_text_view_num {
 
       process_result(query_instance_size, view_instance_size, SSLA_time_vec, SSLA_results);
       
-      process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+      process_result(query_instance_size, view_instance_size, SSLA_covering_set_time, SSLA_covering_set_time_vec);
+      
+//      process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+//      
+//      process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
       
       process_result(query_instance_size, view_instance_size, provenance_time_vec, provenance_based_results);
       
-      process_result(query_instance_size, view_instance_size, SSLA_covering_set_time, SSLA_covering_set_time_vec);
-
-      process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
-
       process_result(query_instance_size, view_instance_size, provenance_covering_set_time, provenance_covering_set_time_vec);
+      
+      
+      
+      
+      process_result(query_instance_size, view_instance_size, SSLA_time_cluster_vec, SSLA_cluster_results);
+      
+      process_result(query_instance_size, view_instance_size, SSLA_covering_set_cluster_time, SSLA_covering_set_cluster_time_vec);
+      
+//      process_result(query_instance_size, view_instance_size, TLA_time_cluster_vec, TLA_cluster_results);
+//      
+//      process_result(query_instance_size, view_instance_size, TLA_covering_set_cluster_time_vec, TLA_covering_set_time_vec);
+      
+      process_result(query_instance_size, view_instance_size, provenance_time_cluster_vec, provenance_based_cluster_results);
+      
+      process_result(query_instance_size, view_instance_size, provenance_covering_set_cluster_time, provenance_covering_set_cluster_time_vec);
+
+      
+      
+      
+      process_result(query_instance_size, view_instance_size, SSLA_time_bit_vec, SSLA_bit_results);
+      
+      process_result(query_instance_size, view_instance_size, SSLA_covering_set_bit_time, SSLA_covering_set_bit_time_vec);
+      
+//      process_result(query_instance_size, view_instance_size, TLA_time_bit_vec, TLA_bit_results);
+//      
+//      process_result(query_instance_size, view_instance_size, TLA_covering_set_bit_time, TLA_covering_set_time_vec);
+      
+      process_result(query_instance_size, view_instance_size, provenance_time_bit_vec, provenance_based_bit_results);
+      
+      process_result(query_instance_size, view_instance_size, provenance_covering_set_bit_time, provenance_covering_set_bit_time_vec);
+
+      
+      
+      
+      process_result(query_instance_size, view_instance_size, SSLA_time_bit_and_cluster_vec, SSLA_bit_and_cluster_results);
+      
+      process_result(query_instance_size, view_instance_size, SSLA_covering_set_bit_and_cluster_time, SSLA_covering_set_bit_and_cluster_time_vec);
+      
+//      process_result(query_instance_size, view_instance_size, TLA_time_vec, TLA_results);
+//      
+//      process_result(query_instance_size, view_instance_size, TLA_covering_set_time, TLA_covering_set_time_vec);
+      
+      process_result(query_instance_size, view_instance_size, provenance_time_bit_and_cluster_vec, provenance_based_bit_and_cluster_results);
+      
+      process_result(query_instance_size, view_instance_size, provenance_covering_set_bit_and_cluster_time, provenance_covering_set_bit_and_cluster_time_vec);
 
 //      process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
       
-      cal_average(SSLA_results, TLA_results, provenance_based_results, SSLA_covering_set_time_vec, TLA_covering_set_time_vec, provenance_covering_set_time_vec, results);
+      
+      Vector<Vector<Double>>[] provenance_time_set_arr = new Vector[4];
+      
+      provenance_time_set_arr[0] = provenance_based_results;
+      
+      provenance_time_set_arr[1] = provenance_based_cluster_results;
+      
+      provenance_time_set_arr[2] = provenance_based_bit_results;
+      
+      provenance_time_set_arr[3] = provenance_based_bit_and_cluster_results;
+      
+      
+      
+//      Vector<Vector<Double>>[] SSLA_time_set_arr = new Vector[4];
+//      
+//      SSLA_time_set_arr[0] = SSLA_results;
+//      
+//      SSLA_time_set_arr[1] = SSLA_cluster_results;
+//      
+//      SSLA_time_set_arr[2] = SSLA_bit_results;
+//      
+//      SSLA_time_set_arr[3] = SSLA_bit_and_cluster_results;
+      
+      
+      Vector<Vector<Double>>[] provenance_covering_set_time_arr = new Vector[4];
+      
+      provenance_covering_set_time_arr[0] = provenance_covering_set_time_vec;
+      
+      provenance_covering_set_time_arr[1] = provenance_covering_set_cluster_time_vec;
+      
+      provenance_covering_set_time_arr[2] = provenance_covering_set_bit_time_vec;
+      
+      provenance_covering_set_time_arr[3] = provenance_covering_set_bit_and_cluster_time_vec;
+      
+      
+//      Vector<Vector<Double>>[] SSLA_time_covering_set_arr = new Vector[4];
+//      
+//      SSLA_time_set_arr[0] = SSLA_covering_set_time_vec;
+//      
+//      SSLA_time_set_arr[1] = SSLA_covering_set_cluster_time_vec;
+//      
+//      SSLA_time_set_arr[2] = SSLA_covering_set_bit_time_vec;
+//      
+//      SSLA_time_set_arr[3] = SSLA_covering_set_bit_and_cluster_time_vec;
+      
+      cal_average(provenance_time_set_arr, provenance_covering_set_time_arr, results);
+
       
   } catch (FileNotFoundException e) {
       // TODO Auto-generated catch block

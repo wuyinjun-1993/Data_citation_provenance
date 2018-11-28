@@ -102,6 +102,22 @@ public class process_text_materialized_result {
 //  results.add(curr_res);
   }
   
+  static String compose_string(int query_instance_size, int view_instance_size, Vector<Double> times)
+  {
+    String curr_res = new String();
+    
+    curr_res = String.valueOf(query_instance_size) + "," + String.valueOf(view_instance_size);
+    
+    for(int i = 0; i<times.size(); i++)
+    {
+      curr_res += "," + String.valueOf(times.get(i));
+    }
+    
+    return curr_res;
+    //  
+//  results.add(curr_res);
+  }
+  
   static void cal_average(HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_results, HashMap<Integer, HashMap<Integer, String>> materialized_view_size_results, Vector<String> results)
   {
     Set<Integer> query_instance_size_sets = materialized_results.keySet();
@@ -165,6 +181,139 @@ public class process_text_materialized_result {
     }
   }
   
+  static void cal_average(HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_total_time_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_total_time_results, 
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_prov_query_time_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_prov_query_time_results, 
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_query_time_results, HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_query_time_results, Vector<String> results)
+  {
+    Set<Integer> query_instance_size_sets = materialized_results.keySet();
+    
+    Vector<Integer> query_instance_size_vec = new Vector<Integer>();
+    
+    query_instance_size_vec.addAll(query_instance_size_sets);
+    
+    Collections.sort(query_instance_size_vec);
+    
+    for(Integer query_instance_size : query_instance_size_vec)
+    {
+      HashMap<Integer, Vector<Double>> view_instance_size_res1 = materialized_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_res2 = non_materialized_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_total_time_res1 = materialized_total_time_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_total_time_res2 = non_materialized_total_time_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_prov_query_res1 = materialized_prov_query_time_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_prov_query_res2 = non_materialized_prov_query_time_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_query_res1 = materialized_query_time_results.get(query_instance_size);
+      
+      HashMap<Integer, Vector<Double>> view_instance_size_query_res2 = non_materialized_query_time_results.get(query_instance_size);
+      
+//      HashMap<Integer, String> view_instance_size_mappings = materialized_view_size_results.get(query_instance_size);
+      
+      Set<Integer> view_instance_size_sets = view_instance_size_res1.keySet();
+      
+      Vector<Integer> view_instance_size_vec = new Vector<Integer>();
+      
+      view_instance_size_vec.addAll(view_instance_size_sets);
+      
+      Collections.sort(view_instance_size_vec);
+      
+      for(Integer view_instance_size: view_instance_size_vec)
+      {
+        Vector<Double> curr_time_sets = view_instance_size_res1.get(view_instance_size);
+        
+        Vector<Double> curr_time_sets2 = view_instance_size_res2.get(view_instance_size);
+        
+        Vector<Double> curr_total_time_sets = view_instance_size_total_time_res1.get(view_instance_size);
+        
+        Vector<Double> curr_total_time_sets2 = view_instance_size_total_time_res2.get(view_instance_size);
+        
+        Vector<Double> curr_prov_query_time_sets = view_instance_size_prov_query_res1.get(view_instance_size);
+        
+        Vector<Double> curr_prov_query_time_sets2 = view_instance_size_prov_query_res2.get(view_instance_size);
+        
+        Vector<Double> curr_query_time_sets = view_instance_size_query_res1.get(view_instance_size);
+        
+        Vector<Double> curr_query_time_sets2 = view_instance_size_query_res2.get(view_instance_size);
+        
+//        String instance_size = view_instance_size_mappings.get(view_instance_size);
+        
+//        remove_outlier(curr_time_sets);
+        
+//        remove_outlier(curr_time_sets2);
+        
+        
+        double avg1 = 0.0;
+        
+        double avg2 = 0.0;
+        
+        for(double curr_time_set: curr_time_sets)
+        {
+           avg1 += curr_time_set;
+        }
+        
+        for(double curr_time_set: curr_time_sets2)
+        {
+           avg2 += curr_time_set;
+        }
+        
+        avg1 = avg1/curr_time_sets.size();
+        
+        avg2 = avg2/curr_time_sets2.size();
+        
+        double avg_total_time1 = compute_avg(curr_total_time_sets);
+        
+        double avg_total_time2 = compute_avg(curr_total_time_sets2);
+        
+        double avg_prov_query_time1 = compute_avg(curr_prov_query_time_sets);
+        
+        double avg_prov_query_time2 = compute_avg(curr_prov_query_time_sets2);
+        
+        double avg_query_time1 = compute_avg(curr_query_time_sets);
+        
+        double avg_query_time2 = compute_avg(curr_query_time_sets2);
+        
+        Vector<Double> times = new Vector<Double>();
+        
+        times.add(avg1);
+        
+        times.add(avg2);
+        
+        times.add(avg_total_time1);
+        
+        times.add(avg_total_time2);
+        
+        times.add(avg_prov_query_time1);
+        
+        times.add(avg_prov_query_time2);
+        
+        times.add(avg_query_time1);
+        
+        times.add(avg_query_time2);
+        
+        results.add(compose_string(query_instance_size, view_instance_size, times));
+      }
+      
+    }
+  }
+  
+  static double compute_avg(Vector<Double> arrays)
+  {
+    double avg = 0.0;
+    
+    for(Double e : arrays)
+    {
+      avg += e;
+    }
+    
+    avg /= arrays.size();
+    
+    return avg;
+  }
+  
   static void remove_outlier(Vector<Double> values)
   {
     Collections.sort(values);
@@ -217,7 +366,13 @@ public class process_text_materialized_result {
       
       String materialized_true = "materialized::true";
       
-      String prefix_prov = "reasoning time 3:";
+      String prefix_prov = "evaluationg_time::";
+      
+      String prefix_prov_query_time = "prov_query_time::";
+      
+      String prefix_total_time = "time::";
+      
+      String prefix_query_time = "query_time::";
       
       String view_size_prefix = "view_instance_size_mappings::";
       
@@ -230,6 +385,18 @@ public class process_text_materialized_result {
       Vector<Double> non_materialized_time = new Vector<Double>();
       
       Vector<Double> materialized_time = new Vector<Double>();
+      
+      Vector<Double> non_materilized_total_time = new Vector<Double>();
+      
+      Vector<Double> materilized_total_time = new Vector<Double>();
+      
+      Vector<Double> non_materilized_prov_query_time = new Vector<Double>();
+      
+      Vector<Double> materilized_prov_query_time = new Vector<Double>();
+      
+      Vector<Double> non_materilized_query_time = new Vector<Double>();
+      
+      Vector<Double> materilized_query_time = new Vector<Double>();
       
       double time_prov_1 = 0.0;
       
@@ -248,6 +415,18 @@ public class process_text_materialized_result {
       HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
       
       HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_total_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_total_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_prov_query_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_prov_query_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> non_materialized_query_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
+      
+      HashMap<Integer, HashMap<Integer, Vector<Double>>> materialized_query_time_results = new HashMap<Integer, HashMap<Integer, Vector<Double>>>();
       
       HashMap<Integer, HashMap<Integer, String>> materialized_view_size_results = new HashMap<Integer, HashMap<Integer, String>>();
       
@@ -319,9 +498,36 @@ public class process_text_materialized_result {
             }
             else
             {
-              if(line.startsWith(materialized_true))
+              if(line.startsWith(prefix_total_time))
               {
-                  state = 5;
+                non_materilized_total_time.add(get_value(prefix_total_time, line));
+
+                state = 4;
+              }
+              else
+              {
+                if(line.startsWith(prefix_query_time))
+                {
+                  non_materilized_query_time.add(get_value(prefix_query_time, line));
+                  
+                  state = 4;
+                }
+                else
+                {
+                  if(line.startsWith(prefix_prov_query_time))
+                  {
+                    non_materilized_prov_query_time.add(get_value(prefix_prov_query_time, line));
+                    
+                    state = 4;
+                  }
+                  else
+                  {
+                    if(line.startsWith(materialized_true))
+                    {
+                        state = 5;
+                    }
+                  }
+                }
               }
             }
             break;
@@ -365,39 +571,91 @@ public class process_text_materialized_result {
             }
             else
             {
-              
-              if(line.startsWith(view_size_prefix))
+
+              if(line.startsWith(prefix_total_time))
               {
-                curr_view_size_result = line.substring(view_size_prefix.length(), line.length());
+                materilized_total_time.add(get_value(prefix_total_time, line));
+
+                state = 6;
               }
               else
               {
-                if(line.startsWith(query_instance_size_prefix))
+                if(line.startsWith(prefix_query_time))
                 {
-                  temp1 = (int) get_value(query_instance_size_prefix, line);
+                  materilized_query_time.add(get_value(prefix_query_time, line));
                   
-                  state = 7;
+                  state = 6;
                 }
                 else
                 {
-                  if(line.startsWith(view_instance_size_prefix))
+                  if(line.startsWith(prefix_prov_query_time))
                   {
-                    process_result(query_instance_size, view_instance_size, materialized_time, materialized_results);
+                    materilized_prov_query_time.add(get_value(prefix_prov_query_time, line));
                     
-                    process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
+                    state = 6;
+                  }
+                  else
+                  {
                     
-                    process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
-                    
-                    view_instance_size = (int) get_value(view_instance_size_prefix, line);
-                    
-                    state = 2;
-               
-                    materialized_time.clear();
-                    
-                    non_materialized_time.clear();
+                    if(line.startsWith(view_size_prefix))
+                    {
+                      curr_view_size_result = line.substring(view_size_prefix.length(), line.length());
+                    }
+                    else
+                    {
+                      if(line.startsWith(query_instance_size_prefix))
+                      {
+                        temp1 = (int) get_value(query_instance_size_prefix, line);
+                        
+                        state = 7;
+                      }
+                      else
+                      {
+                        if(line.startsWith(view_instance_size_prefix))
+                        {
+                          process_result(query_instance_size, view_instance_size, materialized_time, materialized_results);
+                          
+                          process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
+                          
+                          process_result(query_instance_size, view_instance_size, non_materilized_total_time, non_materialized_total_time_results);
+                          
+                          process_result(query_instance_size, view_instance_size, materilized_total_time, materialized_total_time_results);
+                          
+                          process_result(query_instance_size, view_instance_size, non_materilized_prov_query_time, non_materialized_prov_query_time_results);
+                          
+                          process_result(query_instance_size, view_instance_size, materilized_prov_query_time, materialized_prov_query_time_results);
+                          
+                          process_result(query_instance_size, view_instance_size, non_materilized_query_time, non_materialized_query_time_results);
+                          
+                          process_result(query_instance_size, view_instance_size, materilized_query_time, materialized_query_time_results);
+                          
+                          view_instance_size = (int) get_value(view_instance_size_prefix, line);
+                          
+                          state = 2;
+                     
+                          materialized_time.clear();
+                          
+                          non_materialized_time.clear();
+                          
+                          non_materilized_total_time.clear();
+                          
+                          materilized_total_time.clear();
+                          
+                          non_materilized_prov_query_time.clear();
+                          
+                          materilized_prov_query_time.clear();
+                          
+                          non_materilized_query_time.clear();
+                          
+                          materilized_query_time.clear();
+                          
+                        }
+                      }
+                    }
                   }
                 }
               }
+            
             }
             
             break;
@@ -415,7 +673,17 @@ public class process_text_materialized_result {
               
               process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
               
-              process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
+              process_result(query_instance_size, view_instance_size, non_materilized_total_time, non_materialized_total_time_results);
+              
+              process_result(query_instance_size, view_instance_size, materilized_total_time, materialized_total_time_results);
+              
+              process_result(query_instance_size, view_instance_size, non_materilized_prov_query_time, non_materialized_prov_query_time_results);
+              
+              process_result(query_instance_size, view_instance_size, materilized_prov_query_time, materialized_prov_query_time_results);
+              
+              process_result(query_instance_size, view_instance_size, non_materilized_query_time, non_materialized_query_time_results);
+              
+              process_result(query_instance_size, view_instance_size, materilized_query_time, materialized_query_time_results);
               
               query_instance_size = temp1;
               
@@ -426,6 +694,18 @@ public class process_text_materialized_result {
               materialized_time.clear();
               
               non_materialized_time.clear();
+              
+              non_materilized_total_time.clear();
+              
+              materilized_total_time.clear();
+              
+              non_materilized_prov_query_time.clear();
+              
+              materilized_prov_query_time.clear();
+              
+              non_materilized_query_time.clear();
+              
+              materilized_query_time.clear();
               
             }
             
@@ -452,9 +732,20 @@ public class process_text_materialized_result {
       
       process_result(query_instance_size, view_instance_size, non_materialized_time, non_materialized_results);
       
-      process_result(query_instance_size, view_instance_size, curr_view_size_result, materialized_view_size_results);
+      process_result(query_instance_size, view_instance_size, non_materilized_total_time, non_materialized_total_time_results);
       
-      cal_average(materialized_results, non_materialized_results, materialized_view_size_results, results);
+      process_result(query_instance_size, view_instance_size, materilized_total_time, materialized_total_time_results);
+      
+      process_result(query_instance_size, view_instance_size, non_materilized_prov_query_time, non_materialized_prov_query_time_results);
+      
+      process_result(query_instance_size, view_instance_size, materilized_prov_query_time, materialized_prov_query_time_results);
+      
+      process_result(query_instance_size, view_instance_size, non_materilized_query_time, non_materialized_query_time_results);
+      
+      process_result(query_instance_size, view_instance_size, materilized_query_time, materialized_query_time_results);
+      
+      cal_average(materialized_results, non_materialized_results, materialized_total_time_results, non_materialized_total_time_results
+          ,materialized_prov_query_time_results, non_materialized_prov_query_time_results, materialized_query_time_results, non_materialized_query_time_results, results);
       
   } catch (FileNotFoundException e) {
       // TODO Auto-generated catch block

@@ -17,6 +17,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import org.gprom.jdbc.driver.GProMConnection;
@@ -32,11 +33,13 @@ import edu.upenn.cis.citation.Corecover.Database;
 import edu.upenn.cis.citation.Corecover.Query;
 import edu.upenn.cis.citation.Corecover.Subgoal;
 import edu.upenn.cis.citation.Corecover.Tuple;
+import edu.upenn.cis.citation.aggregate_function.Aggregate_function_rules;
+import edu.upenn.cis.citation.citation_view0.Covering_set;
+import edu.upenn.cis.citation.citation_view1.Head_strs;
+import edu.upenn.cis.citation.covering_sets_calculation.Covering_sets_no_clustering;
 import edu.upenn.cis.citation.citation_view0.citation_view;
 import edu.upenn.cis.citation.citation_view0.citation_view_parametered;
 import edu.upenn.cis.citation.citation_view0.citation_view_unparametered;
-import edu.upenn.cis.citation.citation_view1.Head_strs;
-import edu.upenn.cis.citation.citation_view0.Covering_set;
 import edu.upenn.cis.citation.examples.Load_views_and_citation_queries;
 import edu.upenn.cis.citation.gen_citations.Gen_citation;
 import edu.upenn.cis.citation.init.MD5;
@@ -46,13 +49,19 @@ import edu.upenn.cis.citation.multi_thread.Calculate_covering_sets_first_round;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing0;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing0_materialized;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1_materialized;
+import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing1_materialized2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing2;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing3;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_agg_batch_processing_multi_thread;
 import edu.upenn.cis.citation.multi_thread.Check_valid_view_mappings_non_agg;
 import edu.upenn.cis.citation.pre_processing.view_operation;
+import edu.upenn.cis.citation.query.Build_query_prov_index;
 import edu.upenn.cis.citation.query.Query_provenance;
+import edu.upenn.cis.citation.single_thread.Single_thread;
 import edu.upenn.cis.citation.views.Query_converter;
 import edu.upenn.cis.citation.views.Single_view;
 import fr.lri.tao.apro.ap.Apro;
@@ -60,7 +69,7 @@ import fr.lri.tao.apro.ap.AproBuilder;
 import fr.lri.tao.apro.data.DataProvider;
 import fr.lri.tao.apro.data.MatrixProvider;
 
-public class Prov_reasoning3 {
+public class Prov_reasoning1 {
   
   
 public static Vector<Single_view> view_objs = new Vector<Single_view>();
@@ -72,6 +81,11 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //  public static String view_file_name = Query_provenance.directory+ "views";
 //  
 //  public static String citation_query_file_name = Query_provenance.directory+"citation_queries";
+  
+  
+//  public static HashMap<String, ResultSet> view_name_resultset_mappings = new HashMap<String, ResultSet>();
+  
+  public static String db_name = "provenance";
   
   public static String view_citation_query_mapping_file_name = Query_provenance.directory+"view_citation_query_mappings";
   
@@ -93,11 +107,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings = new HashMap<Single_view, HashSet<Tuple>>();
   
-//  public static ResultSet rs = null;
-  
   public static HashMap<String, HashMap<String, Vector<Integer>>> relation_attribute_value_mappings = new HashMap<String, HashMap<String, Vector<Integer>>>();
 
-  public static HashMap<Tuple, HashSet> tuple_valid_rows = new HashMap<Tuple, HashSet>();
+  public static HashMap<Tuple, Set> tuple_valid_rows = new HashMap<Tuple, Set>();
   
   public static boolean agg_intersection = true;
   
@@ -121,11 +133,11 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   static ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var = new ArrayList<HashSet<Tuple>>();
   
-  public static boolean sort_cluster = false;
+  public static boolean sort_cluster = true;
   
-  public static int factor = 1;
+  public static double factor = 1;
   
-  static String[] recomputable_agg_function_arr = {"sum", "count", "max", "min"};
+  static String[] recomputable_agg_function_arr = {"sum", "count", "max", "min", Aggregate_function_rules.unique_string_symbol};
   
   static Vector<String> recomputable_agg_functions = new Vector<String>(Arrays.asList(recomputable_agg_function_arr));
   
@@ -133,7 +145,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   public static int batch_size = 5;
   
-  public static String db_name = "provenance";
+  public static String agg_function_rule_file = "Agg_function_rules/agg_function_rule";
   
   public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException
   {
@@ -179,14 +191,22 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  public static void init()
+  public static void init(Connection c, PreparedStatement pst) throws SQLException
   {
     String [] r_agg_funs1 = {"SUM", "COUNT"};
     
     reliable_agg_functions.put("AVG", r_agg_funs1);
+    
+//    view_name_resultset_mappings.clear();
+    
+    Single_view.get_relation_primary_key(c, pst);
+    
+    Single_view.clear_views_in_database(c, pst);
+    
+    Aggregate_function_rules.load_aggregate_function_rules(agg_function_rule_file);
   }
   
-  public static void init_from_files(Connection c, PreparedStatement pst) throws SQLException
+  public static void init_from_files(boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException
   {
     Vector<Query> views = Load_views_and_citation_queries.get_views(Query_provenance.view_file, c, pst);
 //    Vector<Query> citation_queries = Load_views_and_citation_queries.get_views(citation_query_file_name, c, pst);
@@ -200,9 +220,16 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     {
       Query view = views.get(i);
       
-//      System.out.println(view);
+      System.out.println(view);
       
       Single_view view_obj = new Single_view(view, view.name, c, pst);
+      
+      if(is_materialized)
+        Single_view.materilization(view_obj, c, pst);
+      
+//      if(is_materialized)
+//        view_name_resultset_mappings.put(view_obj.view_name, Single_view.materilization3(view_obj, c, pst));
+      
       
       view_objs.add(view_obj);
       
@@ -380,50 +407,31 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   static boolean deal_with_same_agg_functions(boolean finer_grouping, Tuple tuple, Vector<Argument> q_group_arg, String agg_function, int q_group_agg_id)
   {
-    int id = -1;
+//    int id = -1;
+    
+    Vector<Integer> ids = new Vector<Integer>();
     
     for(int i = 0; i<tuple.agg_args.size(); i++)
     {
       if(tuple.agg_args.get(i).containsAll(q_group_arg) && q_group_arg.containsAll(tuple.agg_args.get(i)))
       {
-        id = i;
+        ids.add(i);
       }
     }
 //    tuple.agg_args.indexOf(q_group_arg);
     
-    if(id < 0)
+    if(ids.size() <= 0)
       return false;
     
     if(!finer_grouping)
     {
-      if(tuple.agg_functions.get(id).equals(agg_function))
+      int j = 0;
+      
+      for(j = 0; j<ids.size(); j++)
       {
-        if(tuple.target_agg_args == null)
-        {
-          tuple.target_agg_args = new Vector<Vector<Argument>>();
-          
-          tuple.target_agg_functions = new Vector<String>();
-          
-          tuple.target_agg_ids = new Vector<Integer>();
-          
-        }
+        int id = ids.get(j);
         
-        tuple.target_agg_args.add(q_group_arg);
-        
-        tuple.target_agg_functions.add(agg_function);
-        
-        tuple.target_agg_ids.add(q_group_agg_id);
-        
-        return true;
-      }
-      else
-        return false;
-    }
-    else
-    {
-      if(tuple.agg_functions.get(id).equals(agg_function))
-      {
-        if(recomputable_agg_functions.contains(agg_function))
+        if(tuple.agg_functions.get(id).equals(agg_function))
         {
           if(tuple.target_agg_args == null)
           {
@@ -432,6 +440,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
             tuple.target_agg_functions = new Vector<String>();
             
             tuple.target_agg_ids = new Vector<Integer>();
+            
           }
           
           tuple.target_agg_args.add(q_group_arg);
@@ -440,15 +449,58 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           
           tuple.target_agg_ids.add(q_group_agg_id);
           
-          return true;
+          break;
         }
-        else
-          return false;
       }
+      
+      if(j < ids.size())
+        return true;
+      else
+        return false;
+      
+      
+    }
+    else
+    {
+      int j = 0;
+      
+      for(j = 0; j<ids.size(); j++)
+      {
+        int id = ids.get(j);
+        
+        if(tuple.agg_functions.get(id).equals(agg_function))
+        {
+          if(recomputable_agg_functions.contains(agg_function))
+          {
+            if(tuple.target_agg_args == null)
+            {
+              tuple.target_agg_args = new Vector<Vector<Argument>>();
+              
+              tuple.target_agg_functions = new Vector<String>();
+              
+              tuple.target_agg_ids = new Vector<Integer>();
+            }
+            
+            tuple.target_agg_args.add(q_group_arg);
+            
+            tuple.target_agg_functions.add(agg_function);
+            
+            tuple.target_agg_ids.add(q_group_agg_id);
+            
+            break;
+          }
+        }
+      }
+      
+      
+      if(j < ids.size())
+        return true;
+      else
+        return false;
       
     }
     
-    return false;
+//    return false;
     
     
   }
@@ -457,7 +509,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   {
     int id = 0;
     
-    Vector<String> agg_functions = new Vector<String>();
+    HashSet<String> agg_functions = new HashSet<String>();
     
     while(id >= 0)
     {
@@ -483,13 +535,16 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         String func = (String)tuple.agg_functions.get(id);
         
         agg_functions.add(func);
+        
+        id++;
       }
     }
     
-    String[] expected_agg_functions = reliable_agg_functions.get(q_group_function);
+//    String[] expected_agg_functions = reliable_agg_functions.get(q_group_function);
+    HashSet<HashSet<String>> good_source_agg_functions = Aggregate_function_rules.check_agg_function_satisfiable(agg_functions, q_group_function);
     
-    
-    if(expected_agg_functions != null && agg_functions.containsAll(Arrays.asList(expected_agg_functions)))
+//    if(expected_agg_functions != null && agg_functions.containsAll(Arrays.asList(expected_agg_functions)))
+    if(!good_source_agg_functions.isEmpty())
     {
       if(!finer_grouping)
       {
@@ -513,13 +568,20 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       else
       {
-        for(int i = 0; i<expected_agg_functions.length; i++)
+        int count = 0;
+        
+        for(HashSet<String> good_source_agg_function: good_source_agg_functions)
         {
-          if(!recomputable_agg_functions.contains(expected_agg_functions[i]))
+          if(recomputable_agg_functions.containsAll(good_source_agg_function))
           {
-            return false;
+            break;
           }
+          
+          count++;
         }
+        
+        if(count >= good_source_agg_functions.size())
+          return false;
         
         if(tuple.target_agg_args == null)
         {
@@ -644,6 +706,12 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         {
           Single_view view = (Single_view) iter.next();
           
+          if(view.view_name.equals("v5"))
+          {
+            int y = 0;
+            y++;
+          }
+          
           HashSet<Tuple> tuples = all_possible_view_mappings_copy.get(view);
           
           for(Iterator iter2 = tuples.iterator(); iter2.hasNext();)
@@ -652,7 +720,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
             
             if(tuple.agg_args!=null && tuple.agg_args.size() > 0)
             {
-              if(tuple.args.containsAll(args) || deal_with_same_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i) || deal_with_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i))
+              if(deal_with_same_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i) || deal_with_agg_functions(strictly_finers.get(tuple), tuple, args, agg_function, i))
               {
                 put_mappings(view_mapping_query_arg_ids_mappings, tuple, i);
                 
@@ -901,185 +969,567 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     }
   }
   
-  static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, Connection c, PreparedStatement pst) throws InterruptedException
+  
+  static HashMap<Tuple, Integer> evaluate_views(HashMap<String, String[]>[] base_relation_contents, ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> query_prov_instance, HashMap<String, HashMap<String, long[]>>[] query_prov_index, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, HashMap<String, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws InterruptedException
+//static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> query_prov_instance, HashMap<String, long[]>[] query_prov_index, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, HashMap<Head_strs, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws InterruptedException
+//static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> query_prov_instance, Vector<String>[] query_prov_lists, Vector<long[]>[] query_prov_indexes, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, Connection c, PreparedStatement pst) throws InterruptedException
+{
+  Set<Single_view> views = all_possible_view_mappings.keySet();
+      
+  Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+  
+  int count = 0;
+  
+  for(Iterator iter = views.iterator(); iter.hasNext();)
   {
-    Set<Single_view> views = all_possible_view_mappings.keySet();
-        
-    Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+    Single_view view = (Single_view) iter.next();
     
-    int count = 0;
+    HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
     
-    for(Iterator iter = views.iterator(); iter.hasNext();)
+    Check_valid_view_mappings check_thread = null;
+    
+    if(!user_query.head.has_agg)
     {
-      Single_view view = (Single_view) iter.next();
-      
-      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
-      
-      Check_valid_view_mappings check_thread = null;
-      
-      if(!user_query.head.has_agg)
-      {
-        check_thread = new Check_valid_view_mappings_non_agg(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
+      check_thread = new Check_valid_view_mappings_non_agg(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
+    }
+    else
+    {
+      try {
+        if(!is_materialized)
+//          check_thread = new Check_valid_view_mappings_agg_batch_processing(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+//            check_thread = new Check_valid_view_mappings_agg_batch_processing0(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings);
+          check_thread = new Check_valid_view_mappings_agg_batch_processing0(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings, query_group_value_initial_count, base_relation_contents);
+        else
+          check_thread = new Check_valid_view_mappings_agg_batch_processing0_materialized(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings, query_group_value_initial_count, base_relation_contents);
+      } catch (ClassNotFoundException | SQLException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
       }
-      else
+    }
+    
+    
+    check_thread.start();
+    
+    count++;
+    
+    check_threads.add(check_thread);
+    
+    double t1 = System.nanoTime();
+    
+    if(count % batch_size == 0)
+    {
+      for(int i = 0; i<check_threads.size(); i++)
       {
-        try {
-          check_thread = new Check_valid_view_mappings_agg_batch_processing1(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
-        } catch (ClassNotFoundException | SQLException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
-        }
+        check_threads.get(i).join();
       }
       
-      
-      check_thread.start();
-      
-      count++;
-      
-      check_threads.add(check_thread);
-      
-      if(count % batch_size == 0)
+      for(int i = 0; i<check_threads.size(); i++)
       {
-        for(int i = 0; i<check_threads.size(); i++)
-        {
-          check_threads.get(i).join();
-        }
+        tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+      }
+      check_threads.clear();
+    }
+    
+    double t2 = System.nanoTime();
+    
+    double time = (t2 - t1)*1.0/1000000000;
+    
+    System.out.println("post_time::" + time);
+//    if(count - batch_size == 0)
+//    {
+//      for(int i = 0; i<check_threads.size(); i++)
+//      {
+//        check_threads.get(i).join();
+//        count--;
+//        tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+//        check_threads.remove(i);
+//        break;
+//      }
+//      
+////      for(int i = 0; i<check_threads.size(); i++)
+////      {
+////        
+////      }
+////      check_threads.clear();
+//    }
+//    check_thread.join();
+    
+    
+  }
+  
+  for(int i = 0; i<check_threads.size(); i++)
+  {
+    check_threads.get(i).join();
+  }
+  
+  for(int i = 0; i<check_threads.size(); i++)
+  {
+    tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+  }
+  check_threads.clear();
+  
+//  for(int i = 0; i<check_threads.size(); i++)
+//  {
+//    check_threads.get(i).join();
+//  }
+  
+
+  
+  int id = 0;
+  
+  if(user_query.head.has_agg)
+    rows = query_prov_instance.size();
+  
+  for(Iterator iter = views.iterator(); iter.hasNext();)
+  {
+    Single_view view = (Single_view) iter.next();
+    
+    HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+    
+    if(agg_intersection)
+    {
+      Iterator it = tuples.iterator();
+      
+      while(it.hasNext())
+      {
+        Tuple tuple = (Tuple)it.next();
         
-        for(int i = 0; i<check_threads.size(); i++)
+        if(tuple_valid_rows.get(tuple).size() < rows)
         {
-          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+          it.remove();
         }
-        check_threads.clear();
+        else
+        {
+          tuple_ids.put(tuple, id);
+          
+          id++;
+        }
       }
-//      if(count - batch_size == 0)
+    }
+    else
+    {
+      Iterator it = tuples.iterator();
+      
+      while(it.hasNext())
+      {
+        Tuple tuple = (Tuple) it.next();
+        
+        if(tuple_valid_rows.get(tuple).isEmpty())
+        {
+          it.remove();
+        }
+        else
+        {
+          tuple_ids.put(tuple, id);
+          
+          id++;
+        }
+      }
+    }
+    
+    if(tuples.isEmpty())
+      iter.remove();
+          
+  }
+  
+//  System.out.println();
+//  
+//  System.out.println(all_why_tokens);
+//  
+//  System.out.println();
+//  
+//  System.out.println(grouping_value_agg_value_mappings);
+//  
+//  System.out.println();
+//  
+//  System.out.println(tuple_why_prov_mappings);
+//  
+//  System.out.println();
+//  
+  System.out.println(tuple_valid_rows.size());
+  
+  get_valid_view_mappings_per_group(user_query.head.has_agg, query_prov_instance);
+  
+//  output(group_view_mappings);
+  
+  return tuple_ids;
+}
+
+  
+//  static HashMap<Tuple, Integer> evaluate_views0(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> query_prov_instance, HashMap<String, long[]>[] query_prov_index, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, HashMap<String, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws InterruptedException
+////  static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> query_prov_instance, HashMap<String, long[]>[] query_prov_index, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, HashMap<Head_strs, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws InterruptedException
+////  static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> query_prov_instance, Vector<String>[] query_prov_lists, Vector<long[]>[] query_prov_indexes, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, Connection c, PreparedStatement pst) throws InterruptedException
+//  {
+//    Set<Single_view> views = all_possible_view_mappings.keySet();
+//        
+////    Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+//    
+//    int count = 0;
+//    
+//    for(Iterator iter = views.iterator(); iter.hasNext();)
+//    {
+//      Single_view view = (Single_view) iter.next();
+//      
+//      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+//      
+////      Check_valid_view_mappings check_thread = null;
+//      
+//      if(!user_query.head.has_agg)
+//      {
+////        new Check_valid_view_mappings_non_agg(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
+//      }
+//      else
+//      {
+//        try {
+//          if(!is_materialized)
+////            check_thread = new Check_valid_view_mappings_agg_batch_processing(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+////              check_thread = new Check_valid_view_mappings_agg_batch_processing0(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings);
+//            Single_thread.run(c, pst, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings, query_group_value_initial_count, tuple_valid_rows);
+////          else
+////            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+//        } catch (ClassNotFoundException | SQLException e) {
+//          // TODO Auto-generated catch block
+//          e.printStackTrace();
+//        }
+//      }
+//      
+//      
+////      check_thread.start();
+//      
+//      count++;
+//      
+////      check_threads.add(check_thread);
+//      
+//      double t1 = System.nanoTime();
+//      
+////      if(count % batch_size == 0)
+////      {
+////        for(int i = 0; i<check_threads.size(); i++)
+////        {
+////          check_threads.get(i).join();
+////        }
+////        
+//////        for(int i = 0; i<check_threads.size(); i++)
+//////        {
+//////          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+//////        }
+////        check_threads.clear();
+////      }
+//      
+//      double t2 = System.nanoTime();
+//      
+//      double time = (t2 - t1)*1.0/1000000000;
+//      
+//      System.out.println("post_time::" + time);
+////      if(count - batch_size == 0)
+////      {
+////        for(int i = 0; i<check_threads.size(); i++)
+////        {
+////          check_threads.get(i).join();
+////          count--;
+////          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+////          check_threads.remove(i);
+////          break;
+////        }
+////        
+//////        for(int i = 0; i<check_threads.size(); i++)
+//////        {
+//////          
+//////        }
+//////        check_threads.clear();
+////      }
+////      check_thread.join();
+//      
+//      
+//    }
+//    
+//    int id = 0;
+//    
+//    if(user_query.head.has_agg)
+//      rows = query_prov_instance.size();
+//    
+//    for(Iterator iter = views.iterator(); iter.hasNext();)
+//    {
+//      Single_view view = (Single_view) iter.next();
+//      
+//      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+//      
+//      if(agg_intersection)
+//      {
+//        Iterator it = tuples.iterator();
+//        
+//        while(it.hasNext())
+//        {
+//          Tuple tuple = (Tuple)it.next();
+//          
+//          if(tuple_valid_rows.get(tuple).size() < rows)
+//          {
+//            it.remove();
+//          }
+//          else
+//          {
+//            tuple_ids.put(tuple, id);
+//            
+//            id++;
+//          }
+//        }
+//      }
+//      else
+//      {
+//        Iterator it = tuples.iterator();
+//        
+//        while(it.hasNext())
+//        {
+//          Tuple tuple = (Tuple) it.next();
+//          
+//          if(tuple_valid_rows.get(tuple).isEmpty())
+//          {
+//            it.remove();
+//          }
+//          else
+//          {
+//            tuple_ids.put(tuple, id);
+//            
+//            id++;
+//          }
+//        }
+//      }
+//      
+//      if(tuples.isEmpty())
+//        iter.remove();
+//            
+//    }
+//    
+////    System.out.println();
+////    
+////    System.out.println(all_why_tokens);
+////    
+////    System.out.println();
+////    
+////    System.out.println(grouping_value_agg_value_mappings);
+////    
+////    System.out.println();
+////    
+////    System.out.println(tuple_why_prov_mappings);
+////    
+////    System.out.println();
+////    
+//    System.out.println(tuple_valid_rows.size());
+//    
+//    get_valid_view_mappings_per_group(user_query.head.has_agg);
+//    
+////    output(group_view_mappings);
+//    
+//    return tuple_ids;
+//  }
+//  
+//  static HashMap<Tuple, Integer> evaluate_views(ArrayList<Vector<Head_strs>> curr_tuples, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> query_prov_instance, Vector<String>[] query_prov_lists, Vector<long[]>[] query_prov_indexes, HashMap<Head_strs, ArrayList<Integer>> tuple_why_prov_mappings, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings, HashMap<Tuple, Integer> tuple_ids, Query user_query, boolean is_materialized, Connection c, PreparedStatement pst) throws InterruptedException
+//  {
+//    Set<Single_view> views = all_possible_view_mappings.keySet();
+//        
+//    Vector<Check_valid_view_mappings> check_threads = new Vector<Check_valid_view_mappings>();
+//    
+//    int count = 0;
+//    
+//    for(Iterator iter = views.iterator(); iter.hasNext();)
+//    {
+//      Single_view view = (Single_view) iter.next();
+//      
+//      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+//      
+//      Check_valid_view_mappings check_thread = null;
+//      
+//      if(!user_query.head.has_agg)
+//      {
+//        check_thread = new Check_valid_view_mappings_non_agg(view.view_name, view, tuples, curr_tuples, relation_attribute_value_mappings, c, pst);
+//      }
+//      else
+//      {
+//        try {
+//          if(!is_materialized)
+////            check_thread = new Check_valid_view_mappings_agg_batch_processing(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+////              check_thread = new Check_valid_view_mappings_agg_batch_processing0(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_index, user_query, grouping_value_prov_count_mappings);
+//            check_thread = new Check_valid_view_mappings_agg_batch_processing0(db_name, view.view_name, view, tuples, curr_tuples, query_prov_instance, query_prov_lists, query_prov_indexes, user_query, grouping_value_prov_count_mappings);
+//          else
+//            check_thread = new Check_valid_view_mappings_agg_batch_processing1_materialized(db_name, view.view_name, view, tuples, curr_tuples, tuple_why_prov_mappings, relation_attribute_value_mappings, grouping_value_agg_value_mappings, user_query, c, pst);
+//        } catch (ClassNotFoundException | SQLException e) {
+//          // TODO Auto-generated catch block
+//          e.printStackTrace();
+//        }
+//      }
+//      
+//      
+//      check_thread.start();
+//      
+//      count++;
+//      
+//      check_threads.add(check_thread);
+//      
+//      if(count % batch_size == 0)
 //      {
 //        for(int i = 0; i<check_threads.size(); i++)
 //        {
 //          check_threads.get(i).join();
-//          count--;
-//          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
-//          check_threads.remove(i);
-//          break;
 //        }
 //        
+//        for(int i = 0; i<check_threads.size(); i++)
+//        {
+//          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+//        }
+//        check_threads.clear();
+//      }
+////      if(count - batch_size == 0)
+////      {
 ////        for(int i = 0; i<check_threads.size(); i++)
 ////        {
-////          
+////          check_threads.get(i).join();
+////          count--;
+////          tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+////          check_threads.remove(i);
+////          break;
 ////        }
-////        check_threads.clear();
-//      }
-//      check_thread.join();
-      
-      
-    }
-    
-    for(int i = 0; i<check_threads.size(); i++)
-    {
-      check_threads.get(i).join();
-    }
-    
-    for(int i = 0; i<check_threads.size(); i++)
-    {
-      tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
-    }
-    check_threads.clear();
-    
+////        
+//////        for(int i = 0; i<check_threads.size(); i++)
+//////        {
+//////          
+//////        }
+//////        check_threads.clear();
+////      }
+////      check_thread.join();
+//      
+//      
+//    }
+//    
 //    for(int i = 0; i<check_threads.size(); i++)
 //    {
 //      check_threads.get(i).join();
 //    }
+//    
+//    for(int i = 0; i<check_threads.size(); i++)
+//    {
+//      tuple_valid_rows.putAll(check_threads.get(i).get_tuple_rows());
+//    }
+//    check_threads.clear();
+//    
+////    for(int i = 0; i<check_threads.size(); i++)
+////    {
+////      check_threads.get(i).join();
+////    }
+//    
+//
+//    
+//    int id = 0;
+//    
+//    if(user_query.head.has_agg)
+//      rows = query_prov_instance.size();
+//    
+//    for(Iterator iter = views.iterator(); iter.hasNext();)
+//    {
+//      Single_view view = (Single_view) iter.next();
+//      
+//      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+//      
+//      if(agg_intersection)
+//      {
+//        Iterator it = tuples.iterator();
+//        
+//        while(it.hasNext())
+//        {
+//          Tuple tuple = (Tuple)it.next();
+//          
+//          if(tuple_valid_rows.get(tuple).size() < rows)
+//          {
+//            it.remove();
+//          }
+//          else
+//          {
+//            tuple_ids.put(tuple, id);
+//            
+//            id++;
+//          }
+//        }
+//      }
+//      else
+//      {
+//        Iterator it = tuples.iterator();
+//        
+//        while(it.hasNext())
+//        {
+//          Tuple tuple = (Tuple) it.next();
+//          
+//          if(tuple_valid_rows.get(tuple).isEmpty())
+//          {
+//            it.remove();
+//          }
+//          else
+//          {
+//            tuple_ids.put(tuple, id);
+//            
+//            id++;
+//          }
+//        }
+//      }
+//      
+//      if(tuples.isEmpty())
+//        iter.remove();
+//            
+//    }
+//    
+////    System.out.println();
+////    
+////    System.out.println(all_why_tokens);
+////    
+////    System.out.println();
+////    
+////    System.out.println(grouping_value_agg_value_mappings);
+////    
+////    System.out.println();
+////    
+////    System.out.println(tuple_why_prov_mappings);
+////    
+////    System.out.println();
+////    
+//    System.out.println(tuple_valid_rows.size());
+//    
+//    get_valid_view_mappings_per_group(user_query.head.has_agg);
+//    
+////    output(group_view_mappings);
+//    
+//    return tuple_ids;
+//  }
+//  
+  
+  static void output(HashMap<String, HashMap<Tuple, Integer>> group_view_mappings)
+  {
+    Set<String> group_ids = group_view_mappings.keySet();
     
-
-    
-    int id = 0;
-    
-    if(user_query.head.has_agg)
-      rows = tuple_why_prov_mappings.size();
-    
-    for(Iterator iter = views.iterator(); iter.hasNext();)
+    for(String group_id : group_ids)
     {
-      Single_view view = (Single_view) iter.next();
+      System.out.println(group_id);
       
-      HashSet<Tuple> tuples = all_possible_view_mappings.get(view);
+      Set<Tuple> view_mappings = group_view_mappings.get(group_id).keySet();
       
-      if(agg_intersection)
+      for(Tuple view_mapping: view_mappings)
       {
-        Iterator it = tuples.iterator();
-        
-        while(it.hasNext())
-        {
-          Tuple tuple = (Tuple)it.next();
-          
-          if(tuple_valid_rows.get(tuple).size() < rows)
-          {
-            it.remove();
-          }
-          else
-          {
-            tuple_ids.put(tuple, id);
-            
-            id++;
-          }
-        }
-      }
-      else
-      {
-        Iterator it = tuples.iterator();
-        
-        while(it.hasNext())
-        {
-          Tuple tuple = (Tuple) it.next();
-          
-          if(tuple_valid_rows.get(tuple).isEmpty())
-          {
-            it.remove();
-          }
-          else
-          {
-            tuple_ids.put(tuple, id);
-            
-            id++;
-          }
-        }
+        System.out.print(view_mapping.getName() + "    ");
       }
       
-      if(tuples.isEmpty())
-        iter.remove();
-            
+      System.out.println();
     }
-    
-//    System.out.println();
-//    
-//    System.out.println(all_why_tokens);
-//    
-//    System.out.println();
-//    
-//    System.out.println(grouping_value_agg_value_mappings);
-//    
-//    System.out.println();
-//    
-//    System.out.println(tuple_why_prov_mappings);
-//    
-//    System.out.println();
-//    
-    System.out.println(tuple_valid_rows.size());
-    
-    get_valid_view_mappings_per_group(user_query.head.has_agg);
-    
-    return tuple_ids;
   }
   
-  static void get_valid_view_mappings_per_group(boolean query_has_agg)
+  
+  static void get_valid_view_mappings_per_group(boolean query_has_agg, HashMap<String, String[][]> query_prov_instance)
   {
     Set<Tuple> view_mappings = tuple_valid_rows.keySet();
     
-    ArrayList<HashSet> rid_sets = new ArrayList<HashSet>();
+    ArrayList<Set> rid_sets = new ArrayList<Set>();
     
     ArrayList<Tuple> all_view_mappings = new ArrayList<Tuple>();
     
     for(Tuple view_mapping: view_mappings)
     {
-      HashSet curr_rids = tuple_valid_rows.get(view_mapping);
+      Set curr_rids = tuple_valid_rows.get(view_mapping);
       
       rid_sets.add(curr_rids);
       
@@ -1089,9 +1539,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     if(query_has_agg)
     {
-      Set<Head_strs> all_head_values = tuple_why_prov_mappings.keySet();
+      Set<String> all_head_values = query_prov_instance.keySet();
       
-      for(Head_strs head_value: all_head_values)
+      for(String head_value: all_head_values)
       {
         String signiture = new String();
         
@@ -1101,15 +1551,17 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         {
           if(rid_sets.get(j).contains(head_value))
           {
-            signiture += "," + head_value;
+            signiture += "," + j;
             
             tuple_ids.add(j);
+            
           }
         }
         
+        
         if(group_ids.get(signiture) == null)
         {
-          HashSet<Head_strs> ids = new HashSet<Head_strs>();
+          HashSet<String> ids = new HashSet<String>();
           
           ids.add(head_value);
           
@@ -1123,6 +1575,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           }
           
           group_view_mappings.put(signiture, curr_view_mappings);
+          
         }
         else
         {
@@ -1181,14 +1634,131 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  static ArrayList<int[]> get_valid_view_mappings(ArrayList<HashSet<Covering_set>> covering_sets_per_attributes, Vector<Argument> args, Query query, ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var, HashMap<Tuple, Integer> tuple_ids)
+//  static ArrayList<int[]> get_valid_view_mappings(ArrayList<HashSet<Covering_set>> covering_sets_per_attributes, Vector<Argument> args, Query query, ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var, HashMap<Tuple, Integer> tuple_ids)
+//  {
+//    
+////    System.out.println(tuple_ids);
+//    
+//    Set<Tuple> valid_view_mappings_schema_level = tuple_ids.keySet();
+//    
+//    HashSet<HashSet<Tuple>> all_tuples = new HashSet<HashSet<Tuple>>();
+//    
+//    ArrayList<int[]> tuple_index = new ArrayList<int[]>();
+//    
+//    for(int i = 0; i<valid_view_mappings_per_head_var.size(); i++)
+//    {
+//      HashSet<Tuple> valid_view_mappings = valid_view_mappings_per_head_var.get(i);
+//      
+//      valid_view_mappings.retainAll(valid_view_mappings_schema_level);
+//      
+////      Set<Single_view> views = all_possible_view_mappings.keySet();
+////      
+////      HashSet<Tuple> curr_tuples = new HashSet<Tuple>();
+////            
+////      for(Iterator iter = views.iterator(); iter.hasNext();)
+////      {
+////        Single_view view = (Single_view) iter.next();
+////        
+////        HashSet<Tuple> tuples1 = valid_view_mappings.get(view);
+////        
+////        HashSet<Tuple> tuples2 = all_possible_view_mappings.get(view);
+////        
+////        if(tuples2 == null)
+////        {
+////          iter.remove();
+////          
+////          continue;
+////        }
+////        
+////        tuples1.retainAll(tuples2);
+////        
+////        if(tuples1.isEmpty())
+////          iter.remove();
+////        
+////        curr_tuples.addAll(tuples1);
+////        
+////      }
+//      
+//      if(all_tuples.contains(valid_view_mappings))
+//      {
+//        valid_view_mappings_per_head_var.remove(i);
+//        
+//        i--;
+//      }
+//      else
+//      {
+//        all_tuples.add(valid_view_mappings);
+//        
+//        int [] curr_tuple_index = new int[tuple_ids.size()];
+//        
+//        for(int k = 0; k<curr_tuple_index.length; k++)
+//        {
+//          curr_tuple_index[k] = 0;
+//        }
+//        
+//        HashSet<Covering_set> curr_covering_sets = new HashSet<Covering_set>();
+//        
+//        for(Tuple tuple: valid_view_mappings)
+//        {
+//          int id = tuple_ids.get(tuple);
+//          
+//          
+//          curr_tuple_index[id] = 1;
+//          
+//          Tuple valid_tuple = (Tuple) tuple.clone();
+//          
+//          valid_tuple.args.retainAll(args);
+//              
+//          
+//          long [] tuple_id_contained = new long[(tuple_ids.size() + Long.SIZE - 1)/Long.SIZE];
+//          
+//          tuple_id_contained[id/Long.SIZE] |= (1L << (id % Long.SIZE));
+//          
+//          int arg_size = (query.head.has_agg)?query.head.agg_args.size():query.head.args.size(); 
+//          
+//          if(valid_tuple.lambda_terms.size() > 0)
+//          {
+//              
+//              citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
+//              
+//              Covering_set curr_views = new Covering_set(c, tuple_id_contained);
+//              
+//              remove_duplicate(curr_covering_sets, curr_views);
+//              
+////              curr_covering_sets.add(curr_views);
+//              
+//              
+//              
+//          }   
+//          else
+//          {
+//              
+//              citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
+//              
+//              Covering_set curr_views = new Covering_set(c, tuple_id_contained);
+//              
+//              remove_duplicate(curr_covering_sets, curr_views);
+//          }
+//        }
+//        
+//        covering_sets_per_attributes.add(curr_covering_sets);
+//        
+//        tuple_index.add(curr_tuple_index);
+//      }
+//    }
+//    
+//    return tuple_index;
+//  }
+//  
+  
+  static ArrayList<int[]> get_valid_view_mappings(ArrayList<citation_view>[] covering_sets_per_attributes, Vector<Argument> args, Query query, ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var, HashMap<Tuple, Integer> tuple_ids)
   {
     
 //    System.out.println(tuple_ids);
     
     Set<Tuple> valid_view_mappings_schema_level = tuple_ids.keySet();
     
-    HashSet<HashSet<Tuple>> all_tuples = new HashSet<HashSet<Tuple>>();
+//    HashSet<HashSet<Tuple>> all_tuples = new HashSet<HashSet<Tuple>>();
     
     ArrayList<int[]> tuple_index = new ArrayList<int[]>();
     
@@ -1226,15 +1796,15 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //        
 //      }
       
-      if(all_tuples.contains(valid_view_mappings))
+//      if(all_tuples.contains(valid_view_mappings))
+//      {
+//        valid_view_mappings_per_head_var.remove(i);
+//        
+//        i--;
+//      }
+//      else
       {
-        valid_view_mappings_per_head_var.remove(i);
-        
-        i--;
-      }
-      else
-      {
-        all_tuples.add(valid_view_mappings);
+//        all_tuples.add(valid_view_mappings);
         
         int [] curr_tuple_index = new int[tuple_ids.size()];
         
@@ -1243,7 +1813,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           curr_tuple_index[k] = 0;
         }
         
-        HashSet<Covering_set> curr_covering_sets = new HashSet<Covering_set>();
+        ArrayList<citation_view> curr_covering_sets = new ArrayList<citation_view>();
         
         for(Tuple tuple: valid_view_mappings)
         {
@@ -1260,9 +1830,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //              citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
             citation_view_parametered c = new citation_view_parametered(valid_tuple.name, valid_tuple.query, valid_tuple, view_mapping_query_arg_ids_mappings);  
             
-            Covering_set curr_views = new Covering_set(c);
+//            Covering_set curr_views = new Covering_set(c);
               
-              remove_duplicate(curr_covering_sets, curr_views);
+            remove_duplicate(curr_covering_sets, c);
               
 //              curr_covering_sets.add(curr_views);
               
@@ -1275,13 +1845,13 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //              citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple, query_subgoal_id_mappings, arg_size, view_mapping_query_arg_ids_mappings, tuple_ids);
             citation_view_unparametered c = new citation_view_unparametered(valid_tuple.name, valid_tuple, view_mapping_query_arg_ids_mappings);  
             
-              Covering_set curr_views = new Covering_set(c);
+//              Covering_set curr_views = new Covering_set(c);
               
-              remove_duplicate(curr_covering_sets, curr_views);
+              remove_duplicate(curr_covering_sets, c);
           }
         }
         
-        covering_sets_per_attributes.add(curr_covering_sets);
+        covering_sets_per_attributes[i] = curr_covering_sets;
         
         tuple_index.add(curr_tuple_index);
       }
@@ -1401,7 +1971,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     grouping_value_agg_value_mappings.put(grouping_values, agg_values);
   }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  static double[][] reasoning_valid_view_mappings_conjunctive_query(HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists, ArrayList<citation_view>[] covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, boolean is_materialized, HashMap<String, Integer> query_group_value_initial_count, HashMap<String, String[]>[] base_relation_contents, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
     
     HashSet<String> tables = new HashSet<String>();
@@ -1415,7 +1985,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       tables.add(user_query.subgoal_name_mapping.get(subgoal.name));
     }
     
-    HashMap<String, Integer> table_attr_nums_mappings = get_table_attribute_nums(tables, c, pst);
+//    HashMap<String, Integer> table_attr_nums_mappings = get_table_attribute_nums(tables, c, pst);
     
 //    for(int i = 0; i<user_query.head.args.size(); i++)
 //    {
@@ -1462,75 +2032,82 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
 //    printResult(rs);
     
-    while(rs.next())
-    {
-      
-//      System.out.println("here");
-      
-      try{
-        Head_strs values = get_query_result(rs, 0, user_query.head.args.size());
-        
-        if(user_query.head.agg_args != null)
-        {
-          Head_strs agg_values = get_query_result(rs, user_query.head.args.size(), user_query.head.agg_args.size());
-          
-          build_group_agg_value_mapping(values, agg_values);
-        }
-        
-        Vector<Head_strs> curr_tuples = get_tuples(rs, user_query, table_attr_nums_mappings);
-        
-        System.out.println(values + "::" + rows);
-//        
-//        System.out.println(Runtime.getRuntime().totalMemory());
-//        
-//        System.out.println(Runtime.getRuntime().freeMemory());
-//        
-//        System.out.println(curr_tuples);
-        
-        
-        
-        if(tuple_why_prov_mappings.get(values) == null)
-        {
-          ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
-          
-          curr_tokens.add(rows);
-          
-          tuple_why_prov_mappings.put(values, curr_tokens);
-          
-//          System.out.println(values + "::" + curr_tokens);
-          
-        }
-        else
-        {
-          tuple_why_prov_mappings.get(values).add(rows);
-          
-//          System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
-        }
-        
-        rows ++;
-        
-        all_why_tokens.add(curr_tuples);
-        
-        
-      }
-      catch(Exception e)
-      {
-        System.out.println(e.getStackTrace());
-      }
-      
-      
-//      Vector<String> where_tokens = get_curr_where_token_seq(rs, where_token_seqs, subgoal_size, head_var_size);
+//    while(rs.next())
+//    {
 //      
-//      Vector<String> why_tokens = get_curr_why_token_seq(rs, why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
+////      System.out.println("here");
 //      
-//      get_curr_where_why_token_seq(rs, where_tokens, why_tokens, where_why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
-      
-    }
+//      try{
+//        Head_strs values = get_query_result(rs, 0, user_query.head.args.size());
+//        
+//        if(user_query.head.agg_args != null)
+//        {
+//          Head_strs agg_values = get_query_result(rs, user_query.head.args.size(), user_query.head.agg_args.size());
+//          
+//          build_group_agg_value_mapping(values, agg_values);
+//        }
+//        
+//        Vector<Head_strs> curr_tuples = get_tuples(rs, user_query, table_attr_nums_mappings);
+//        
+//        System.out.println(values + "::" + rows);
+////        
+////        System.out.println(Runtime.getRuntime().totalMemory());
+////        
+////        System.out.println(Runtime.getRuntime().freeMemory());
+////        
+////        System.out.println(curr_tuples);
+//        
+//        
+//        
+//        if(tuple_why_prov_mappings.get(values) == null)
+//        {
+//          ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
+//          
+//          curr_tokens.add(rows);
+//          
+//          tuple_why_prov_mappings.put(values, curr_tokens);
+//          
+////          System.out.println(values + "::" + curr_tokens);
+//          
+//        }
+//        else
+//        {
+//          tuple_why_prov_mappings.get(values).add(rows);
+//          
+////          System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
+//        }
+//        
+//        rows ++;
+//        
+//        all_why_tokens.add(curr_tuples);
+//        
+//        
+//      }
+//      catch(Exception e)
+//      {
+//        System.out.println(e.getStackTrace());
+//      }
+//      
+//      
+////      Vector<String> where_tokens = get_curr_where_token_seq(rs, where_token_seqs, subgoal_size, head_var_size);
+////      
+////      Vector<String> why_tokens = get_curr_why_token_seq(rs, why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
+////      
+////      get_curr_where_why_token_seq(rs, where_tokens, why_tokens, where_why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
+//      
+//    }
     
 //    set_head_vars_id_mappings(head_vals);
     
-    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, c, pst);
+    double t1 = System.nanoTime();
     
+    evaluate_views(base_relation_contents, all_why_tokens, grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_index_lists, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, is_materialized, query_group_value_initial_count, c, pst);
+    
+    double t2 = System.nanoTime();
+    
+    double time = (t2 - t1)*1.0/1000000000;
+    
+    System.out.println("evaluationg_time::" + time);
     
 //    output_view_mapping_id_mappings(tuple_ids);
     
@@ -1554,146 +2131,159 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
   }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
-  {
-    
-    HashSet<String> tables = new HashSet<String>();
-    
-    for(int i = 0; i<user_query.body.size(); i++)
-    {
-      Subgoal subgoal = (Subgoal) user_query.body.get(i);
-      
-      query_subgoal_id_mappings.put(subgoal.name, i);
-      
-      tables.add(user_query.subgoal_name_mapping.get(subgoal.name));
-    }
-    
-    HashMap<String, Integer> table_attr_nums_mappings = get_table_attribute_nums(tables, c, pst);
-    
-//    for(int i = 0; i<user_query.head.args.size(); i++)
+//  static double[][] reasoning_valid_view_mappings_conjunctive_query(HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, Vector<String>[] query_prov_lists, Vector<long[]>[] prov_index_lists, ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, boolean is_materialized, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+//  {
+//    
+//    HashSet<String> tables = new HashSet<String>();
+//    
+//    for(int i = 0; i<user_query.body.size(); i++)
 //    {
-//      Argument arg = (Argument) user_query.head.args.get(i);
+//      Subgoal subgoal = (Subgoal) user_query.body.get(i);
 //      
-//      query_arg_id_mappings.put(arg, i);
+//      query_subgoal_id_mappings.put(subgoal.name, i);
+//      
+//      tables.add(user_query.subgoal_name_mapping.get(subgoal.name));
 //    }
-    
-//    System.out.println(user_query);
 //    
-//    System.out.println(tables);
-    
-//    input_relations(query_relation_attr_id_mappings, tables, c, pst);
-    
-    all_possible_view_mappings = get_all_possible_view_mappings(query_subgoal_id_mappings, user_query);
-    
-    init_view_mappings_conjunctive_query(valid_view_mappings_per_head_var, user_query.head, all_possible_view_mappings);    
-    
-    clone_view_mappings(all_possible_view_mappings, all_possible_view_mappings_copy);
-    
-    ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var_copy = clone_view_mapping_per_attribute(valid_view_mappings_per_head_var);
-    
-//    Provenance_reasoning.con.getW().setLogLevel(0);
-    
-//    Statement st = c.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
-    
-    
-//    pst = c.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
-    
-//    ResultSet rs = st.executeQuery(sql);
-        
-//    Provenance_reasoning.con.clearWarnings();
+////    HashMap<String, Integer> table_attr_nums_mappings = get_table_attribute_nums(tables, c, pst);
 //    
-//    Provenance_reasoning.con.close();
-    
-//    System.out.println("here");
+////    for(int i = 0; i<user_query.head.args.size(); i++)
+////    {
+////      Argument arg = (Argument) user_query.head.args.get(i);
+////      
+////      query_arg_id_mappings.put(arg, i);
+////    }
 //    
-//    System.out.println(Runtime.getRuntime().totalMemory());
+////    System.out.println(user_query);
+////    
+////    System.out.println(tables);
 //    
-//    System.out.println(Runtime.getRuntime().freeMemory());
-    
-//    printResult(rs);
-    
-    for(String[] provenance_row: provenance_instances)
-    {
-      
-//      System.out.println("here");
-      
-      Head_strs values = get_query_result(provenance_row, 0, user_query.head.args.size());
-      
-      
-      if(user_query.head.agg_args != null)
-      {
-        Head_strs agg_values = get_query_result(provenance_row, user_query.head.args.size(), user_query.head.args.size() + user_query.head.agg_args.size());
-        
-        build_group_agg_value_mapping(values, agg_values);
-      } 
-      
-      Vector<Head_strs> curr_tuples = get_tuples(provenance_row, user_query, table_attr_nums_mappings);
-      
-//      System.out.println(rows);
-//      
-//      System.out.println(Runtime.getRuntime().totalMemory());
-//      
-//      System.out.println(Runtime.getRuntime().freeMemory());
-//      
-//      System.out.println(curr_tuples);
-      
-      
-      
-      if(tuple_why_prov_mappings.get(values) == null)
-      {
-        ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
-        
-        curr_tokens.add(rows);
-        
-        tuple_why_prov_mappings.put(values, curr_tokens);
-        
-//        System.out.println(values + "::" + curr_tokens);
-        
-      }
-      else
-      {
-        tuple_why_prov_mappings.get(values).add(rows);
-        
-//        System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
-      }
-      
-      rows ++;
-      
-      all_why_tokens.add(curr_tuples);
-//      Vector<String> where_tokens = get_curr_where_token_seq(rs, where_token_seqs, subgoal_size, head_var_size);
-//      
-//      Vector<String> why_tokens = get_curr_why_token_seq(rs, why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
-//      
-//      get_curr_where_why_token_seq(rs, where_tokens, why_tokens, where_why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
-      
-    }
-    
-//    set_head_vars_id_mappings(head_vals);
-    
-    evaluate_views(all_why_tokens, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, c, pst);
-    
-    
-//    output_view_mapping_id_mappings(tuple_ids);
-    
-    ArrayList<int[]> tuple_index = get_valid_view_mappings(covering_sets_per_attribute, user_query.head.args, user_query, valid_view_mappings_per_head_var_copy, tuple_ids);
-    
-//    add_suffix_token_seq(where_token_seqs);
+////    input_relations(query_relation_attr_id_mappings, tables, c, pst);
 //    
-//    check_where_tokens(where_token_seqs, valid_view_mappings_per_head_var, where_why_token_seqs);
+//    all_possible_view_mappings = get_all_possible_view_mappings(query_subgoal_id_mappings, user_query);
 //    
-//    checking_why_provenance_tokens(why_token_seqs, all_possible_view_mappings);
+//    
+//    
+//    init_view_mappings_conjunctive_query(valid_view_mappings_per_head_var, user_query.head, all_possible_view_mappings);    
+//    
+//    clone_view_mappings(all_possible_view_mappings, all_possible_view_mappings_copy);
 //
 //    
-//    checking_where_why_provenance_tokens(valid_view_mappings_per_head_var, where_why_token_seqs, all_possible_view_mappings);
-    
-    valid_view_mappings_schema_level = valid_view_mappings_per_head_var_copy;
-    
-    if(isclustering)
-      return cal_distances(tuple_index);
-    else
-      return null;
-    
-  }
+//    ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var_copy = clone_view_mapping_per_attribute(valid_view_mappings_per_head_var);
+//    
+////    Provenance_reasoning.con.getW().setLogLevel(0);
+//    
+////    Statement st = c.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+//    
+//    
+////    pst = c.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+//    
+////    ResultSet rs = st.executeQuery(sql);
+//        
+////    Provenance_reasoning.con.clearWarnings();
+////    
+////    Provenance_reasoning.con.close();
+//    
+////    System.out.println("here");
+////    
+////    System.out.println(Runtime.getRuntime().totalMemory());
+////    
+////    System.out.println(Runtime.getRuntime().freeMemory());
+//    
+////    printResult(rs);
+//    
+////    while(rs.next())
+////    {
+////      
+//////      System.out.println("here");
+////      
+////      try{
+////        Head_strs values = get_query_result(rs, 0, user_query.head.args.size());
+////        
+////        if(user_query.head.agg_args != null)
+////        {
+////          Head_strs agg_values = get_query_result(rs, user_query.head.args.size(), user_query.head.agg_args.size());
+////          
+////          build_group_agg_value_mapping(values, agg_values);
+////        }
+////        
+////        Vector<Head_strs> curr_tuples = get_tuples(rs, user_query, table_attr_nums_mappings);
+////        
+////        System.out.println(values + "::" + rows);
+//////        
+//////        System.out.println(Runtime.getRuntime().totalMemory());
+//////        
+//////        System.out.println(Runtime.getRuntime().freeMemory());
+//////        
+//////        System.out.println(curr_tuples);
+////        
+////        
+////        
+////        if(tuple_why_prov_mappings.get(values) == null)
+////        {
+////          ArrayList<Integer> curr_tokens = new ArrayList<Integer>();
+////          
+////          curr_tokens.add(rows);
+////          
+////          tuple_why_prov_mappings.put(values, curr_tokens);
+////          
+//////          System.out.println(values + "::" + curr_tokens);
+////          
+////        }
+////        else
+////        {
+////          tuple_why_prov_mappings.get(values).add(rows);
+////          
+//////          System.out.println(values + "::" + tuple_why_prov_mappings.get(values));
+////        }
+////        
+////        rows ++;
+////        
+////        all_why_tokens.add(curr_tuples);
+////        
+////        
+////      }
+////      catch(Exception e)
+////      {
+////        System.out.println(e.getStackTrace());
+////      }
+////      
+////      
+//////      Vector<String> where_tokens = get_curr_where_token_seq(rs, where_token_seqs, subgoal_size, head_var_size);
+//////      
+//////      Vector<String> why_tokens = get_curr_why_token_seq(rs, why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
+//////      
+//////      get_curr_where_why_token_seq(rs, where_tokens, why_tokens, where_why_token_seqs, subgoal_size, head_var_size, all_possible_view_mappings);
+////      
+////    }
+//    
+////    set_head_vars_id_mappings(head_vals);
+//    
+//    evaluate_views(all_why_tokens, grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_lists, prov_index_lists, tuple_why_prov_mappings, all_possible_view_mappings_copy, tuple_ids, user_query, is_materialized, c, pst);
+//    
+//    
+//    output_view_mapping_id_mappings(tuple_ids);
+//    
+//    ArrayList<int[]> tuple_index = get_valid_view_mappings(covering_sets_per_attribute, user_query.head.args, user_query, valid_view_mappings_per_head_var_copy, tuple_ids);
+//    
+////    add_suffix_token_seq(where_token_seqs);
+////    
+////    check_where_tokens(where_token_seqs, valid_view_mappings_per_head_var, where_why_token_seqs);
+////    
+////    checking_why_provenance_tokens(why_token_seqs, all_possible_view_mappings);
+////
+////    
+////    checking_where_why_provenance_tokens(valid_view_mappings_per_head_var, where_why_token_seqs, all_possible_view_mappings);
+//    
+//    valid_view_mappings_schema_level = valid_view_mappings_per_head_var_copy;
+//    
+//    if(isclustering)
+//      return cal_distances(tuple_index);
+//    else
+//      return null;
+//    
+//  }
+//  
   
   static void output_view_mapping_id_mappings(HashMap<Tuple, Integer> tuple_ids)
   {
@@ -1823,7 +2413,60 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     Query_provenance.reset();
   }
   
-  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, ResultSet rs, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+//  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> grouping_values_prov_mappings, HashMap<String, long[]>[] query_prov_index, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+//  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, Vector<String>[] query_prov_lists, Vector<long[]>[] prov_index_lists, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+//  {
+////    String sql = new String();
+////    
+////    
+////    if(!test_case)
+////      sql = Query_converter.data2sql_with_why_token_columns(user_query);
+////    else
+////      sql = Query_converter.data2sql_with_why_token_columns_test(user_query);
+////      
+////    
+////    System.out.println(sql);
+//    
+//    double start = 0.0;
+//    
+//    double end = 0.0;
+//    
+//    
+//    
+//    start = System.nanoTime();
+//    
+//    ArrayList<HashSet<Covering_set>> covering_sets_per_attributes = new ArrayList<HashSet<Covering_set>>();
+//    
+//    HashMap<Tuple, Integer> tuple_ids = new HashMap<Tuple, Integer>();
+//    
+//    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_lists, prov_index_lists, covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, is_materialized, c, pst);
+//    
+//    end = System.nanoTime();
+//    
+//    view_mapping_time = (end - start) * 1.0/1000000000;
+//    
+//    start = System.nanoTime();
+//    
+//    HashSet<Covering_set> covering_sets;
+//    
+//    if(ifclustering)
+//      covering_sets = reasoning_covering_set_ap(distances, covering_sets_per_attributes);
+//    else
+//    {
+//      covering_sets = reasoning_covering_sets(distances, covering_sets_per_attributes);
+//    }
+//    
+//    end = System.nanoTime();
+//    
+//    covering_set_time = (end - start) * 1.0/1000000000;
+//    
+//    cal_covering_sets_per_group(tuple_ids, covering_sets, user_query);
+//    
+//    return covering_sets;
+//  }
+//  
+//  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, HashMap<Head_strs, Integer> grouping_value_prov_count_mappings, HashMap<Head_strs, String[][]> grouping_values_prov_mappings, HashMap<String, long[]>[] query_prov_index_lists, HashMap<Head_strs, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, boolean is_materialized, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists, HashMap<String, Integer> query_group_value_initial_count, HashMap<String, String[]>[] base_relation_contents, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
 //    String sql = new String();
 //    
@@ -1844,11 +2487,20 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     start = System.nanoTime();
     
-    ArrayList<HashSet<Covering_set>> covering_sets_per_attributes = new ArrayList<HashSet<Covering_set>>();
+    ArrayList<citation_view>[] covering_sets_per_attributes = null;
+    
+    if(user_query.head.has_agg)
+    {
+      covering_sets_per_attributes = new ArrayList[user_query.head.agg_args.size()];
+    }
+    else
+    {
+      covering_sets_per_attributes = new ArrayList[user_query.head.args.size()];
+    }
     
     HashMap<Tuple, Integer> tuple_ids = new HashMap<Tuple, Integer>();
     
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, rs, c, pst);
+    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_index_lists, covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, is_materialized, query_group_value_initial_count, base_relation_contents, c, pst);
     
     end = System.nanoTime();
     
@@ -1862,7 +2514,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       covering_sets = reasoning_covering_set_ap(distances, covering_sets_per_attributes);
     else
     {
-      covering_sets = reasoning_covering_sets(distances, covering_sets_per_attributes);
+      covering_sets = reasoning_covering_sets(covering_sets_per_attributes);
+//      covering_sets = Covering_sets_no_clustering.reasoning_single_tuple(head_variable_query_mapping, head_variable_view_mapping, relation_arg_mapping, views, user_query, rs, c_view_template, curr_head_vars, view_mapping_query_arg_ids_mappings);
     }
     
     end = System.nanoTime();
@@ -1874,58 +2527,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     return covering_sets;
   }
   
-  public static HashSet<Covering_set> reasoning(Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, boolean ifclustering, Vector<String[]> provenance_instances, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
-  {
-//    String sql = new String();
-//    
-//    
-//    if(!test_case)
-//      sql = Query_converter.data2sql_with_why_token_columns(user_query);
-//    else
-//      sql = Query_converter.data2sql_with_why_token_columns_test(user_query);
-//      
-//    
-//    System.out.println(sql);
-    
-    double start = 0.0;
-    
-    double end = 0.0;
-    
-    
-    
-    start = System.nanoTime();
-    
-    ArrayList<HashSet<Covering_set>> covering_sets_per_attributes = new ArrayList<HashSet<Covering_set>>();
-    
-    HashMap<Tuple, Integer> tuple_ids = new HashMap<Tuple, Integer>();
-    
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, provenance_instances, c, pst);
-    
-    end = System.nanoTime();
-    
-    view_mapping_time = (end - start) * 1.0/1000000000;
-    
-    start = System.nanoTime();
-    
-    HashSet<Covering_set> covering_sets;
-    
-    if(ifclustering)
-      covering_sets = reasoning_covering_set_ap(distances, covering_sets_per_attributes);
-    else
-    {
-      covering_sets = reasoning_covering_sets(distances, covering_sets_per_attributes);
-    }
-    
-//    System.out.println(covering_sets_per_attributes);
-    
-    end = System.nanoTime();
-    
-    covering_set_time = (end - start) * 1.0/1000000000;
-    
-    cal_covering_sets_per_group(tuple_ids, covering_sets, user_query);
-    
-    return covering_sets;
-  }
   
   static void cal_covering_sets_per_group(HashMap<Tuple, Integer> tuple_ids_schema_level, HashSet<Covering_set> covering_set_schema_level, Query user_query)
   {
@@ -1939,7 +2540,14 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       
       Set<Tuple> valid_tuples_schema_level = tuple_ids_schema_level.keySet();
       
-      ArrayList<HashSet<Covering_set>> covering_sets_per_attribute = new ArrayList<HashSet<Covering_set>>();
+      ArrayList<citation_view>[] covering_sets_per_attribute = null;
+      
+      if(user_query.head.has_agg)
+      {
+        covering_sets_per_attribute = new ArrayList[user_query.head.agg_args.size()];
+      }
+      else
+        covering_sets_per_attribute = new ArrayList[user_query.head.args.size()];
       
       if(curr_valid_tuples.containsAll(valid_tuples_schema_level) && valid_tuples_schema_level.containsAll(curr_valid_tuples))
       {
@@ -1952,24 +2560,37 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         ArrayList<int[]> tuple_index = get_valid_view_mappings(covering_sets_per_attribute, user_query.head.args, user_query, valid_view_mappings_per_head_var_copy, curr_tuple_ids);
         
-        double[][] distances = cal_distances(tuple_index);
-        
-        HashSet<Covering_set> curr_group_covering_sets = reasoning_covering_set_ap(distances, covering_sets_per_attribute);
-        
-        group_covering_sets.put(curr_signature, curr_group_covering_sets);
+        if(curr_tuple_ids.size() == 0)
+        {
+          group_covering_sets.put(curr_signature, new HashSet<Covering_set>());
+        }
+        else
+        {
+          double[][] distances = cal_distances(tuple_index);
+          
+          HashSet<Covering_set> curr_group_covering_sets = reasoning_covering_set_ap(distances, covering_sets_per_attribute);
+          
+          group_covering_sets.put(curr_signature, curr_group_covering_sets);
+        }
 
       }
       
       
     }
     
+    
+//    System.out.println(tuple_why_prov_mappings);
+//    
+//    System.out.println(group_ids);
+//    
+//    System.out.println(group_covering_sets);
   }
   
   public static HashSet<String> gen_citations(HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashSet<Covering_set> covering_sets, Connection c, PreparedStatement pst) throws SQLException, JSONException
   {
     HashSet<String> formatted_citations = new HashSet<String>();
     
-    //Gen_citation.gen_citation_entire_query(all_possible_view_mappings_copy, covering_sets, tuple_valid_rows, all_why_tokens, max_num, c, pst);
+//    Gen_citation.gen_citation_entire_query(all_possible_view_mappings_copy, covering_sets, tuple_valid_rows, all_why_tokens, max_num, c, pst);
     
     return formatted_citations;
   }
@@ -2370,7 +2991,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    return covering_sets.get(0);
 //  }
 //  
-  static HashSet<Covering_set> reasoning_covering_sets(double [][] distances, ArrayList<HashSet<Covering_set>> covering_sets_per_attributes)
+  static HashSet<Covering_set> reasoning_covering_sets(ArrayList<citation_view>[] covering_sets_per_attributes)
   {
 //    String [] names = new String[covering_sets_per_attributes.size()];
 //    
@@ -2387,12 +3008,21 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     HashSet<Covering_set> resulting_covering_sets = new HashSet<Covering_set>();
     
-    for(int i = 0; i<covering_sets_per_attributes.size(); i++)
+    for(int i = 0; i<covering_sets_per_attributes.length; i++)
     {
-      if(i == 0)
-        resulting_covering_sets = covering_sets_per_attributes.get(i);
+      if(covering_sets_per_attributes[i].isEmpty())
+        continue;
+      
+      
+      if(resulting_covering_sets.isEmpty())
+      {
+        for(citation_view c_v: covering_sets_per_attributes[i])
+        {
+          resulting_covering_sets.add(new Covering_set(c_v));
+        }
+      }
       else
-        resulting_covering_sets = join_operation(resulting_covering_sets, covering_sets_per_attributes.get(i));
+        resulting_covering_sets = join_operation(resulting_covering_sets, covering_sets_per_attributes[i]);
     }
     
 //    DataProvider provider = new MatrixProvider(distances);
@@ -2519,7 +3149,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     return min_max_cluster_id;
   }
   
-  static HashSet<Covering_set> reasoning_covering_set_ap(double [][] distances, ArrayList<HashSet<Covering_set>> covering_sets_per_attributes)
+  static HashSet<Covering_set> reasoning_covering_set_ap(double [][] distances, ArrayList<citation_view>[] covering_sets_per_attributes)
   {
 //    String [] names = new String[covering_sets_per_attributes.size()];
 //    
@@ -2534,6 +3164,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    
 //    return cluster.merge_children();
     
+    if(distances == null)
+      return new HashSet<Covering_set>();
+    
     DataProvider provider = new MatrixProvider(distances);
     
     AproBuilder builder = new AproBuilder();
@@ -2543,14 +3176,12 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     Apro apro = builder.build(provider);
     apro.setDebug(false);
     
-    apro.run(200);
+    apro.run(1000);
     
 //    HashMap<Integer, HashSet<citation_view_vector>> covering_sets_per_cluster = new HashMap<Integer, HashSet<citation_view_vector>>();
     
 //    System.out.println(apro.getExemplarSet().size());
     
-    double start = System.nanoTime();
-
     
     HashMap<Integer, Vector<Integer>> clusters = new HashMap<Integer, Vector<Integer>>();
     
@@ -2572,12 +3203,8 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
     }
 
-
-    double end_time = System.nanoTime();
-    
-    double time = (end_time - start)/1000000000;
-    
-    HashSet<Covering_set> resulting_covering_sets = null;
+        
+    HashSet<Covering_set> resulting_covering_sets = new HashSet<Covering_set>();
     
     Set<Integer> ids = clusters.keySet();
     
@@ -2604,7 +3231,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       }
       
       
+//      System.out.println(sorted_ids);
       
+//      double t1 = System.nanoTime();
       
       for(Integer id : sorted_ids)
       {
@@ -2614,13 +3243,23 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         for(int i = 0; i<points.size(); i++)
         {
-          if(resulting_covering_sets == null)
+          ArrayList<citation_view> curr_covering_sets = covering_sets_per_attributes[points.get(i)];
+          
+          if(curr_covering_sets.isEmpty())
+            continue;
+          
+          
+          if(resulting_covering_sets.isEmpty())
           {
-            resulting_covering_sets = covering_sets_per_attributes.get(points.get(i));
+            for(citation_view c_v: curr_covering_sets)
+            {
+              resulting_covering_sets.add(new Covering_set(c_v));
+            }
+            
           }
           else
           {
-            resulting_covering_sets = join_operation(resulting_covering_sets, covering_sets_per_attributes.get(points.get(i)));
+            resulting_covering_sets = join_operation(resulting_covering_sets, curr_covering_sets);
           }
         }
         
@@ -2634,6 +3273,14 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //          resulting_covering_sets = join_operation(resulting_covering_sets, curr_covering_sets);
 //        }
       }
+      
+//      double t2 = System.nanoTime();
+      
+//      double time = (t2 - t1)*1.0/1000000000;
+//      
+//      System.out.println("time::" + time);
+      
+      
     }
     else
     {
@@ -2645,13 +3292,23 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
         
         for(int i = 0; i<points.size(); i++)
         {
-          if(resulting_covering_sets == null)
+          
+          ArrayList<citation_view> curr_covering_sets = covering_sets_per_attributes[points.get(i)];
+          
+          if(curr_covering_sets.isEmpty())
+            continue;
+          
+          if(resulting_covering_sets.isEmpty())
           {
-            resulting_covering_sets = covering_sets_per_attributes.get(points.get(i));
+            
+            for(citation_view cv: curr_covering_sets)
+            {
+              resulting_covering_sets.add(new Covering_set(cv));
+            }
           }
           else
           {
-            resulting_covering_sets = join_operation(resulting_covering_sets, covering_sets_per_attributes.get(points.get(i)));
+            resulting_covering_sets = join_operation(resulting_covering_sets, curr_covering_sets);
           }
         }
         
@@ -2867,75 +3524,48 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //    return covering_sets.get(0);
 //  }
   
-  public static HashSet<Covering_set> join_operation(HashSet<Covering_set> c_combinations, HashSet<Covering_set> insert_citations)
+  public static HashSet<Covering_set> join_operation(HashSet<Covering_set> c_combinations, ArrayList<citation_view> insert_citations)
   {
-/*      if(i == 0)
-      {
-
-          c_combinations.addAll(insert_citations);
-          
-          return c_combinations;
-      }
-      else*/
-    
     if(insert_citations.isEmpty())
       return c_combinations;
     
-    if(c_combinations.isEmpty())
-      return insert_citations;
+//    if(c_combinations.isEmpty())
+//    {
+//      
+//      
+//      
+//      
+//      c_combinations.addAll(insert_citations);
+//      return c_combinations;
+//    }
     
+      HashSet<Covering_set> updated_c_combinations = new HashSet<Covering_set>();
+      
+      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
       {
+          Covering_set curr_combination1 = (Covering_set) iter.next();
           
-          HashSet<Covering_set> updated_c_combinations = new HashSet<Covering_set>();
-          
-          for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
+//          HashSet<Covering_set> iterated_covering_sets = new HashSet<Covering_set>();
+                          
+          for(Iterator it = insert_citations.iterator(); it.hasNext();)
           {
+              citation_view curr_combination2 = (citation_view)it.next(); 
               
-              Covering_set curr_combination1 = (Covering_set) iter.next();
+//              iterated_covering_sets.add(curr_combination2);
               
-              HashSet<Covering_set> iterated_covering_sets = new HashSet<Covering_set>();
-                              
-              for(Iterator it = insert_citations.iterator(); it.hasNext();)
-              {
-                  
-                  Covering_set curr_combination2 = (Covering_set)it.next(); 
-                  
-                  iterated_covering_sets.add(curr_combination2);
-                  
-                  Covering_set new_citation_vec = curr_combination2.clone();
-                  
-//                  if(new_citation_vec.c_vec.size() == 1)
-//                  {
-//                    for(citation_view c :new_citation_vec.c_vec)
-//                    {
-//                      if(c.get_name().equals("v8"))
-//                      {
-//                        System.out.println(c.get_table_name_string() + "::" + c.get_view_tuple());
-//                      }
-//                    }
-//                  }
-                  
-                  Covering_set new_covering_set = curr_combination1.merge(new_citation_vec);
-                  
-//                  if(curr_combination1.toString().equals("v14*v15*v29*v4"))
-//                  {
-//                    System.out.println("merge_covering_sets::" + new_covering_set.toString() + "::tables::" + new_covering_set.table_names + "::attributes::" + new_covering_set.head_variables);
-//                  }
-//                  
-//                  if(new_covering_set.toString().equals("v14*v15*v29*v4*v8"))
-//                  {
-//                    System.out.println("merge_covering_sets::" + new_covering_set.toString() + "::tables::" + new_covering_set.table_names + "::attributes::" + new_covering_set.head_variables);
-//                  }
-                  
-                  remove_duplicate(updated_c_combinations, new_covering_set);
-                  
-//                  System.out.println(new_covering_set + "|||||" + updated_c_combinations);
-              }
+              Covering_set new_citation_vec = curr_combination1.clone();
+              
+              Covering_set new_covering_set = Covering_set.merge(new_citation_vec, curr_combination2);
+              
+              remove_duplicate(updated_c_combinations, new_covering_set);
           }
-          
-          return updated_c_combinations;
-          
       }
+      
+//      HashSet<Covering_set> res = new HashSet<Covering_set>();
+//      
+//      res.addAll(updated_c_combinations);
+      
+      return updated_c_combinations;
   }
   
 //  public static HashSet<citation_view_vector> join_views_curr_relation(HashSet<Tuple> tuples, HashSet<citation_view_vector> curr_view_com, Vector<Argument> args, HashMap<Tuple, Integer> tuple_ids)
@@ -3077,6 +3707,118 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
 //      return c_combinations;
 //  }
   
+//  public static HashSet<Covering_set> remove_duplicate(HashSet<Covering_set> c_combinations, Covering_set c_view)
+//  {
+//      if(c_combinations.contains(c_view))
+//      {
+//        return c_combinations;
+//      }
+//                    
+//      boolean removed = false;
+//      
+//      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
+//      {
+//          Covering_set c_combination = (Covering_set) iter.next();
+//          
+//          Covering_set curr_combination = c_view;
+//          
+//          if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
+//          {
+//              iter.remove();   
+//              
+//          }
+//          
+////                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
+//          if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
+//          {
+//            
+//            removed = true;
+//            
+//              break;
+//          }
+//          
+//      }
+//      
+//      if(!removed)
+//      {
+//        c_combinations.add(c_view);
+//        
+//      }
+//              
+//      return c_combinations;
+//  }
+//
+  
+  static void check(Covering_set c_combination, Covering_set curr_combination)
+  {
+    if(c_combination.c_vec.size() == 1)
+    {
+      boolean found = false;
+      
+      for(citation_view cv: c_combination.c_vec)
+      {
+        if(cv.get_name().equals("v4"))
+          found = true;
+      }
+      if(found)
+      {
+        for(citation_view cv: curr_combination.c_vec)
+        {
+          if(cv.get_name().equals("v4"))
+            found = true;
+        }
+      }
+    }
+  }
+  
+  
+  public static ArrayList<citation_view> remove_duplicate(ArrayList<citation_view> c_combinations, citation_view c_view)
+  {
+      int i = 0;
+      
+      int size = c_combinations.size();
+      
+      if(c_combinations.contains(c_view))
+      {
+        return c_combinations;
+      }
+              
+      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
+      {
+                      
+          citation_view c_combination = (citation_view) iter.next();
+          
+          citation_view curr_combination = c_view;
+          
+//          check(c_combination, curr_combination);
+//          
+//          check(curr_combination, c_combination);
+          
+          
+          if(c_combination.hashCode() == curr_combination.hashCode())// && curr_combination.table_names.containsAll(c_combination.table_names) && curr_combination.head_variables.containsAll(c_combination.head_variables) && c_combination.c_vec.size() > curr_combination.c_vec.size())
+          {
+//              iter.remove();                      
+            break;
+          }
+          
+//          if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.table_names.containsAll(curr_combination.table_names) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.c_vec.size() > c_combination.c_vec.size())
+//          {
+//              break;
+//          }
+          
+          i++;
+      }
+      
+      
+      if(i >= size)
+      {
+        c_combinations.add(c_view);
+      }
+      
+              
+      return c_combinations;
+  }
+  
   public static HashSet<Covering_set> remove_duplicate(HashSet<Covering_set> c_combinations, Covering_set c_view)
   {
       int i = 0;
@@ -3094,6 +3836,11 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
           Covering_set c_combination = (Covering_set) iter.next();
           
           Covering_set curr_combination = c_view;
+          
+//          check(c_combination, curr_combination);
+//          
+//          check(curr_combination, c_combination);
+          
           
           if(c_combination.c_vec.containsAll(curr_combination.c_vec)&& curr_combination.table_names.containsAll(c_combination.table_names) && curr_combination.head_variables.containsAll(c_combination.head_variables) && c_combination.c_vec.size() > curr_combination.c_vec.size())
           {
@@ -3118,65 +3865,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
       return c_combinations;
   }
 
-  
-//  public static HashSet<Covering_set> remove_duplicate(HashSet<Covering_set> c_combinations, Covering_set c_view)
-//  {
-//      int i = 0;
-//      
-//      if(c_combinations.contains(c_view))
-//      {
-//        return c_combinations;
-//      }
-//                    
-//      boolean removed = false;
-//      
-//      for(Iterator iter = c_combinations.iterator(); iter.hasNext();)
-//      {
-////        String str = (String) iter.next();
-//                      
-//          Covering_set c_combination = (Covering_set) iter.next();
-//          
-////        if(c_combination.toString().equals("v11*v20*v4*v8"))
-////        {
-////            int y = 0;
-////            
-////            y++;
-////        }
-//          {
-//              {
-//                  Covering_set curr_combination = c_view;
-//                  
-//                  if(Covering_set.contains(c_combination.tuple_index, curr_combination.tuple_index) && Covering_set.contains(curr_combination.arg_name_index,  c_combination.arg_name_index) && Covering_set.contains(curr_combination.table_name_index, c_combination.table_name_index))
-//                  {
-//                      iter.remove();   
-//                      
-//                      
-//                      
-//                  }
-//                  
-////                  if(curr_combination.c_vec.containsAll(c_combination.c_vec) && c_combination.head_variables.containsAll(curr_combination.head_variables) && curr_combination.index_vec.size() > c_combination.index_vec.size())
-//                  if(Covering_set.contains(curr_combination.tuple_index, c_combination.tuple_index) && Covering_set.contains(c_combination.arg_name_index,  curr_combination.arg_name_index) && Covering_set.contains(c_combination.table_name_index, curr_combination.table_name_index))
-//                  {
-//                    
-//                    removed = true;
-//                    
-//                      break;
-//                  }
-//              }
-//              
-//          }
-//          
-//          i++;
-//      }
-//      
-//      if(!removed)
-//      {
-//        c_combinations.add(c_view);
-//        
-//      }
-//              
-//      return c_combinations;
-//  }
   
   static boolean view_vector_contains(Covering_set c_vec1, Covering_set c_vec2)
   {
@@ -3237,8 +3925,6 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     for(int i = 0; i<view_objs.size(); i++)
     {
       Single_view view = view_objs.get(i);
-      
-//      System.out.println(view.subgoal_name_id_mappings);
       
       view.build_view_mappings(q.body, canDb, subgoal_id_mappings, q.head.args);
       

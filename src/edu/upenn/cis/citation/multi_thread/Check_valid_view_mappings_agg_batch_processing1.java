@@ -1894,6 +1894,12 @@ public class Check_valid_view_mappings_agg_batch_processing1 implements Check_va
   
   void deal_with_view_with_aggregation2() throws SQLException
   {
+    if(view.view_name.equals("v9"))
+    {
+      int y = 0;
+      y++;
+    }
+    
     for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
     {
       Tuple view_mapping = (Tuple) iter2.next();

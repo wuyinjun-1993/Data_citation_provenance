@@ -57,6 +57,22 @@ public class Query_provenance_2 {
     
   }
   
+  public static ResultSet get_query_provenance_with_condition(Single_view view, String condition_string, Connection c, PreparedStatement pst) throws SQLException
+  {
+    String sql = null;
+    
+    sql = Query_converter.data2sql_with_provenance_col_with_condition_string(view, condition_string);//(view);
+    
+    pst = c.prepareStatement(sql);
+    
+//    System.out.println(sql);
+    
+    ResultSet rs = pst.executeQuery();
+    
+    return rs;
+    
+  }
+  
   public static ResultSet get_query_provenance_materialized(Single_view view, Connection c, PreparedStatement pst) throws SQLException
   {
     String sql = null;

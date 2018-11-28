@@ -132,9 +132,9 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
   
   static ArrayList<HashSet<Tuple>> valid_view_mappings_per_head_var = new ArrayList<HashSet<Tuple>>();
   
-  public static boolean sort_cluster = false;
+  public static boolean sort_cluster = true;
   
-  public static int factor = 1;
+  public static double factor = 1;
   
   static String[] recomputable_agg_function_arr = {"sum", "count", "max", "min", Aggregate_function_rules.unique_string_symbol};
   
@@ -1860,7 +1860,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     grouping_value_agg_value_mappings.put(grouping_values, agg_values);
   }
   
-  static double[][] reasoning_valid_view_mappings_conjunctive_query(HashMap<String, String[]>[] base_relation_contents, HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists, ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, boolean is_materialized, HashMap<String, Integer> query_group_value_initial_count, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
+  static double[][] reasoning_valid_view_mappings_conjunctive_query(HashMap<String, Integer> grouping_value_prov_count_mappings, HashMap<String, String[][]> grouping_values_prov_mappings, HashMap<String, HashMap<String, long[]>>[] query_prov_index_lists, ArrayList<HashSet<Covering_set>> covering_sets_per_attribute, Query user_query, HashMap<Single_view, HashSet<Tuple>> all_possible_view_mappings_copy, HashMap<Tuple, Integer> tuple_ids, boolean isclustering, boolean is_materialized, HashMap<String, Integer> query_group_value_initial_count, HashMap<String, String[]>[] base_relation_contents, Connection c, PreparedStatement pst) throws SQLException, InterruptedException
   {
     
     HashSet<String> tables = new HashSet<String>();
@@ -2380,7 +2380,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     
     HashMap<Tuple, Integer> tuple_ids = new HashMap<Tuple, Integer>();
     
-    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(base_relation_contents, grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_index_lists, covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, is_materialized, query_group_value_initial_count, c, pst);
+    double[][] distances = reasoning_valid_view_mappings_conjunctive_query(grouping_value_prov_count_mappings, grouping_values_prov_mappings, query_prov_index_lists, covering_sets_per_attributes, user_query, all_possible_view_mappings_copy, tuple_ids, ifclustering, is_materialized, query_group_value_initial_count, base_relation_contents, c, pst);
     
     end = System.nanoTime();
     
@@ -3039,7 +3039,7 @@ public static Vector<Single_view> view_objs = new Vector<Single_view>();
     Apro apro = builder.build(provider);
     apro.setDebug(false);
     
-    apro.run(200);
+    apro.run(1000);
     
 //    HashMap<Integer, HashSet<citation_view_vector>> covering_sets_per_cluster = new HashMap<Integer, HashSet<citation_view_vector>>();
     

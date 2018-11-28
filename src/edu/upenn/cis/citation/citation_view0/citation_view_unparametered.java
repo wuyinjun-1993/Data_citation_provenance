@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,12 +33,14 @@ public class citation_view_unparametered extends citation_view{
 	
 	public String unique_id_string = new String();
 	
-	public citation_view_unparametered(String name, Tuple tuple)
+	public citation_view_unparametered(String name, Tuple tuple, HashMap<Tuple, ArrayList<Integer>> view_mapping_query_arg_ids_mappings)
 	{
 		this.name = name;
 		
 		set_table_name(tuple);
 	
+		tuple.covered_arg_ids.addAll(view_mapping_query_arg_ids_mappings.get(tuple));
+		
 		this.view_tuple = tuple;
 		
 		unique_id_string = get_unique_string_id();

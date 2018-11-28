@@ -1791,10 +1791,137 @@ public class Check_valid_view_mappings_agg_batch_processing0_materialized implem
     return string;
   }
   
-  void deal_with_view_view_non_aggregation()
+  void deal_with_view_view_non_aggregation2() throws SQLException
   {
+
+    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
+    {
+//      view.reset_values();
+      
+      Tuple tuple = (Tuple) iter2.next();
+      
+//      System.out.println(tuple.name + "|" + tuple.mapSubgoals_str);
+      
+      //each table -> related table -> arg_list
+      
+      HashMap<String, ArrayList<Conditions>> undermined_table_conditions_mappings = new HashMap<String, ArrayList<Conditions>>();
+      
+      HashMap<String, ArrayList<ArrayList<String>>> undetermined_table_arg_value_mappings = new HashMap<String, ArrayList<ArrayList<String>>>();
+      
+      long [] bit_sequence = Bit_operation.init(query_prov_instance.size());
+      
+      HashSet<String> head_values = new HashSet<String>();
+      
+//      tuple_rows_bit_index.put(tuple, bit_sequence);
+      
+      tuple_rows.put(tuple, head_values);
+      
+      boolean first = true;
+      
+      ArrayList<String[][]> partial_mapping_values = new ArrayList<String[][]>();
+      
+      for(int i = 0; i<tuple.cluster_patial_mapping_condition_ids.size(); i++)
+      {
+        HashSet<String> partial_mapping_subgoals = get_unique_partial_mapping_subgoals(view, tuple, i);
+        
+        String[][] curr_partial_mapping_values = new String[query_prov_instance.size()][partial_mapping_subgoals.size()];
+        
+        partial_mapping_values.add(curr_partial_mapping_values);
+      }
+      
+      Set<String> head_vals = query_prov_instance.keySet();
+      
+      Head_strs[] head_val_array = new Head_strs[query_prov_instance.size()];
+      
+      HashSet<Integer> valid_row_ids = new HashSet<Integer>();
+      
+      for(String head_val: head_vals)
+      {
+        String[][] provs = query_prov_instance.get(head_val);
+        
+        boolean valid4curr_head_val = true;
+        
+        for(String[] prov: provs)
+        {
+          ArrayList<String[]> tuples = new ArrayList<String[]>();
+          
+          for(int i = 0; i<prov.length; i++)
+          {
+            String[] curr_tuples = base_relation_contents[i].get(prov[i]);
+            
+            tuples.add(curr_tuples);
+          }
+          
+          view.evaluate_args(tuples, tuple);
+          
+//          head_val_array[curr_rid] = head_val;
+          
+          if(!view.check_validity(tuple))//rel_attr_value_mappings, undermined_table_conditions_mappings, undetermined_table_arg_value_mappings, first, c, pst))
+          {
+            
+            valid4curr_head_val = false;
+            
+            break;
+            
+          }
+//          else
+//          {
+//            view.get_partial_mapping_values(tuple, partial_mapping_values, curr_rid);
+//          }
+          
+        }
+        
+        if(valid4curr_head_val)
+        {
+          tuple_rows.get(tuple).add(head_val);
+          
+//          valid_row_ids.addAll(curr_rids);
+        }
+        
+      }
+      
+//      for(int i = 0; i<values_from_why_tokens.size(); i++)
+//      {
+//        view.evaluate_args(values_from_why_tokens.get(i), tuple);
+//        
+//        if(view.check_validity(tuple, partial_mapping_values, i))//rel_attr_value_mappings, undermined_table_conditions_mappings, undetermined_table_arg_value_mappings, first, c, pst))
+//        {
+//          
+////              if(undermined_table_conditions_mappings.size() == 0)              
+//          {
+////            Bit_operation.set_bit(tuple_rows_bit_index.get(tuple), i);
+//            
+//            tuple_rows.get(tuple).add(i);
+//          }
+//          
+//        }
+//        
+////        first = false;
+//      }
+//      System.out.println(tuple_rows.get(tuple));
+
+//      try {
+////        double t1 = System.nanoTime();
+//        
+//        get_valid_row_ids(tuple, partial_mapping_values, tuple_rows.get(tuple), head_val_array, valid_row_ids, view.conditions, view.subgoals, view.subgoal_name_mappings, c, pst);
+//        
+////        double t2 = System.nanoTime();
+////        
+////        double time = (t2 - t1) * 1.0/1000000000;
+////        
+////        System.out.println(time);
+//      } catch (SQLException e) {
+//        // TODO Auto-generated catch block
+//        e.printStackTrace();
+//      }
+      
+//      System.out.println(tuple_rows.get(tuple));
+      
+    }
+  
     
   }
+
 //  {
 //    for(Iterator iter2 = view_mappings.iterator(); iter2.hasNext();)
 //    {
@@ -1915,20 +2042,17 @@ public class Check_valid_view_mappings_agg_batch_processing0_materialized implem
   
   public void run() {
 
-    if(!view.head.has_agg)
-      deal_with_view_view_non_aggregation();
-    else
-    {
       try {
-        deal_with_view_with_aggregation2();
+        if(!view.head.has_agg)
+          deal_with_view_view_non_aggregation2();
+        else
+          deal_with_view_with_aggregation2();
         c.close();
 
       } catch (SQLException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
       }
-    }
-    
     
 //    System.out.println(view.view_name);
   }

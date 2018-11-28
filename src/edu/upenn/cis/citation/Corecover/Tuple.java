@@ -20,6 +20,8 @@ public class Tuple {
   public boolean is_strictly_finer = false;
   public Mapping reverse_phi = null;
   
+  public HashSet<Integer> covered_arg_ids = new HashSet<Integer>();
+  
   public Vector<Vector<Argument>> target_agg_args = null;
   public Vector target_agg_functions = null;
   public Vector target_agg_ids = null;

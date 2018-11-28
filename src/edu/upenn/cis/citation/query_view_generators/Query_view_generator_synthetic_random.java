@@ -71,7 +71,7 @@ public class Query_view_generator_synthetic_random {
     
     Vector<String> query_strings = Load_views_and_citation_queries.views2text_strings(queries);
     Load_views_and_citation_queries.write2files(query_file, query_strings);
-    Vector<Query> views = view_generator.gen_views_random(true, gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
+    Vector<Query> views = view_generator.gen_views_random(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),0, c, pst);
     view_generator.store_views_with_citation_queries(views, view_file, citation_query_file, view_citation_query_mapping_file);
     
   }
@@ -112,7 +112,7 @@ public class Query_view_generator_synthetic_random {
 //  Vector<String> parameters = new Vector<String>();
 //  parameters.add(query.lambda_term.get(0).toString());
 //  Load_views_and_citation_queries.write2files("user_query_subsets", parameters);
-  Vector<Query> views = view_generator.gen_views_random(true, gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
+  Vector<Query> views = view_generator.gen_views_random(false, gen_unique_subgoal_names(query), query, view_num, query.body.size(),view_offset,  c, pst);
 //  view_generator.store_views_with_citation_queries(views);
   view_generator.append_views_with_citation_queries(views, view_offset, view_file, citation_query_file, view_citation_query_mapping_file);
   System.out.println(query);
